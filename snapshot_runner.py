@@ -1,0 +1,493 @@
+"""Bulk VM snapshot run — library entry: run_snapshots(cfg, logger[, cancel_event])."""
+
+from __future__ import annotations
+
+import base64
+import concurrent.futures
+import datetime as dt
+import json
+import logging
+import random
+import re
+import threading
+import time
+import warnings
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
+
+GROUPS_PATH = "/api/nutanix/v3/groups"
+TASKS_LIST_PATH = "/api/prism/v4.1/config/tasks"
+ERGON_PREFIX = base64.b64encode(b"ergon").decode("ascii")
+TERMINAL = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "CANCELED", "CANCELLED"})
+# Lab/self-signed PC: never verify TLS for requests.
+TLS_VERIFY = False
+
+RECOVERY_CRASH = "CRASH_CONSISTENT"
+RECOVERY_APP = "APPLICATION_CONSISTENT"
+# Config / form value: pick CRASH vs APP independently per VM.
+RANDOM_CRASH_OR_APP = "RANDOM_CRASH_OR_APP"
+
+
+class RunCancelled(Exception):
+    """Raised when the UI requests an abort (cancel_event is set)."""
+
+
+@dataclass
+class SnapshotConfig:
+    base_url: str
+    pc_user: str
+    pc_password: str
+    batch_size: int = 10
+    recovery_point_type: str = "CRASH_CONSISTENT"
+    expiration_days: int = 1
+    poll_interval: float = 2.0
+    task_timeout_sec: int = 30
+    group_member_page: int = 500
+    sleep_before_task_poll_sec: float = 4.0
+    # "series" = one snapshot POST at a time; "parallel" = all POSTs in a batch concurrently.
+    snapshot_trigger_mode: str = "series"
+    skip_substrings: Tuple[str, ...] = ()
+    skip_regex_patterns: Tuple[str, ...] = ()
+
+    _compiled_regexes: Tuple[Any, ...] = field(default_factory=tuple, repr=False)
+
+    def compile_regexes(self) -> None:
+        object.__setattr__(
+            self,
+            "_compiled_regexes",
+            tuple(re.compile(p, re.IGNORECASE) for p in self.skip_regex_patterns),
+        )
+
+
+def _pick_recovery_point_type(
+    cfg: SnapshotConfig,
+    random_counts: Dict[str, int],
+    random_lock: Optional[threading.Lock],
+) -> str:
+    if cfg.recovery_point_type != RANDOM_CRASH_OR_APP:
+        return cfg.recovery_point_type
+    choice = random.choice([RECOVERY_CRASH, RECOVERY_APP])
+
+    def _bump() -> None:
+        if choice == RECOVERY_CRASH:
+            random_counts["crash"] = random_counts.get("crash", 0) + 1
+        else:
+            random_counts["app"] = random_counts.get("app", 0) + 1
+
+    if random_lock:
+        with random_lock:
+            _bump()
+    else:
+        _bump()
+    return choice
+
+
+def _group_payload(page: int) -> Dict[str, Any]:
+    return {
+        "entity_type": "mh_vm",
+        "query_name": "",
+        "grouping_attribute": " ",
+        "group_count": 20,
+        "group_offset": 0,
+        "group_attributes": [],
+        "group_member_count": page,
+        "group_member_offset": 0,
+        "group_member_sort_attribute": "vm_name",
+        "group_member_sort_order": "ASCENDING",
+        "group_member_attributes": [{"attribute": "vm_name"}],
+        "filter_criteria": "is_cvm==0",
+    }
+
+
+def _vm_name_should_skip(name: Optional[str], cfg: SnapshotConfig) -> bool:
+    if not name:
+        return False
+    low = name.lower()
+    if any(s.lower() in low for s in cfg.skip_substrings):
+        return True
+    return any(rx.search(name) for rx in cfg._compiled_regexes)
+
+
+def list_all_vm_uuids(
+    session: requests.Session,
+    base: str,
+    cfg: SnapshotConfig,
+) -> Tuple[List[Tuple[str, Optional[str]]], int]:
+    url = base + GROUPS_PATH
+    seen: Dict[str, Optional[str]] = {}
+    group_member_offset = 0
+    ignored_by_name = 0
+    page = cfg.group_member_page
+
+    while True:
+        body = dict(_group_payload(page))
+        body["group_member_offset"] = group_member_offset
+        body["group_member_count"] = page
+        r = session.post(url, json=body, verify=TLS_VERIFY, timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        groups = data.get("group_results") or []
+        if not groups:
+            break
+
+        page_n = 0
+        for group in groups:
+            for ent in group.get("entity_results") or []:
+                eid = ent.get("entity_id")
+                if not eid:
+                    continue
+                page_n += 1
+                key = str(eid)
+                if key in seen:
+                    continue
+                name = None
+                for block in ent.get("data") or []:
+                    if block.get("name") != "vm_name":
+                        continue
+                    for tv in block.get("values") or []:
+                        vals = tv.get("values") or []
+                        if vals:
+                            name = str(vals[0])
+                            break
+                    break
+                if _vm_name_should_skip(name, cfg):
+                    ignored_by_name += 1
+                    continue
+                seen[key] = name
+
+        if not page_n or page_n < page:
+            break
+        group_member_offset += page
+
+    return list(seen.items()), ignored_by_name
+
+
+def take_snapshot(
+    session: requests.Session,
+    vms_snap_prefix: str,
+    vm_uuid: str,
+    snap_name: str,
+    expiration_iso: str,
+    recovery_point_type: str,
+) -> str:
+    r = session.post(
+        f"{vms_snap_prefix}{vm_uuid}/snapshot",
+        json={
+            "name": snap_name,
+            "recovery_point_type": recovery_point_type,
+            "expiration_time": expiration_iso,
+        },
+        verify=TLS_VERIFY,
+        timeout=120,
+    )
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.text[:500]}")
+    body = r.json()
+    tu = body.get("task_uuid") or (
+        (body.get("status") or {}).get("execution_context") or {}
+    ).get("task_uuid")
+    if not tu:
+        raise RuntimeError(json.dumps(body)[:500])
+    return str(tu)
+
+
+def wait_batch(
+    session: requests.Session,
+    base: str,
+    tasks: List[Dict[str, Any]],
+    tally: Dict[str, int],
+    cfg: SnapshotConfig,
+    log: logging.Logger,
+    cancel_event: Optional[threading.Event] = None,
+) -> None:
+    pending = {f"{ERGON_PREFIX}:{t['task_uuid'].strip()}": t for t in tasks}
+    tasks_url = base + TASKS_LIST_PATH
+    deadline = time.monotonic() + cfg.task_timeout_sec
+
+    while pending:
+        if cancel_event is not None and cancel_event.is_set():
+            tally["other"] += len(pending)
+            log.warning("Cancelled while waiting: %d task(s) left pending.", len(pending))
+            raise RunCancelled()
+        if time.monotonic() > deadline:
+            tally["other"] += len(pending)
+            raise TimeoutError(
+                f"{len(pending)} task(s) still pending after {cfg.task_timeout_sec}s"
+            )
+
+        filt = "(" + " or ".join(
+            "extId eq '" + e.replace("'", "''") + "'" for e in pending
+        ) + ")"
+        r = session.get(
+            tasks_url,
+            params={
+                "$page": 0,
+                "$limit": max(100, len(pending)),
+                "$orderBy": "lastUpdatedTime desc",
+                "$filter": filt,
+            },
+            verify=TLS_VERIFY,
+            timeout=120,
+        )
+        r.raise_for_status()
+        for row in r.json().get("data") or []:
+            eid = row.get("extId")
+            if not eid:
+                continue
+            ext = str(eid)
+            if ext not in pending:
+                continue
+            st = str(row.get("status") or "UNKNOWN").upper()
+            if st not in TERMINAL:
+                continue
+            meta = pending.pop(ext)
+            tu, vm = meta["task_uuid"], meta["vm_uuid"]
+            nm = meta.get("vm_name") or ""
+            if st == "SUCCEEDED":
+                tally["succeeded"] += 1
+            elif st == "FAILED":
+                tally["failed"] += 1
+            else:
+                tally["other"] += 1
+            log.info(
+                "  task %s… VM %s… (%s) -> %s",
+                str(tu)[:8],
+                str(vm)[:8],
+                nm,
+                st,
+            )
+            if st != "SUCCEEDED":
+                log.warning("    WARNING: VM %s", vm)
+
+        if pending:
+            log.info(
+                "  %d task(s) pending, sleeping %.1fs",
+                len(pending),
+                cfg.poll_interval,
+            )
+            time.sleep(cfg.poll_interval)
+
+
+def run_snapshots(
+    cfg: SnapshotConfig,
+    log: logging.Logger,
+    cancel_event: Optional[threading.Event] = None,
+) -> Dict[str, Any]:
+    t_wall0 = time.perf_counter()
+    try:
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:
+        warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+
+    cfg.compile_regexes()
+    base = cfg.base_url.rstrip("/")
+    vms_snap_prefix = f"{base}/api/nutanix/v3/vms/"
+
+    session = requests.Session()
+    session.auth = (cfg.pc_user, cfg.pc_password)
+    session.headers["Content-Type"] = "application/json"
+
+    def _abort_if_needed() -> None:
+        if cancel_event is not None and cancel_event.is_set():
+            log.warning("Run cancelled by user; stopping.")
+            raise RunCancelled()
+
+    _abort_if_needed()
+    log.info("Listing VMs…")
+    vms, ignored_name = list_all_vm_uuids(session, base, cfg)
+    _abort_if_needed()
+    tally: Dict[str, int] = {
+        "ignored": ignored_name,
+        "succeeded": 0,
+        "failed": 0,
+        "other": 0,
+    }
+    log.info(
+        "Found %d VMs to snapshot (ignored by name rules: %d).",
+        len(vms),
+        ignored_name,
+    )
+    for eid, name in vms[:15]:
+        log.info("  %s  %s", eid, name or "")
+    if len(vms) > 15:
+        log.info("  … +%d more", len(vms) - 15)
+
+    exp = (
+        dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=cfg.expiration_days)
+    ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S.00Z")
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+    n_vms = len(vms)
+    mode = (cfg.snapshot_trigger_mode or "series").lower()
+    log.info("Snapshot API trigger mode: %s", mode)
+    random_rp: Dict[str, int] = {"crash": 0, "app": 0}
+    rp_random_lock = threading.Lock() if mode == "parallel" else None
+
+    def _wait_and_clear(batch: List[Dict[str, Any]], label: str) -> None:
+        log.info("--- %s: wait %d tasks (v4 list) ---", label, len(batch))
+        try:
+            _abort_if_needed()
+            if cfg.sleep_before_task_poll_sec > 0:
+                log.info(
+                    "waiting %.1fs before polling task status",
+                    cfg.sleep_before_task_poll_sec,
+                )
+                time.sleep(cfg.sleep_before_task_poll_sec)
+                _abort_if_needed()
+            wait_batch(session, base, batch, tally, cfg, log, cancel_event)
+        except TimeoutError as e:
+            log.error("  %s", e)
+        batch.clear()
+
+    if mode == "parallel":
+
+        def _parallel_snap_one(
+            tup: Tuple[int, str, Optional[str]],
+        ) -> Tuple[bool, Dict[str, Any], Optional[Exception]]:
+            i, vm_uuid, vm_name = tup
+            snap = f"bulk_{stamp}_{i + 1}"
+            rpt = _pick_recovery_point_type(cfg, random_rp, rp_random_lock)
+            log.info(
+                "[%d/%d] Snapshot %s… (%s) [%s]",
+                i + 1,
+                n_vms,
+                vm_uuid[:8],
+                vm_name or "?",
+                rpt,
+            )
+            thread_sess = requests.Session()
+            thread_sess.auth = (cfg.pc_user, cfg.pc_password)
+            thread_sess.headers["Content-Type"] = "application/json"
+            try:
+                task_uuid = take_snapshot(
+                    thread_sess, vms_snap_prefix, vm_uuid, snap, exp, rpt
+                )
+                return (
+                    True,
+                    {
+                        "task_uuid": task_uuid,
+                        "vm_uuid": vm_uuid,
+                        "vm_name": vm_name,
+                        "snapshot_name": snap,
+                    },
+                    None,
+                )
+            except Exception as e:
+                return False, {}, e
+
+        wave_start = 0
+        while wave_start < n_vms:
+            _abort_if_needed()
+            wave_end = min(wave_start + cfg.batch_size, n_vms)
+            wave_tuples = [
+                (wave_start + j, vms[wave_start + j][0], vms[wave_start + j][1])
+                for j in range(wave_end - wave_start)
+            ]
+            log.info(
+                "Parallel snapshot API wave: VMs %d–%d (%d POSTs)",
+                wave_start + 1,
+                wave_end,
+                len(wave_tuples),
+            )
+            batch: List[Dict[str, Any]] = []
+            workers = max(1, len(wave_tuples))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                for ok, meta, err in pool.map(_parallel_snap_one, wave_tuples):
+                    if ok:
+                        batch.append(meta)
+                    else:
+                        tally["failed"] += 1
+                        log.error("  FAILED: %s", err)
+            _abort_if_needed()
+            if batch:
+                _wait_and_clear(batch, "wave")
+            wave_start = wave_end
+    else:
+        batch: List[Dict[str, Any]] = []
+        for i, (vm_uuid, vm_name) in enumerate(vms):
+            _abort_if_needed()
+            snap = f"bulk_{stamp}_{i + 1}"
+            rpt = _pick_recovery_point_type(cfg, random_rp, None)
+            log.info(
+                "[%d/%d] Snapshot %s… (%s) [%s]",
+                i + 1,
+                n_vms,
+                vm_uuid[:8],
+                vm_name or "?",
+                rpt,
+            )
+            try:
+                task_uuid = take_snapshot(
+                    session, vms_snap_prefix, vm_uuid, snap, exp, rpt
+                )
+            except Exception as e:
+                tally["failed"] += 1
+                log.error("  FAILED: %s", e)
+                continue
+
+            batch.append(
+                {
+                    "task_uuid": task_uuid,
+                    "vm_uuid": vm_uuid,
+                    "vm_name": vm_name,
+                    "snapshot_name": snap,
+                }
+            )
+
+            if len(batch) >= cfg.batch_size:
+                _wait_and_clear(batch, "batch")
+
+        if batch:
+            _wait_and_clear(batch, "final")
+
+    log.info("Done.")
+    if cfg.recovery_point_type == RANDOM_CRASH_OR_APP:
+        log.info(
+            "\n=== Summary ===\n"
+            "  recovery types (random per VM): "
+            "CRASH_CONSISTENT=%d, APPLICATION_CONSISTENT=%d\n"
+            "  ignored (name rules):  %d\n"
+            "  succeeded (tasks):     %d\n"
+            "  failed (API or task): %d\n"
+            "  other (task status / timed out): %d",
+            random_rp.get("crash", 0),
+            random_rp.get("app", 0),
+            tally["ignored"],
+            tally["succeeded"],
+            tally["failed"],
+            tally["other"],
+        )
+    else:
+        log.info(
+            "\n=== Summary ===\n"
+            "  ignored (name rules):  %d\n"
+            "  succeeded (tasks):     %d\n"
+            "  failed (API or task): %d\n"
+            "  other (task status / timed out): %d",
+            tally["ignored"],
+            tally["succeeded"],
+            tally["failed"],
+            tally["other"],
+        )
+    duration_sec = round(time.perf_counter() - t_wall0, 2)
+    log.info(
+        "Wall clock: %.1fs for %d VM(s) targeted (mode=%s, batch_size=%d)",
+        duration_sec,
+        n_vms,
+        mode,
+        cfg.batch_size,
+    )
+    result: Dict[str, Any] = dict(tally)
+    result["duration_sec"] = duration_sec
+    result["n_vms"] = n_vms
+    result["snapshot_trigger_mode"] = mode
+    if cfg.recovery_point_type == RANDOM_CRASH_OR_APP:
+        result["rp_random_crash"] = random_rp.get("crash", 0)
+        result["rp_random_app"] = random_rp.get("app", 0)
+    else:
+        result["rp_random_crash"] = 0
+        result["rp_random_app"] = 0
+    return result

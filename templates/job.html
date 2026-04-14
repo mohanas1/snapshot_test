@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Run {{ run_id[:8] }}…</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; background: #1a1d23; color: #e8eaed; }
+    body { max-width: 56rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+    body.disk-job-page { max-width: min(118rem, 99vw); }
+    h1 { font-weight: 600; font-size: 1.2rem; }
+    .meta { color: #9aa0a6; font-size: 0.9rem; margin-bottom: 1rem; word-break: break-all; }
+    .status { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.85rem; font-weight: 600; }
+    .status-queued, .status-running { background: #394457; color: #8ab4f8; }
+    .status-complete { background: #2d4a3e; color: #81c995; }
+    .status-error { background: #5f2b2b; color: #f28b82; }
+    .status-aborted { background: #5c4a2a; color: #fdd663; }
+    pre#log {
+      background: #0e1014; border: 1px solid #3c434d; border-radius: 6px;
+      padding: 1rem; overflow: auto; max-height: 65vh; font-size: 0.8rem; white-space: pre-wrap;
+    }
+    pre#log.disk-job-log {
+      max-height: min(52vh, 36rem); font-size: 0.82rem; line-height: 1.35;
+    }
+    .disk-progress {
+      background: #252830; border: 1px solid #3c434d; border-radius: 6px;
+      padding: 0.5rem 0.65rem; margin-bottom: 0.75rem; font-size: 0.8rem;
+    }
+    .disk-table-scroll { overflow-x: auto; margin-top: 0.3rem; -webkit-overflow-scrolling: touch; }
+    .disk-progress table { width: 100%; border-collapse: collapse; min-width: 58rem; }
+    .disk-progress th, .disk-progress td {
+      text-align: left; padding: 0.18rem 0.32rem; border-bottom: 1px solid #3c434d;
+      font-size: 0.72rem;
+    }
+    .disk-progress th { color: #9aa0a6; font-weight: 600; }
+    .dpe-delta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .dpe-delta.dpe-up { color: #f28b82; }
+    .dpe-delta.dpe-down { color: #81c995; }
+    .cluster-paused-mark { color: #fdd663; font-weight: 600; cursor: help; border-bottom: 1px dotted #9aa0a6; }
+    .actions { margin: 1rem 0; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    a.btn {
+      display: inline-block; padding: 0.45rem 0.9rem; border-radius: 6px; text-decoration: none;
+      background: #8ab4f8; color: #0e1014; font-weight: 600; font-size: 0.9rem;
+    }
+    a.btn[disabled], a.btn.disabled { opacity: 0.45; pointer-events: none; cursor: not-allowed; }
+    a.secondary { background: #3c434d; color: #e8eaed; }
+    button.btn {
+      display: inline-block; padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: pointer;
+      font-weight: 600; font-size: 0.9rem; font-family: inherit;
+    }
+    button.btn.secondary { background: #5c3d3d; color: #f28b82; }
+    button.btn.secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .errbox { background: #5f2b2b; border: 1px solid #c45c5c; padding: 0.75rem; border-radius: 6px; margin: 0.75rem 0; }
+  </style>
+</head>
+<body{% if info.get('job_kind') == 'disk' %} class="disk-job-page"{% endif %}>
+  <h1>{% if info.get('job_kind') == 'disk' %}Bulk VM disk job{% else %}Bulk snapshot run{% endif %}</h1>
+  <p class="meta">Run ID: <code>{{ run_id }}</code>{% if info.base_url %} · {{ info.base_url }}{% endif %}</p>
+
+  <p>
+    Status:
+    <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
+  </p>
+
+  <div id="run-error" class="errbox" style="display:none;"></div>
+
+  <div class="actions">
+    <a id="dl" class="btn disabled" href="{{ url_for('download', run_id=run_id) }}" download>Download log file</a>
+    <button type="button" class="btn secondary" id="btn-cancel-job" style="display:none;" title="Request stop; finishes current SSH step then exits">Abort job</button>
+    <a class="btn secondary" href="{{ url_for('index') }}">New run</a>
+    <span id="poll-hint" class="meta">Refreshing…</span>
+  </div>
+  <p id="cancel-msg" class="meta" style="display:none;"></p>
+
+  {% if info.get('job_kind') == 'disk' %}
+   <div id="disk-progress-wrap" class="disk-progress" style="display:none;">
+    <strong>Disk job progress</strong> — per cluster: PE Prism <code>cluster/stats</code> CPU/mem, <strong>Δ</strong> vs last poll (~2s), pause reason (when throttling or adaptive overload sleep), guest SSH slots, counts, wall time, avg s/VM.
+    <div class="disk-table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Cluster</th>
+          <th title="Last PE cluster/stats sample (hypervisor_cpu_usage_ppm): CPU %%">CPU %</th>
+          <th title="Change since last UI poll (~2s); helps spot sudden spikes">ΔCPU</th>
+          <th title="Last PE cluster/stats sample (aggregate_hypervisor_memory_usage_ppm): memory %%">Mem %</th>
+          <th title="Change since last UI poll (~2s)">ΔMem</th>
+          <th title="Cluster is sleeping on PE throttle (CPU/mem) or adaptive overload pause; hover for detail">Pause</th>
+          <th title="Current max concurrent guest SSH sessions for this cluster (adaptive may change this)">SSH</th>
+          <th>Processed</th>
+          <th>Pending</th>
+          <th>OK</th>
+          <th>Failed</th>
+          <th title="Wall-clock seconds from shard start to finish (or elapsed so far)">Wall (s)</th>
+          <th title="Wall time divided by total VMs when complete; by processed count while running">Avg s/VM</th>
+        </tr>
+      </thead>
+      <tbody id="disk-progress-tbody"></tbody>
+    </table>
+    </div>
+    <p id="disk-overall-line" class="meta" style="margin:0.5rem 0 0 0;"></p>
+    <p id="disk-summary-line" class="meta" style="margin:0.25rem 0 0 0; display:none;"></p>
+  </div>
+  <p id="disk-log-hint" class="meta" style="display:none;">Per-VM lines update live. Full SSH / guest command output is in the downloaded log.</p>
+  {% endif %}
+
+  <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% else %}Loading log…{% endif %}</pre>
+
+  <script>
+    const apiUrl = {{ api_url | tojson }};
+    const cancelUrl = {{ cancel_api_url | tojson }};
+    const isDiskJob = {{ (info.get('job_kind') == 'disk') | tojson }};
+    const dl = document.getElementById('dl');
+    const logEl = document.getElementById('log');
+    const badge = document.getElementById('status-badge');
+    const errBox = document.getElementById('run-error');
+    const hint = document.getElementById('poll-hint');
+    const diskWrap = document.getElementById('disk-progress-wrap');
+    const diskTbody = document.getElementById('disk-progress-tbody');
+    const diskOverall = document.getElementById('disk-overall-line');
+    const diskSummary = document.getElementById('disk-summary-line');
+    const diskLogHint = document.getElementById('disk-log-hint');
+
+    /** Last displayed PE %% per cluster (for delta vs previous ~2s poll). */
+    var diskPePrevByCluster = {};
+
+    function fmtClusterName(k) {
+      if (k === '_all') return '(single pool / not split by cluster)';
+      return k;
+    }
+
+    function fmtVmNameWithIp(row) {
+      var name = row.vm_name || '?';
+      var ip = row.guest_ip || row.vm_ip || '';
+      if (ip) return name + ' (' + ip + ')';
+      return name;
+    }
+
+    function fmtVmSummaryLine(row) {
+      var c = fmtClusterName(row.cluster);
+      var label = fmtVmNameWithIp(row);
+      var sec = row.seconds != null ? row.seconds : '—';
+      if (row.state === 'running') {
+        return label + ': ' + c + ' · in progress · ' + sec + 's';
+      }
+      if (row.state === 'ok') {
+        return label + ': ' + c + ' · success · ' + sec + 's';
+      }
+      return label + ': ' + c + ' · failed · ' + sec + 's';
+    }
+
+    function renderVmActivity(act) {
+      if (!logEl) return;
+      if (!act || ((!act.running || !act.running.length) && (!act.completed || !act.completed.length))) {
+        logEl.textContent = '(VM summaries appear as each guest finishes.)\n\nTip: use Download log for full SSH / guest command detail.';
+        return;
+      }
+      var lines = [];
+      if (act.running && act.running.length) {
+        lines.push('— In progress —');
+        for (var ri = 0; ri < act.running.length; ri++) {
+          lines.push(fmtVmSummaryLine(act.running[ri]));
+        }
+        lines.push('');
+      }
+      if (act.completed && act.completed.length) {
+        lines.push('— Completed (order of completion) —');
+        for (var ci = 0; ci < act.completed.length; ci++) {
+          lines.push(fmtVmSummaryLine(act.completed[ci]));
+        }
+      }
+      logEl.textContent = lines.join('\n');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function escAttr(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/\n/g, ' ');
+    }
+
+    function fmtPeDeltaHtml(cur, prevVal) {
+      if (cur == null || prevVal == null || !Number.isFinite(Number(cur)) || !Number.isFinite(Number(prevVal))) {
+        return '—';
+      }
+      var d = Number(cur) - Number(prevVal);
+      if (Math.abs(d) < 0.05) {
+        return '<span class="dpe-delta">0</span>';
+      }
+      var s = (d >= 0 ? '+' : '') + d.toFixed(1);
+      var cls = 'dpe-delta ' + (d > 0 ? 'dpe-up' : 'dpe-down');
+      return '<span class="' + cls + '">' + escHtml(s) + '</span>';
+    }
+
+    function renderDiskProgress(dp) {
+      if (!dp || !diskTbody || !diskWrap) return;
+      diskWrap.style.display = 'block';
+      if (diskLogHint) diskLogHint.style.display = 'block';
+      const rows = [];
+      const keys = Object.keys(dp.by_cluster || {}).sort();
+      for (const k of keys) {
+        const c = dp.by_cluster[k];
+        const wall = c.cluster_wall_sec != null ? String(c.cluster_wall_sec) : '—';
+        let avg = '—';
+        if (c.avg_wall_sec_per_vm != null) {
+          avg = String(c.avg_wall_sec_per_vm);
+          if (c.avg_wall_inflight) avg = '~' + avg;
+        }
+        const cpu = c.pe_cpu_pct != null ? String(c.pe_cpu_pct) : '—';
+        const mem = c.pe_mem_pct != null ? String(c.pe_mem_pct) : '—';
+        const cpuNum = c.pe_cpu_pct != null ? Number(c.pe_cpu_pct) : null;
+        const memNum = c.pe_mem_pct != null ? Number(c.pe_mem_pct) : null;
+        const prev = diskPePrevByCluster[k];
+        const prevCpu = prev && prev.cpu != null ? prev.cpu : null;
+        const prevMem = prev && prev.mem != null ? prev.mem : null;
+        const dCpu = fmtPeDeltaHtml(cpuNum, prevCpu);
+        const dMem = fmtPeDeltaHtml(memNum, prevMem);
+        diskPePrevByCluster[k] = {
+          cpu: cpuNum != null ? cpuNum : prevCpu,
+          mem: memNum != null ? memNum : prevMem
+        };
+        let pauseCell = '—';
+        if (c.cluster_paused === true) {
+          const pr = c.cluster_pause_reason != null ? String(c.cluster_pause_reason) : 'Paused';
+          pauseCell = '<span class="cluster-paused-mark" title="' + escAttr(pr) + '">Paused</span>';
+        }
+        let ssh = '—';
+        if (c.guest_ssh_parallel_effective != null) {
+          if (c.cluster_adaptive_ssh_parallel && c.guest_ssh_parallel_ceiling != null) {
+            ssh = String(c.guest_ssh_parallel_effective) + ' / ' + c.guest_ssh_parallel_ceiling;
+          } else {
+            ssh = String(c.guest_ssh_parallel_effective);
+          }
+        }
+        rows.push(
+          '<tr><td>' + escHtml(fmtClusterName(k)) + '</td><td>' + cpu + '</td><td>' + dCpu + '</td><td>' + mem + '</td><td>' + dMem +
+          '</td><td>' + pauseCell +
+          '</td><td>' + ssh +
+          '</td><td>' + Number(c.done) + '</td><td>' + Number(c.pending) +
+          '</td><td>' + Number(c.ok) + '</td><td>' + Number(c.fail) + '</td><td>' + wall + '</td><td>' + avg + '</td></tr>'
+        );
+      }
+      diskTbody.innerHTML = rows.join('');
+      if (diskOverall) {
+        diskOverall.textContent =
+          'Overall: processed ' + (dp.overall_done != null ? dp.overall_done : '—') +
+          ' / ' + (dp.overall_total != null ? dp.overall_total : '—') +
+          ', pending ' + (dp.overall_pending != null ? dp.overall_pending : '—') + '.';
+      }
+    }
+
+    const btnCancel = document.getElementById('btn-cancel-job');
+    const cancelMsg = document.getElementById('cancel-msg');
+
+    function setCancelVisible(st) {
+      if (!btnCancel) return;
+      const active = st === 'running' || st === 'queued';
+      btnCancel.style.display = active ? 'inline-block' : 'none';
+      btnCancel.disabled = false;
+    }
+
+    function setBadge(st) {
+      badge.textContent = st;
+      badge.className = 'status status-' + st;
+      const done = (st === 'complete' || st === 'error' || st === 'aborted');
+      dl.classList.toggle('disabled', !done);
+      hint.textContent = done ? 'Run finished.' : 'Updating every 2s…';
+      if (done) hint.textContent += ' You can download the full log.';
+      setCancelVisible(st);
+    }
+
+    function formatElapsed(sec) {
+      if (sec == null || sec < 0) return '';
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      if (m >= 60) {
+        const h = Math.floor(m / 60);
+        const mm = m % 60;
+        return h + 'h ' + mm + 'm ' + s + 's';
+      }
+      if (m > 0) return m + 'm ' + s + 's';
+      return s + 's';
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch(apiUrl);
+        const j = await r.json();
+        if (j.error && r.status === 404) {
+          logEl.textContent = 'Run not found.';
+          return;
+        }
+        setBadge(j.status || 'unknown');
+        if (j.job_kind === 'disk' || isDiskJob) {
+          if (j.disk_progress) renderDiskProgress(j.disk_progress);
+          renderVmActivity(j.disk_progress && j.disk_progress.vm_activity);
+          if (j.status === 'complete' && j.summary && diskSummary) {
+            const s = j.summary;
+            diskSummary.style.display = 'block';
+            diskSummary.textContent =
+              'Finished: ' + (s.succeeded != null ? s.succeeded : '—') + ' OK, ' +
+              (s.failed != null ? s.failed : '—') + ' failed' +
+              (s.duration_sec != null ? ' in ' + Math.round(s.duration_sec) + 's.' : '.');
+          }
+        }
+        if (j.status === 'running' && (j.elapsed_running_sec != null)) {
+          hint.textContent =
+            'Running for ' + formatElapsed(j.elapsed_running_sec) + '… (updates every 2s)';
+        }
+        if (!(j.job_kind === 'disk' || isDiskJob)) {
+          logEl.textContent = j.log || '(empty)';
+        }
+        if (j.error) {
+          errBox.style.display = 'block';
+          errBox.textContent = 'Error: ' + j.error;
+        }
+        if (j.status === 'complete' || j.status === 'error' || j.status === 'aborted') return;
+      } catch (e) {
+        logEl.textContent += '\n[poll error: ' + e + ']';
+      }
+      setTimeout(poll, 2000);
+    }
+
+    setCancelVisible({{ info.status | tojson }});
+
+    if (btnCancel && cancelUrl) {
+      btnCancel.addEventListener('click', async () => {
+        if (!window.confirm('Abort this job? It will stop after the current guest SSH step completes.')) return;
+        btnCancel.disabled = true;
+        if (cancelMsg) {
+          cancelMsg.style.display = 'block';
+          cancelMsg.textContent = 'Sending cancel…';
+        }
+        try {
+          const r = await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json' } });
+          const j = await r.json().catch(() => ({}));
+          if (cancelMsg) {
+            cancelMsg.textContent = j.ok ? (j.message || 'Cancel requested.') : (j.message || 'Cancel failed.');
+          }
+          if (!j.ok && cancelMsg) cancelMsg.style.color = '#f28b82';
+        } catch (e) {
+          if (cancelMsg) cancelMsg.textContent = 'Cancel request failed: ' + e;
+        }
+        poll();
+      });
+    }
+
+    poll();
+  </script>
+</body>
+</html>

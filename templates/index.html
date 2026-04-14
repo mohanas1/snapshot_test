@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bulk VM snapshots</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; background: #1a1d23; color: #e8eaed; }
+    body { max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+    h1 { font-weight: 600; font-size: 1.35rem; margin-bottom: 0.25rem; }
+    h2 { font-weight: 600; font-size: 1.05rem; margin: 1.25rem 0 0.5rem; }
+    .muted { color: #9aa0a6; font-size: 0.9rem; }
+    fieldset {
+      border: 1px solid #3c434d; border-radius: 8px; margin: 1rem 0; padding: 1rem 1rem 0.75rem;
+      background: #22252c;
+    }
+    legend { padding: 0 0.35rem; font-weight: 600; }
+    label { display: block; margin: 0.5rem 0 0.15rem; font-size: 0.9rem; }
+    input[type="text"], input[type="password"], input[type="number"], textarea, select {
+      width: 100%; max-width: 40rem; box-sizing: border-box;
+      padding: 0.4rem 0.55rem; border-radius: 6px; border: 1px solid #3c434d;
+      background: #0e1014; color: #e8eaed;
+    }
+    textarea { min-height: 4rem; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .row > div { flex: 1; min-width: 12rem; }
+    button, .btn {
+      display: inline-block; margin: 0.6rem 0.6rem 0.6rem 0; padding: 0.45rem 0.9rem;
+      border-radius: 6px; border: none; cursor: pointer;
+      background: #8ab4f8; color: #0e1014; font-weight: 600; font-size: 0.9rem;
+    }
+    button.secondary { background: #3c434d; color: #e8eaed; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ok { background: #2d4a3e; border: 1px solid #81c995; padding: 0.65rem 0.85rem; border-radius: 6px; margin: 0.75rem 0; }
+    .err { background: #5f2b2b; border: 1px solid #c45c5c; padding: 0.65rem 0.85rem; border-radius: 6px; margin: 0.75rem 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.75rem; margin: 0.75rem 0; }
+    .stat-card { background: #0e1014; border: 1px solid #3c434d; border-radius: 6px; padding: 0.65rem 0.75rem; font-size: 0.88rem; }
+    .stat-card strong { display: block; font-size: 1.05rem; margin-bottom: 0.2rem; }
+    table.mini { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0; }
+    table.mini th, table.mini td { border: 1px solid #3c434d; padding: 0.35rem 0.5rem; text-align: left; }
+    table.mini th { background: #2a2d35; }
+    ul.schedules { list-style: none; padding: 0; margin: 0.5rem 0; }
+    ul.schedules li { border: 1px solid #3c434d; border-radius: 6px; padding: 0.65rem; margin: 0.4rem 0; background: #0e1014; }
+    code { font-size: 0.85em; }
+    #disk-op-radios label { display: block; margin: 0.25rem 0; cursor: pointer; }
+    .pipeline-stage {
+      display: flex; align-items: center; gap: 0.65rem; padding: 0.4rem 0; font-size: 0.88rem;
+      border-bottom: 1px solid #3c434d;
+    }
+    .pipeline-stage .st-label { min-width: 16rem; color: #9aa0a6; flex-shrink: 0; }
+    .pipeline-stage .st-detail { color: #9aa0a6; font-size: 0.82rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pipeline-stage.st-done .st-status { color: #81c995; font-weight: 600; }
+    .pipeline-stage.st-run .st-status { color: #8ab4f8; font-weight: 600; }
+    .pipeline-stage.st-err .st-status { color: #f28b82; font-weight: 600; }
+    .pipeline-stage.st-pending .st-status { color: #5f6368; }
+ </style>
+</head>
+<body>
+  <h1>Bulk VM snapshots</h1>
+  <p class="muted">Prism Central · non-CVM <code>mh_vm</code> inventory, snapshot runs, and bulk disk changes (v3 API).</p>
+
+  {% if success %}
+  <div class="ok">{{ success }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="err">{{ error }}{% if error_schedule_conflict %} Use “Cancel schedule” for that host first.{% endif %}</div>
+  {% endif %}
+
+  <form id="main-form" method="post" action="{{ url_for('start') }}">
+    <fieldset>
+      <legend>Connection</legend>
+      <div class="row">
+        <div>
+          <label for="pc_ip">Prism Central IP / hostname / URL</label>
+          <input id="pc_ip" name="pc_ip" type="text" required autocomplete="off"
+            value="10.53.55.238"
+            placeholder="10.0.0.1 or https://pc.example.com:9440" />
+        </div>
+        <div>
+          <label for="pc_user">Username</label>
+          <input id="pc_user" name="pc_user" type="text" required autocomplete="username" value="admin" />
+        </div>
+        <div>
+          <label for="pc_password">Password</label>
+          <input id="pc_password" name="pc_password" type="password" autocomplete="current-password" value="Nutanix.123" />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset id="unified-pipeline-fs">
+      <legend>Full pipeline (one button)</legend>
+      <p class="muted" style="margin-top:0;">
+        Runs in order: <strong>Fetch VMs</strong> → <strong>Discover PE IPs</strong> (ncli) → set disk job to
+        <strong>Update</strong> + <strong>parallel clusters</strong> + <strong>PE stats throttle</strong> + <strong>adaptive SSH</strong> and copy PE list →
+        <strong>Start disk job</strong> (opens in a new tab) → <strong>Start snapshot run</strong> (new tab, uses snapshot options below) →
+        <strong>Run curator_cli on PEs</strong> (waits for completion here). Individual buttons elsewhere still work as before.
+      </p>
+      <button type="button" id="btn-run-full-pipeline">Run full pipeline</button>
+      <span id="pipeline-global-status" class="muted"></span>
+      <div id="pipeline-stages" style="display:none; margin-top:0.75rem;">
+        <div class="pipeline-stage st-pending" data-stage="0"><span class="st-label">1. Fetch VMs</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+        <div class="pipeline-stage st-pending" data-stage="1"><span class="st-label">2. Discover PE IPs</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+        <div class="pipeline-stage st-pending" data-stage="2"><span class="st-label">3. Disk job</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+        <div class="pipeline-stage st-pending" data-stage="3"><span class="st-label">4. Snapshot run</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+        <div class="pipeline-stage st-pending" data-stage="4"><span class="st-label">5. Curator on PEs</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>VMs</legend>
+      <p class="muted" style="margin-top:0;">
+        Fetches all non-CVM VMs from the groups API (same filter as snapshot runs). The response is cached on the server for guest disk preview/run so Prism is not queried again until you fetch again or the cache expires.
+      </p>
+      <button type="button" class="secondary" id="btn-fetch-vms">Fetch VMs</button>
+      <span id="vm-fetch-status" class="muted"></span>
+
+      <div id="vm-summary" style="display:none;">
+        <div class="stat-grid" id="vm-stat-cards"></div>
+        <h2 style="margin-top:1rem;">Power state</h2>
+        <table class="mini" id="tbl-power"><thead><tr><th>State</th><th>Count</th></tr></thead><tbody></tbody></table>
+        <h2>vCPUs</h2>
+        <table class="mini" id="tbl-vcpu"><thead><tr><th>vCPUs</th><th>Count</th></tr></thead><tbody></tbody></table>
+        <h2>Memory</h2>
+        <table class="mini" id="tbl-mem"><thead><tr><th>Memory</th><th>Count</th></tr></thead><tbody></tbody></table>
+        <h2>Cluster</h2>
+        <table class="mini" id="tbl-cluster"><thead><tr><th>Cluster</th><th>Count</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div id="vm-fetch-err" class="err" style="display:none;"></div>
+      <p class="muted">Name skip rules are taken from <strong>Snapshot run</strong> below. Re-fetch after changing skips so disk-eligible counts stay in sync.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Snapshot run</legend>
+      <label for="skip_substrings">Skip VM names containing (one per line or comma-separated)</label>
+      <textarea id="skip_substrings" name="skip_substrings" rows="2" placeholder="auto_pc"></textarea>
+      <label for="skip_regexes">Skip VM names matching regex (one per line)</label>
+      <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default"></textarea>
+
+    <fieldset>
+      <legend>VM guest disk churn (SSH)</legend>
+      <p class="muted">
+        Eligible guests: IP in Prism inventory, <strong>powered on</strong>, configured <strong>RAM</strong> above the minimum (MiB from Prism; default &gt;250), and not skipped by name rules. Use <strong>Fetch VMs</strong> first, then preview uses that cache (no second groups API call). Limit how many get SSH with a number or percent (e.g. <code>100</code>, <code>50%</code>); leave blank for all eligible.
+        Each run uses <code>sshpass</code> + <code>ssh</code> to the guest and runs:
+        <strong>Delete</strong> — <code>rm -f …*.img</code> ·
+        <strong>Create</strong> — <code>openssl | dd</code> with your <strong>bs</strong> and <strong>count</strong> ·
+        <strong>Add</strong> — append ·
+        <strong>Update</strong> — overwrite ·
+        <strong>All mix</strong> — random per VM.
+      </p>
+      <div class="row">
+        <div>
+          <label for="disk_run_limit">How many VMs to run (guest SSH)</label>
+          <input id="disk_run_limit" type="text" placeholder="e.g. 100, 200, 10%, 50%, empty = all eligible" value="" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_min_memory_mib">Min VM RAM (MiB)</label>
+          <input id="guest_min_memory_mib" type="number" min="0" max="1000000" value="250" title="Eligible only if Prism memory is strictly greater than this; 0 disables" />
+        </div>
+        <div style="align-self:flex-end;">
+          <button type="button" class="secondary" id="btn-disk-targets-preview">Preview targets</button>
+        </div>
+      </div>
+      <p id="disk-preview-line" class="muted" style="min-height:1.5em;"></p>
+      <div id="disk-op-radios" style="margin:0.5rem 0;">
+        <label><input type="radio" name="disk_op_mode" value="create" /> Create (new dummy file)</label>
+        <label><input type="radio" name="disk_op_mode" value="add" /> Add (append to file)</label>
+        <label><input type="radio" name="disk_op_mode" value="update" checked /> Update (overwrite MiB)</label>
+        <label><input type="radio" name="disk_op_mode" value="delete" /> Delete (rm glob)</label>
+        <label><input type="radio" name="disk_op_mode" value="random_mix" /> All mix (random per VM)</label>
+      </div>
+      <div class="row">
+        <div>
+          <label for="guest_ssh_user">Guest SSH user</label>
+          <input id="guest_ssh_user" type="text" value="root" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_ssh_password">Guest SSH password</label>
+          <input id="guest_ssh_password" type="password" value="nutanix/4u" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_ssh_port">Guest SSH port</label>
+          <input id="guest_ssh_port" type="number" min="1" max="65535" value="22" />
+        </div>
+        <div>
+          <label for="guest_ssh_parallel">Concurrent SSH (VMs at a time)</label>
+          <input id="guest_ssh_parallel" type="number" min="1" max="500" value="10" title="Baseline concurrent guest SSH (per cluster when parallel-by-cluster is on). With adaptive SSH and Max concurrent=0, the UI cap is max(this, 30)." />
+        </div>
+      </div>
+      <div class="row">
+        <div style="align-self:flex-end;">
+          <label title="Run up to N VMs from each cluster in parallel; total can be N × number of clusters (subject to global limit below)">
+            <input type="checkbox" id="parallel_clusters" />
+            Parallel across clusters
+          </label>
+        </div>
+        <div>
+          <label for="vm_per_cluster">VMs per cluster (optional)</label>
+          <input id="vm_per_cluster" type="number" min="0" max="500" value="0" title="Cap how many VMs are selected per cluster; 0 = all eligible in each cluster. Concurrent SSH is separate (field above)." />
+        </div>
+      </div>
+      <div class="row">
+        <div style="align-self:flex-end;">
+          <label title="Poll each PE Prism cluster/stats over HTTPS; pause guest disk work when CPU or memory is at/above the limits (needs PE IPs below; uses same Prism user/password as PC).">
+            <input type="checkbox" id="cluster_pe_top_monitor" disabled />
+            PE stats throttle (per cluster)
+          </label>
+        </div>
+        <div>
+          <label for="cluster_cpu_max_pct">Max CPU % (PE top)</label>
+          <input id="cluster_cpu_max_pct" type="number" min="0" max="100" value="80" disabled title="0 = do not check CPU; pause when top reports usage ≥ this" />
+        </div>
+        <div>
+          <label for="cluster_mem_max_pct">Max memory % (PE top)</label>
+          <input id="cluster_mem_max_pct" type="number" min="0" max="100" value="97" disabled title="0 = do not check memory" />
+        </div>
+      </div>
+      <div class="row">
+        <div style="align-self:flex-end;">
+          <label title="Requires parallel clusters + PE IPs. Concurrency increases only on a time-based schedule (ramp phases) while CPU and memory stay below their limits; overload resets to Concurrent SSH.">
+            <input type="checkbox" id="cluster_adaptive_ssh_parallel" disabled />
+            Adaptive SSH concurrency (PE CPU/mem)
+          </label>
+        </div>
+        <div>
+          <label for="cluster_adaptive_cpu_threshold_pct">Adaptive: max CPU %% for ramp (overload if ≥)</label>
+          <input id="cluster_adaptive_cpu_threshold_pct" type="number" min="0" max="100" value="90" disabled title="If PE stats CPU is at or above this, reset to baseline and restart ramp timers. Keep at or below your PE throttle CPU if you use both." />
+        </div>
+        <div>
+          <label for="cluster_adaptive_ssh_ceiling">Max concurrent (0 = auto)</label>
+          <input id="cluster_adaptive_ssh_ceiling" type="number" min="0" max="500" value="0" disabled title="Adaptive ramp ceiling; 0 = max(Concurrent SSH, 30), capped by VMs in cluster. Set explicitly to override." />
+        </div>
+        <div>
+          <label for="cluster_adaptive_cpu_spike_delta_pct">Spike guard: CPU Δ ≥ (pts)</label>
+          <input id="cluster_adaptive_cpu_spike_delta_pct" type="number" min="0" max="100" step="0.5" value="10" disabled title="Reset concurrency to baseline if PE CPU jumps by this many points vs the prior stats sample, even when still below the ramp threshold; 0 = off" />
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex: 1 1 100%; min-width: 100%;">
+          <label for="cluster_adaptive_ramp">Adaptive ramp phases (sec/slots)</label>
+          <input id="cluster_adaptive_ramp" type="text" value="180/5,300/3" disabled autocomplete="off" title="Comma-separated phases. Each phase: wait that many seconds with CPU under adaptive max and memory under &quot;Max memory %%&quot; (if set), then add that many SSH slots. Overload (CPU/mem over limit) or spike resets to Concurrent SSH, triggers overload pause, and freezes ramp for the cooldown period." />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="cluster_adaptive_overload_pause_sec">Overload pause (sec)</label>
+          <input id="cluster_adaptive_overload_pause_sec" type="number" min="0" max="3600" step="1" value="10" disabled title="When CPU or memory first crosses adaptive limits (or spike fires), wait this long before starting the next guest SSH on this cluster. Default 10." />
+        </div>
+        <div>
+          <label for="cluster_adaptive_cooldown_sec">Ramp cooldown after overload (sec)</label>
+          <input id="cluster_adaptive_cooldown_sec" type="number" min="0" max="86400" step="1" value="300" disabled title="After overload or spike: concurrency stays at baseline and no ramp increases for this long (default 5 min = 300 s), even if CPU/mem drop." />
+        </div>
+      </div>
+      <label for="pe_cvm_ips_multiline">PE Prism Element IPs for stats (one per line, same order as cluster names in preview, or lines like MyCluster=10.0.0.1)</label>
+      <textarea id="pe_cvm_ips_multiline" rows="3" disabled placeholder="Paste PE IPs from Curator discover, or name=ip per line" autocomplete="off"></textarea>
+      <p style="margin:0.25rem 0;">
+        <button type="button" class="secondary" id="btn-copy-curator-pe-to-disk" disabled title="Copy IPs from Curator section below">Copy from Curator PE list</button>
+      </p>
+      <div class="row">
+        <div>
+          <label for="pe_prism_rest_port">PE Prism HTTPS port (cluster/stats)</label>
+          <input id="pe_prism_rest_port" type="number" min="1" max="65535" value="9440" disabled title="Prism Element REST port; default 9440. Override with BULK_SNAP_PE_PRISM_REST_PORT on the server." />
+        </div>
+        <div>
+          <label for="pe_cvm_ssh_password">PE CVM SSH password (optional, legacy)</label>
+          <input id="pe_cvm_ssh_password" type="password" value="RDMCluster.123" disabled autocomplete="off" title="Not used for CPU/mem (REST only). Defaults to BULK_SNAP_CURATOR_PE_SSH_PASSWORD if ever needed." />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="guest_target_file">Target file (create / add / update)</label>
+          <input id="guest_target_file" type="text" value="/root/dummy_snapshot_data_1.img" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_delete_glob">Delete glob pattern</label>
+          <input id="guest_delete_glob" type="text" value="/root/dummy_snapshot_data_*.img" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="guest_dd_bs">dd block size (bs)</label>
+          <input id="guest_dd_bs" type="text" value="1M" autocomplete="off" title="GNU dd bs= (e.g. 1M, 10MB, 512). Total = bs times block count; M is 1024^2 bytes, MB is 10^6 (coreutils-style)." />
+        </div>
+        <div>
+          <label for="create_count_mib">Create: dd count (blocks)</label>
+          <input id="create_count_mib" type="number" min="1" value="1024" title="Number of bs-sized blocks on create. With bs=1M, count 1024 is 1024 MiB." />
+        </div>
+        <div>
+          <label for="churn_count_mib">Add / update: dd count (blocks)</label>
+          <input id="churn_count_mib" type="number" min="1" value="500" title="Number of bs-sized blocks for add/update." />
+        </div>
+        <div>
+          <label for="guest_ssh_connect_timeout">SSH connect timeout (sec)</label>
+          <input id="guest_ssh_connect_timeout" type="number" min="5" value="30" />
+        </div>
+        <div>
+          <label for="guest_ssh_command_timeout">SSH command timeout (sec)</label>
+          <input id="guest_ssh_command_timeout" type="number" min="60" value="7200" />
+        </div>
+      </div>
+      <p id="disk-dd-size-preview" class="muted" style="margin:0.25rem 0; min-height:2.5em;"> </p>
+      <div class="row">
+        <div>
+          <label for="disk_random_seed">Random seed (mix mode, optional)</label>
+          <input id="disk_random_seed" type="text" placeholder="empty = non-deterministic" autocomplete="off" />
+        </div>
+      </div>
+      <p class="muted">Requires <code>sshpass</code> + <code>ssh</code> on this server. Disable with <code>BULK_SNAP_GUEST_NO_SSHPASS=1</code>. Guest reachability may still differ from Prism-reported IPs; trial with a small limit first.</p>
+      <button type="button" id="btn-start-disk-job">Start disk job</button>
+      <span id="disk-job-status" class="muted"></span>
+      <div id="disk-job-err" class="err" style="display:none;"></div>
+    </fieldset>
+
+      <div class="row">
+        <div>
+          <label for="batch_size">Batch size</label>
+          <input id="batch_size" name="batch_size" type="number" min="1" value="10" />
+        </div>
+        <div>
+          <label for="group_member_page">Groups page size</label>
+          <input id="group_member_page" name="group_member_page" type="number" min="1" value="500" />
+        </div>
+        <div>
+          <label for="expiration_days">Snapshot expiration (days)</label>
+          <input id="expiration_days" name="expiration_days" type="number" min="1" value="30" />
+        </div>
+        <div>
+          <label for="task_timeout_sec">Task timeout (sec)</label>
+          <input id="task_timeout_sec" name="task_timeout_sec" type="number" min="60" value="300" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="poll_interval">Poll interval (sec)</label>
+          <input id="poll_interval" name="poll_interval" type="number" min="0.5" step="0.5" value="4" />
+        </div>
+        <div>
+          <label for="sleep_before_task_poll_sec">Sleep before task poll (sec)</label>
+          <input id="sleep_before_task_poll_sec" name="sleep_before_task_poll_sec" type="number" min="0" step="0.5" value="0" />
+        </div>
+      </div>
+
+      <label for="snapshot_trigger_mode">Snapshot trigger mode</label>
+      <select id="snapshot_trigger_mode" name="snapshot_trigger_mode">
+        <option value="series" selected>series (one POST at a time per batch)</option>
+        <option value="parallel">parallel (all POSTs in batch at once)</option>
+      </select>
+
+      <label for="recovery_point_type">Recovery point type</label>
+      <select id="recovery_point_type" name="recovery_point_type">
+        <option value="CRASH_CONSISTENT" selected>CRASH_CONSISTENT</option>
+        <option value="APPLICATION_CONSISTENT">APPLICATION_CONSISTENT</option>
+        <option value="{{ RANDOM_CRASH_OR_APP }}">{{ RANDOM_CRASH_OR_APP }} (random per VM)</option>
+      </select>
+
+      <p id="estimate-line" class="muted"></p>
+
+      <button type="submit">Start run</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Schedule (optional)</legend>
+      <label><input type="checkbox" name="schedule_enabled" value="1" id="schedule_enabled" /> Enable schedule instead of starting now</label>
+      <label for="schedule_kind">Schedule type</label>
+      <select id="schedule_kind" name="schedule_kind">
+        <option value="one_time">One-time (UTC)</option>
+        <option value="recurring">Recurring</option>
+      </select>
+      <label for="schedule_one_time_utc">One-time run at (ISO-8601 UTC, e.g. <code>2026-04-03T14:30:00+00:00</code>)</label>
+      <input id="schedule_one_time_utc" name="schedule_one_time_utc" type="text" autocomplete="off" />
+      <label for="recurring_interval_minutes">Recurring interval (minutes)</label>
+      <input id="recurring_interval_minutes" name="recurring_interval_minutes" type="number" min="1" value="60" />
+      <p class="muted">When schedule is enabled, use <strong>Start run</strong> above to save the schedule (no job starts until the chosen time). Prism Central address must be unique per active schedule.</p>
+    </fieldset>
+  </form>
+
+  <h2>Active schedules</h2>
+  {% if not active_schedules %}
+  <p class="muted">None.</p>
+  {% else %}
+  <ul class="schedules">
+    {% for row in active_schedules %}
+    <li>
+      <strong>{{ row.pc_ip }}</strong>
+      · {{ row.kind }}{% if row.detail %} · {{ row.detail }}{% endif %}
+      · next (UTC): <code>{{ row.next_run_utc }}</code>
+      {% if row.in_progress %}
+      <span class="muted">· In progress:
+        {% for j in row.in_progress %}
+        <a href="{{ j.job_url }}">{{ j.run_id[:8] }}… ({{ j.status }})</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </span>
+      {% endif %}
+      <form method="post" action="{{ url_for('cancel_schedule') }}" style="margin-top:0.5rem;">
+        <input type="hidden" name="pc_ip" value="{{ row.pc_ip }}" />
+        <label style="display:inline;"><input type="checkbox" name="abort_in_progress" value="1" /> Abort in-progress job(s)</label>
+        <button type="submit" class="secondary">Cancel schedule</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <h2>Curator (PE CVM)</h2>
+  <fieldset>
+    <legend>Discover &amp; run</legend>
+    <p class="muted">Uses SSH env defaults on the app server (<code>BULK_SNAP_CURATOR_*</code>). Prism Central field above is reused.</p>
+    <button type="button" class="secondary" id="btn-curator-discover">Discover PE CVM IPs (ncli on PC)</button>
+    <span id="curator-discover-status" class="muted"></span>
+    <label for="curator_pe_ips">PE IPs (one per line)</label>
+    <textarea id="curator_pe_ips" rows="4" placeholder="Filled by discover, or paste IPs"></textarea>
+    <button type="button" class="secondary" id="btn-curator-run">Run curator_cli on PEs</button>
+    <span id="curator-run-status" class="muted"></span>
+    <pre id="curator-out" style="display:none; max-height:12rem; overflow:auto; font-size:0.78rem; background:#0e1014; border:1px solid #3c434d; padding:0.5rem;"></pre>
+  </fieldset>
+
+  <p class="muted"><a href="{{ url_for('index') }}" style="color:#8ab4f8;">Reload</a></p>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    /** Set by **Fetch VMs**; sent with disk preview/start to skip a second Prism inventory fetch. */
+    let inventoryCacheId = null;
+
+    function readConn() {
+      return {
+        pc_ip: $("pc_ip").value.trim(),
+        pc_user: $("pc_user").value.trim(),
+        pc_password: $("pc_password").value,
+        group_member_page: parseInt($("group_member_page").value, 10) || 500,
+      };
+    }
+
+    function readGuestMinMemoryMib() {
+      const v = parseInt($("guest_min_memory_mib").value, 10);
+      if (!Number.isFinite(v)) {
+        return 250;
+      }
+      return Math.max(0, Math.min(v, 1000000));
+    }
+
+    function readGuestSshParallel() {
+      const v = parseInt($("guest_ssh_parallel").value, 10);
+      if (!Number.isFinite(v)) {
+        return 10;
+      }
+      return Math.max(1, Math.min(v, 500));
+    }
+
+    function readParallelClusters() {
+      return $("parallel_clusters").checked;
+    }
+
+    function readVmPerCluster() {
+      const v = parseInt($("vm_per_cluster").value, 10);
+      if (!Number.isFinite(v) || v < 0) {
+        return 0;
+      }
+      return Math.min(v, 500);
+    }
+
+    function readClusterPeTopMonitor() {
+      return $("cluster_pe_top_monitor").checked;
+    }
+
+    function readClusterAdaptiveSsh() {
+      return $("cluster_adaptive_ssh_parallel").checked;
+    }
+
+    function readClusterAdaptiveCpuThresholdPct() {
+      const v = parseFloat($("cluster_adaptive_cpu_threshold_pct").value);
+      if (!Number.isFinite(v)) return 90;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterAdaptiveRamp() {
+      const s = ($("cluster_adaptive_ramp").value || "").trim();
+      return s || "180/5,300/3";
+    }
+
+    function readClusterAdaptiveOverloadPauseSec() {
+      const v = parseFloat($("cluster_adaptive_overload_pause_sec").value);
+      if (!Number.isFinite(v) || v < 0) return 10;
+      return Math.min(v, 3600);
+    }
+
+    function readClusterAdaptiveCooldownSec() {
+      const v = parseFloat($("cluster_adaptive_cooldown_sec").value);
+      if (!Number.isFinite(v) || v < 0) return 300;
+      return Math.min(v, 86400);
+    }
+
+    function readClusterAdaptiveSshCeiling() {
+      const v = parseInt($("cluster_adaptive_ssh_ceiling").value, 10);
+      if (!Number.isFinite(v) || v < 0) return 0;
+      return Math.min(v, 500);
+    }
+
+    function readClusterAdaptiveCpuSpikeDeltaPct() {
+      const v = parseFloat($("cluster_adaptive_cpu_spike_delta_pct").value);
+      if (!Number.isFinite(v)) return 10;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterCpuMaxPct() {
+      const v = parseFloat($("cluster_cpu_max_pct").value);
+      if (!Number.isFinite(v)) return 85;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterMemMaxPct() {
+      const v = parseFloat($("cluster_mem_max_pct").value);
+      if (!Number.isFinite(v)) return 85;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readPePrismRestPort() {
+      const v = parseInt($("pe_prism_rest_port").value, 10);
+      if (!Number.isFinite(v) || v < 1) return 9440;
+      return Math.min(v, 65535);
+    }
+
+    const GUEST_DD_BS_MULT = Object.freeze({
+      "": 1,
+      c: 1,
+      w: 2,
+      b: 512,
+      kb: 1000,
+      k: 1024,
+      mb: 1e6,
+      m: 1024 * 1024,
+      gb: 1e9,
+      g: Math.pow(1024, 3),
+      tb: 1e12,
+      t: Math.pow(1024, 4),
+    });
+
+    function guestDdBsToBytes(spec) {
+      const s = String(spec == null ? "" : spec).trim();
+      const m = s.match(/^([1-9]\d*)([a-zA-Z]*)$/);
+      if (!m) return null;
+      const num = parseInt(m[1], 10);
+      const suf = (m[2] || "").toLowerCase();
+      const mult = GUEST_DD_BS_MULT[suf];
+      if (mult === undefined) return null;
+      return num * mult;
+    }
+
+    function formatDiskDdSizeLine(label, bsSpec, countVal) {
+      const cnt = Math.max(1, parseInt(countVal, 10) || 0);
+      const bpb = guestDdBsToBytes(bsSpec);
+      const bsDisp = String(bsSpec || "").trim() || "1M";
+      if (bpb === null || !Number.isFinite(bpb) || !Number.isFinite(cnt)) {
+        return label + ": (enter a valid bs, e.g. 1M or 10MB)";
+      }
+      const total = bpb * cnt;
+      const mbDec = total / 1e6;
+      const mib = total / (1024 * 1024);
+      const mbTxt =
+        Math.abs(mbDec - Math.round(mbDec)) < 1e-9
+          ? String(Math.round(mbDec))
+          : mbDec.toLocaleString(undefined, { maximumFractionDigits: 3 });
+      const mibTxt = mib.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      return (
+        label +
+        ": bs " +
+        bsDisp +
+        " × count " +
+        cnt +
+        " = " +
+        mbTxt +
+        " MB (~" +
+        mibTxt +
+        " MiB)"
+      );
+    }
+
+    function updateDiskDdSizePreview() {
+      const el = $("disk-dd-size-preview");
+      if (!el) return;
+      const bs = $("guest_dd_bs").value;
+      const c1 = $("create_count_mib").value;
+      const c2 = $("churn_count_mib").value;
+      el.textContent =
+        formatDiskDdSizeLine("Create", bs, c1) +
+        " · " +
+        formatDiskDdSizeLine("Add/update", bs, c2);
+    }
+
+    function buildDiskJobBody() {
+      const c = readConn();
+      const modeEl = document.querySelector("input[name='disk_op_mode']:checked");
+      const disk_op_mode = modeEl ? modeEl.value : "update";
+      const disk_run_limit = $("disk_run_limit").value.trim();
+      const body = {
+        ...c,
+        disk_op_mode: disk_op_mode,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        disk_run_limit: disk_run_limit,
+        guest_min_memory_mib: readGuestMinMemoryMib(),
+        guest_ssh_parallel: readGuestSshParallel(),
+        parallel_clusters: readParallelClusters(),
+        vm_per_cluster: readVmPerCluster(),
+        cluster_pe_top_monitor: readClusterPeTopMonitor(),
+        cluster_adaptive_ssh_parallel: readClusterAdaptiveSsh(),
+        cluster_adaptive_cpu_threshold_pct: readClusterAdaptiveCpuThresholdPct(),
+        cluster_adaptive_ssh_ceiling: readClusterAdaptiveSshCeiling(),
+        cluster_adaptive_cpu_spike_delta_pct: readClusterAdaptiveCpuSpikeDeltaPct(),
+        cluster_adaptive_ramp: readClusterAdaptiveRamp(),
+        cluster_adaptive_overload_pause_sec: readClusterAdaptiveOverloadPauseSec(),
+        cluster_adaptive_cooldown_sec: readClusterAdaptiveCooldownSec(),
+        cluster_cpu_max_pct: readClusterCpuMaxPct(),
+        cluster_mem_max_pct: readClusterMemMaxPct(),
+        pe_cvm_ips_multiline: $("pe_cvm_ips_multiline").value,
+        pe_prism_rest_port: readPePrismRestPort(),
+        pe_cvm_ssh_password: $("pe_cvm_ssh_password").value,
+        guest_ssh_user: $("guest_ssh_user").value.trim(),
+        guest_ssh_password: $("guest_ssh_password").value,
+        guest_ssh_port: parseInt($("guest_ssh_port").value, 10),
+        guest_target_file: $("guest_target_file").value.trim(),
+        guest_delete_glob: $("guest_delete_glob").value.trim(),
+        guest_dd_bs: $("guest_dd_bs").value.trim(),
+        create_count_mib: parseInt($("create_count_mib").value, 10),
+        churn_count_mib: parseInt($("churn_count_mib").value, 10),
+        guest_ssh_connect_timeout: parseFloat($("guest_ssh_connect_timeout").value),
+        guest_ssh_command_timeout: parseFloat($("guest_ssh_command_timeout").value),
+      };
+      if (inventoryCacheId) {
+        body.inventory_cache_id = inventoryCacheId;
+      }
+      const rs = $("disk_random_seed").value.trim();
+      if (rs !== "") {
+        const s = parseInt(rs, 10);
+        if (!Number.isNaN(s)) body.random_seed = s;
+      }
+      return body;
+    }
+
+    function buildSnapshotStartPayload() {
+      const c = readConn();
+      return {
+        pc_ip: c.pc_ip,
+        pc_user: c.pc_user,
+        pc_password: c.pc_password,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        batch_size: parseInt($("batch_size").value, 10) || 10,
+        expiration_days: parseInt($("expiration_days").value, 10) || 30,
+        task_timeout_sec: parseInt($("task_timeout_sec").value, 10) || 300,
+        group_member_page: parseInt($("group_member_page").value, 10) || 500,
+        poll_interval: parseFloat($("poll_interval").value) || 4,
+        sleep_before_task_poll_sec: parseFloat($("sleep_before_task_poll_sec").value) || 0,
+        snapshot_trigger_mode: $("snapshot_trigger_mode").value,
+        recovery_point_type: $("recovery_point_type").value,
+      };
+    }
+
+    function setPipelineStage(idx, state, statusText, detail) {
+      const el = document.querySelector('#pipeline-stages [data-stage="' + idx + '"]');
+      if (!el) return;
+      el.className = "pipeline-stage st-" + state;
+      const st = el.querySelector(".st-status");
+      const det = el.querySelector(".st-detail");
+      if (st) st.textContent = statusText || "";
+      if (det) det.textContent = detail || "";
+    }
+
+    function resetPipelineStages() {
+      for (let i = 0; i < 5; i++) {
+        setPipelineStage(i, "pending", "Pending", "");
+      }
+    }
+
+    async function fetchVmInventoryAndRender() {
+      const c = readConn();
+      $("vm-fetch-err").style.display = "none";
+      $("vm-summary").style.display = "none";
+      if (!c.pc_ip || !c.pc_user) {
+        return { ok: false, message: "Enter Prism Central address and username first." };
+      }
+      $("vm-fetch-status").textContent = "Fetching…";
+      try {
+        const r = await fetch("{{ url_for('api_vm_inventory') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({
+            ...c,
+            skip_substrings: $("skip_substrings").value,
+            skip_regexes: $("skip_regexes").value,
+            guest_min_memory_mib: readGuestMinMemoryMib(),
+          }),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          inventoryCacheId = null;
+          $("vm-fetch-err").textContent = data.message || "Request failed.";
+          $("vm-fetch-err").style.display = "block";
+          $("vm-fetch-status").textContent = "";
+          return { ok: false, message: data.message || "Request failed." };
+        }
+        inventoryCacheId = data.inventory_cache_id || null;
+        $("vm-fetch-status").textContent = "Done (" + data.total_vms + " VMs).";
+        const cards = $("vm-stat-cards");
+        cards.innerHTML = "";
+        const addCard = (label, val) => {
+          const d = document.createElement("div");
+          d.className = "stat-card";
+          d.innerHTML = "<strong>" + val + "</strong>" + label;
+          cards.appendChild(d);
+        };
+        addCard("Total VMs (non-CVM)", data.total_vms);
+        addCard("With IP", data.with_ip);
+        addCard("Without IP", data.without_ip);
+        if (typeof data.guest_disk_eligible === "number") {
+          const m = data.guest_disk_min_memory_mib;
+          const slab = (typeof m === "number" && m > 0)
+            ? "Disk churn eligible (IP + on + skips + RAM>" + m + " MiB)"
+            : "Disk churn eligible (IP + on + skips, no RAM floor)";
+          addCard(slab, data.guest_disk_eligible);
+        }
+        if (typeof data.guest_disk_skipped_power_off === "number")
+          addCard("…skipped (powered off)", data.guest_disk_skipped_power_off);
+        if (typeof data.guest_disk_skipped_below_min_memory === "number" && (data.guest_disk_min_memory_mib || 0) > 0)
+          addCard("…skipped (RAM ≤ min or unknown)", data.guest_disk_skipped_below_min_memory);
+        if (data.duplicate_rows_skipped)
+          addCard("Duplicate rows skipped", data.duplicate_rows_skipped);
+
+        const fillTable = (id, rows, k1, k2) => {
+          const tb = document.querySelector("#" + id + " tbody");
+          tb.innerHTML = "";
+          for (const row of rows || []) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = "<td>" + (row[k1] ?? "").toString().replace(/</g, "&lt;") + "</td><td>" + row[k2] + "</td>";
+            tb.appendChild(tr);
+          }
+        };
+        fillTable("tbl-power", data.power_state, "power_state", "count");
+        fillTable("tbl-vcpu", data.num_vcpus, "vcpus", "count");
+        fillTable("tbl-mem", data.memory, "label", "count");
+        fillTable("tbl-cluster", data.by_cluster, "cluster", "count");
+        $("vm-summary").style.display = "block";
+        return { ok: true, message: "Done (" + data.total_vms + " VMs)." };
+      } catch (e) {
+        inventoryCacheId = null;
+        $("vm-fetch-err").textContent = String(e);
+        $("vm-fetch-err").style.display = "block";
+        $("vm-fetch-status").textContent = "";
+        return { ok: false, message: String(e) };
+      }
+    }
+
+    async function runCuratorOnPesAsync() {
+      const raw = $("curator_pe_ips").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      if (!raw.length) {
+        return { ok: false, message: "No PE IPs in the list." };
+      }
+      $("curator-out").style.display = "none";
+      $("curator-run-status").textContent = "Starting…";
+      const curatorStatusUrl = "{{ url_for('api_curator_run_status') }}";
+      try {
+        const r = await fetch("{{ url_for('api_curator_run_scans') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ pe_ips: raw }),
+        });
+        const j = await r.json();
+        if (r.status === 409) {
+          $("curator-run-status").textContent = j.message || "Already in progress.";
+          $("curator-out").style.display = "block";
+          $("curator-out").textContent = JSON.stringify(j, null, 2);
+          return { ok: false, message: j.message || "Already in progress." };
+        }
+        if (!j.ok && j.async) {
+          $("curator-run-status").textContent = j.message || "Failed.";
+          $("curator-out").style.display = "block";
+          $("curator-out").textContent = JSON.stringify(j, null, 2);
+          return { ok: false, message: j.message || "Failed." };
+        }
+        if (j.async && j.ok) {
+          $("curator-run-status").textContent = "Running on PEs…";
+          const pollMs = 2000;
+          while (true) {
+            const sr = await fetch(curatorStatusUrl, { headers: { Accept: "application/json" } });
+            const st = await sr.json();
+            if (st.status === "complete" || st.status === "error") {
+              const line =
+                st.status === "error"
+                  ? st.message || "Error."
+                  : st.top_level_ok
+                    ? "Done."
+                    : "Finished with some failures.";
+              $("curator-run-status").textContent = line;
+              $("curator-out").style.display = "block";
+              $("curator-out").textContent = JSON.stringify(
+                { ok: st.top_level_ok, status: st.status, message: st.message, results: st.results },
+                null,
+                2,
+              );
+              return {
+                ok: st.status !== "error" && st.top_level_ok,
+                message: line,
+              };
+            }
+            await new Promise((res) => setTimeout(res, pollMs));
+          }
+        }
+        $("curator-run-status").textContent = j.ok ? "Done." : (j.message || "Some steps failed.");
+        $("curator-out").style.display = "block";
+        $("curator-out").textContent = JSON.stringify(j.results || j, null, 2);
+        return { ok: !!j.ok, message: $("curator-run-status").textContent };
+      } catch (e) {
+        $("curator-run-status").textContent = String(e);
+        return { ok: false, message: String(e) };
+      }
+    }
+
+    function syncPeTopThrottleUi() {
+      const par = $("parallel_clusters").checked;
+      const mon = $("cluster_pe_top_monitor");
+      const adapt = $("cluster_adaptive_ssh_parallel");
+      mon.disabled = !par;
+      adapt.disabled = !par;
+      if (!par) {
+        mon.checked = false;
+        adapt.checked = false;
+      }
+      const peOn = par && (mon.checked || adapt.checked);
+      ["cluster_cpu_max_pct", "cluster_mem_max_pct", "pe_cvm_ips_multiline", "pe_prism_rest_port", "pe_cvm_ssh_password", "btn-copy-curator-pe-to-disk"].forEach((id) => {
+        $(id).disabled = !peOn;
+      });
+      const adaptOn = par && adapt.checked;
+      $("cluster_adaptive_cpu_threshold_pct").disabled = !adaptOn;
+      $("cluster_adaptive_ssh_ceiling").disabled = !adaptOn;
+      $("cluster_adaptive_cpu_spike_delta_pct").disabled = !adaptOn;
+      $("cluster_adaptive_ramp").disabled = !adaptOn;
+      $("cluster_adaptive_overload_pause_sec").disabled = !adaptOn;
+      $("cluster_adaptive_cooldown_sec").disabled = !adaptOn;
+    }
+
+    $("parallel_clusters").addEventListener("change", syncPeTopThrottleUi);
+    $("cluster_pe_top_monitor").addEventListener("change", syncPeTopThrottleUi);
+    $("cluster_adaptive_ssh_parallel").addEventListener("change", syncPeTopThrottleUi);
+    syncPeTopThrottleUi();
+
+    $("btn-copy-curator-pe-to-disk").addEventListener("click", () => {
+      $("pe_cvm_ips_multiline").value = ($("curator_pe_ips").value || "").trim();
+    });
+
+    $("btn-fetch-vms").addEventListener("click", async () => {
+      const r = await fetchVmInventoryAndRender();
+      if (!r.ok && r.message && !$("vm-fetch-err").textContent) {
+        $("vm-fetch-err").textContent = r.message;
+        $("vm-fetch-err").style.display = "block";
+      }
+    });
+
+    async function refreshEstimate() {
+      const mode = $("snapshot_trigger_mode").value;
+      const batch = $("batch_size").value;
+      const rpt = $("recovery_point_type").value;
+      const el = $("estimate-line");
+      el.textContent = "";
+      try {
+        const u = new URL("{{ url_for('api_estimate') }}", window.location.origin);
+        u.searchParams.set("snapshot_trigger_mode", mode);
+        u.searchParams.set("batch_size", batch);
+        u.searchParams.set("recovery_point_type", rpt);
+        const res = await fetch(u);
+        const j = await res.json();
+        if (!j.ok) {
+          el.textContent = j.message || "";
+          return;
+        }
+        const ex = j.examples || {};
+        el.textContent = "From history (median per VM ≈ " + j.per_vm_human + ", match=" + j.match + ", n=" +
+          j.sample_count + "). Examples: 10 VMs ≈ " + (ex["10_vms"] || "—") + ", 100 VMs ≈ " + (ex["100_vms"] || "—") + ".";
+      } catch (_) { /* ignore */ }
+    }
+    ["snapshot_trigger_mode", "batch_size", "recovery_point_type"].forEach((id) => {
+      $(id).addEventListener("change", refreshEstimate);
+    });
+    refreshEstimate();
+
+    $("btn-disk-targets-preview").addEventListener("click", async () => {
+      const c = readConn();
+      const el = $("disk-preview-line");
+      el.textContent = "";
+      if (!c.pc_ip || !c.pc_user) {
+        el.textContent = "Enter Prism Central address and username first.";
+        return;
+      }
+      const disk_run_limit = $("disk_run_limit").value.trim();
+      const body = {
+        ...c,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        disk_run_limit: disk_run_limit,
+        guest_min_memory_mib: readGuestMinMemoryMib(),
+        guest_ssh_parallel: readGuestSshParallel(),
+        parallel_clusters: readParallelClusters(),
+        vm_per_cluster: readVmPerCluster(),
+        cluster_pe_top_monitor: readClusterPeTopMonitor(),
+        cluster_adaptive_ssh_parallel: readClusterAdaptiveSsh(),
+        cluster_adaptive_cpu_threshold_pct: readClusterAdaptiveCpuThresholdPct(),
+        cluster_adaptive_ssh_ceiling: readClusterAdaptiveSshCeiling(),
+        cluster_adaptive_cpu_spike_delta_pct: readClusterAdaptiveCpuSpikeDeltaPct(),
+        cluster_adaptive_ramp: readClusterAdaptiveRamp(),
+        cluster_adaptive_overload_pause_sec: readClusterAdaptiveOverloadPauseSec(),
+        cluster_adaptive_cooldown_sec: readClusterAdaptiveCooldownSec(),
+        cluster_cpu_max_pct: readClusterCpuMaxPct(),
+        cluster_mem_max_pct: readClusterMemMaxPct(),
+        pe_cvm_ips_multiline: $("pe_cvm_ips_multiline").value,
+        pe_prism_rest_port: readPePrismRestPort(),
+      };
+      if (inventoryCacheId) {
+        body.inventory_cache_id = inventoryCacheId;
+      }
+      el.textContent = "Counting…";
+      try {
+        const r = await fetch("{{ url_for('api_disk_targets_preview') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          el.textContent = j.message || "Preview failed.";
+          return;
+        }
+        const src = j.inventory_from_cache ? "Using cached inventory (no Prism refetch)." : "Inventory from live Prism fetch.";
+        const lim = (j.disk_run_limit || "").toString();
+        const minM = j.guest_min_memory_mib;
+        const ramPart = (typeof minM === "number" && minM > 0)
+          ? ". RAM≤" + minM + "/unknown: " + j.skipped_below_min_memory
+          : "";
+        el.textContent =
+          src +
+          " Eligible (IP + powered on + name rules): " + j.eligible_for_guest_ssh +
+          ". Skipped by name: " + j.skipped_by_name_rules +
+          ". No IP: " + j.no_ip_in_pc_inventory +
+          ". Powered off: " + j.skipped_powered_off +
+          ramPart +
+          ". Distinct VMs (non-CVM): " + j.inventory_distinct_vms +
+          ". Planned SSH runs: " + j.planned_guest_ssh_runs +
+          (lim ? " (limit " + lim + ")." : " (all eligible).") +
+          " Concurrent SSH: " + (j.guest_ssh_parallel != null ? j.guest_ssh_parallel : "—") +
+          (j.parallel_clusters
+            ? " (per cluster). Parallel clusters: " + (j.clusters_in_inventory != null ? j.clusters_in_inventory : "—") +
+              " in inventory; " +
+              (j.vm_per_cluster_cap != null
+                ? "at most " + j.vm_per_cluster_cap + " VM(s)/cluster."
+                : "all eligible VM(s) per cluster (no per-cluster cap).")
+            : ".") +
+          ((j.cluster_pe_top_monitor || j.cluster_adaptive_ssh_parallel) && j.pe_top_cluster_order && j.pe_top_cluster_order.length
+            ? " PE stats order: " + j.pe_top_cluster_order.join(" → ") + "."
+            : "") +
+          (j.cluster_adaptive_ssh_parallel
+            ? " Adaptive SSH: CPU≥" + (j.cluster_adaptive_cpu_threshold_pct != null ? j.cluster_adaptive_cpu_threshold_pct : "—") + "% resets; ramp " +
+              (j.cluster_adaptive_ramp != null && j.cluster_adaptive_ramp !== "" ? j.cluster_adaptive_ramp : "180/5,300/3") + "." +
+              (j.cluster_adaptive_cpu_spike_delta_pct != null && j.cluster_adaptive_cpu_spike_delta_pct > 0
+                ? " Spike Δ≥" + j.cluster_adaptive_cpu_spike_delta_pct + " resets."
+                : "")
+            : "");
+      } catch (e) {
+        el.textContent = String(e);
+      }
+    });
+
+    $("btn-start-disk-job").addEventListener("click", async () => {
+      const c = readConn();
+      $("disk-job-err").style.display = "none";
+      if (!c.pc_ip || !c.pc_user) {
+        $("disk-job-err").textContent = "Enter Prism Central address and username first.";
+        $("disk-job-err").style.display = "block";
+        return;
+      }
+      const body = buildDiskJobBody();
+
+      $("disk-job-status").textContent = "Starting…";
+      try {
+        const r = await fetch("{{ url_for('api_start_disk_ops') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          $("disk-job-err").textContent = j.message || "Failed.";
+          $("disk-job-err").style.display = "block";
+          $("disk-job-status").textContent = "";
+          return;
+        }
+        window.location.href = j.job_url;
+      } catch (e) {
+        $("disk-job-err").textContent = String(e);
+        $("disk-job-err").style.display = "block";
+        $("disk-job-status").textContent = "";
+      }
+    });
+
+    ["guest_dd_bs", "create_count_mib", "churn_count_mib"].forEach((id) => {
+      const n = $(id);
+      if (n) n.addEventListener("input", updateDiskDdSizePreview);
+    });
+    updateDiskDdSizePreview();
+
+    $("btn-curator-discover").addEventListener("click", async () => {
+      const pc_ip = $("pc_ip").value.trim();
+      $("curator-discover-status").textContent = "";
+      if (!pc_ip) {
+        $("curator-discover-status").textContent = "Enter Prism Central address first.";
+        return;
+      }
+      const fd = new FormData();
+      fd.append("pc_ip", pc_ip);
+      $("curator-discover-status").textContent = "SSH…";
+      const r = await fetch("{{ url_for('api_curator_pe_ips') }}", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!j.ok) {
+        $("curator-discover-status").textContent = j.message || "Failed.";
+        return;
+      }
+      $("curator_pe_ips").value = j.ips.join("\n");
+      $("curator-discover-status").textContent = "Found " + j.count + " IP(s).";
+    });
+
+    const btnCuratorRun = document.getElementById("btn-curator-run");
+    btnCuratorRun.addEventListener("click", async () => {
+      $("curator-run-status").textContent = "";
+      $("curator-out").style.display = "none";
+      const raw = $("curator_pe_ips").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      if (!raw.length) {
+        $("curator-run-status").textContent = "Add PE IPs first.";
+        return;
+      }
+      btnCuratorRun.disabled = true;
+      try {
+        await runCuratorOnPesAsync();
+      } finally {
+        btnCuratorRun.disabled = false;
+      }
+    });
+
+    $("btn-run-full-pipeline").addEventListener("click", async () => {
+      const btn = $("btn-run-full-pipeline");
+      const gs = $("pipeline-global-status");
+      const stagesEl = $("pipeline-stages");
+      if (btn.disabled) return;
+      const c = readConn();
+      if (!c.pc_ip || !c.pc_user) {
+        gs.textContent = "Enter Prism Central connection first.";
+        return;
+      }
+      if (!(($("guest_ssh_password").value || "").trim())) {
+        gs.textContent = "Guest SSH password is required for the disk job stage.";
+        return;
+      }
+      btn.disabled = true;
+      gs.textContent = "";
+      stagesEl.style.display = "block";
+      resetPipelineStages();
+      try {
+        setPipelineStage(0, "run", "Running…", "");
+        const vm = await fetchVmInventoryAndRender();
+        if (!vm.ok) {
+          setPipelineStage(0, "err", "Failed", vm.message || "");
+          gs.textContent = "Stopped at stage 1.";
+          return;
+        }
+        setPipelineStage(0, "done", "Done", vm.message || "");
+
+        setPipelineStage(1, "run", "Running…", "");
+        const fd = new FormData();
+        fd.append("pc_ip", c.pc_ip);
+        const r1 = await fetch("{{ url_for('api_curator_pe_ips') }}", { method: "POST", body: fd });
+        const j1 = await r1.json();
+        if (!j1.ok) {
+          setPipelineStage(1, "err", "Failed", j1.message || "");
+          gs.textContent = "Stopped at stage 2.";
+          return;
+        }
+        $("curator_pe_ips").value = j1.ips.join("\n");
+        setPipelineStage(1, "done", "Done", "Found " + j1.count + " IP(s).");
+
+        setPipelineStage(2, "run", "Starting…", "");
+        const upd = document.querySelector('input[name="disk_op_mode"][value="update"]');
+        if (upd) upd.checked = true;
+        $("parallel_clusters").checked = true;
+        $("cluster_pe_top_monitor").checked = true;
+        $("cluster_adaptive_ssh_parallel").checked = true;
+        syncPeTopThrottleUi();
+        $("pe_cvm_ips_multiline").value = ($("curator_pe_ips").value || "").trim();
+
+        const r2 = await fetch("{{ url_for('api_start_disk_ops') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(buildDiskJobBody()),
+        });
+        const j2 = await r2.json();
+        if (!j2.ok) {
+          setPipelineStage(2, "err", "Failed", j2.message || "");
+          gs.textContent = "Stopped at stage 3.";
+          return;
+        }
+        window.open(j2.job_url, "_blank", "noopener,noreferrer");
+        setPipelineStage(2, "done", "Opened", "Disk job in new tab");
+
+        setPipelineStage(3, "run", "Starting…", "");
+        const r3 = await fetch("{{ url_for('api_start_snapshot_run') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(buildSnapshotStartPayload()),
+        });
+        const j3 = await r3.json();
+        if (!j3.ok) {
+          setPipelineStage(3, "err", "Failed", j3.message || "");
+          gs.textContent = "Stopped at stage 4.";
+          return;
+        }
+        window.open(j3.job_url, "_blank", "noopener,noreferrer");
+        setPipelineStage(3, "done", "Opened", "Snapshot run in new tab");
+
+        setPipelineStage(4, "run", "Running…", "");
+        const cur = await runCuratorOnPesAsync();
+        if (!cur.ok) {
+          setPipelineStage(4, "err", "Failed", cur.message || "");
+          gs.textContent = "Pipeline finished with curator error.";
+          return;
+        }
+        setPipelineStage(4, "done", "Done", cur.message || "");
+        gs.textContent = "Pipeline complete.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

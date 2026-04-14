@@ -1,0 +1,4553 @@
+================================================================================
+VM Power Status Change Script Started
+Timestamp: 2026-04-13 04:43:14
+Log file: vm_power_status_change_20260413_044314.log
+Parallel power-on / IP wait: up to 4 VMs at a time (VM_POWER_PARALLEL)
+PC base URL: https://10.53.55.238:9440
+================================================================================
+
+
+================================================================================
+Processing batch [1/8] - Offset: 0
+================================================================================
+
+--- VM [1] ---
+INFO: Get vm [auto_pc_69d7dabc3602366fe8b3b3940]
+UUID: bae2052d-5253-42da-a673-c3056ba7bb2d
+Power State: on
+
+--- VM [2] ---
+INFO: Get vm [ferw]
+UUID: 03eb84c3-e80b-4b70-78f6-a8f85f684697
+Power State: on
+
+--- VM [3] ---
+INFO: Get vm [ferw-002]
+UUID: ac2fabe1-5fe9-4d35-4b37-eb85c82e239f
+Power State: on
+
+--- VM [4] ---
+INFO: Get vm [ferw-003]
+UUID: 7406138e-e02e-494a-7c9d-f348ebd952f3
+Power State: on
+
+--- VM [5] ---
+INFO: Get vm [ferw-004]
+UUID: 99af8f4f-34e0-403e-5d6e-30d91572c064
+Power State: on
+
+--- VM [6] ---
+INFO: Get vm [ferw-005]
+UUID: 3f6bb90d-58bc-4c25-41f2-916183d1cc3b
+Power State: on
+
+--- VM [7] ---
+INFO: Get vm [ferw-006]
+UUID: 1b84dbfb-abd8-4e12-4ba1-3dc9d76c6b2e
+Power State: on
+
+--- VM [8] ---
+INFO: Get vm [ferw-007]
+UUID: 0d3368ae-4e44-478f-762b-e7495b743e30
+Power State: on
+
+--- VM [9] ---
+INFO: Get vm [ferw-008]
+UUID: a097f85f-f75c-4567-44fc-413d13572f36
+Power State: on
+
+--- VM [10] ---
+INFO: Get vm [ferw-009]
+UUID: f4351ba8-8f3c-44d1-46c4-0f7d1597ebf3
+Power State: on
+
+--- VM [11] ---
+INFO: Get vm [ferw-010]
+UUID: 93f803a0-78af-4e38-7077-8b3519f28d51
+Power State: on
+
+--- VM [12] ---
+INFO: Get vm [ferw-011]
+UUID: 913d863e-68e1-419a-5364-76da53f8c6e0
+Power State: on
+
+--- VM [13] ---
+INFO: Get vm [ferw-012]
+UUID: abc788b2-ebc5-4bb9-55ba-00492e6ca2c5
+Power State: on
+
+--- VM [14] ---
+INFO: Get vm [ferw-013]
+UUID: 22fd5278-c8e9-43d0-760c-5f34fabab5f1
+Power State: on
+
+--- VM [15] ---
+INFO: Get vm [ferw-014]
+UUID: cc1ea678-588e-4d2c-48c7-2483b73887bd
+Power State: on
+
+--- VM [16] ---
+INFO: Get vm [ferw-015]
+UUID: 8b3ea292-8c29-4f6c-5a2c-05ed370adf39
+Power State: on
+
+--- VM [17] ---
+INFO: Get vm [ferw-016]
+UUID: cf2f54f3-3430-468f-606a-bf5713e1c944
+Power State: on
+
+--- VM [18] ---
+INFO: Get vm [ferw-017]
+UUID: 1675db46-80a2-45c7-6122-3509947819a0
+Power State: on
+
+--- VM [19] ---
+INFO: Get vm [ferw-018]
+UUID: ba8573df-ea03-4aaf-724d-ef4ccc07b803
+Power State: on
+
+--- VM [20] ---
+INFO: Get vm [ferw-019]
+UUID: 8822e00b-59ec-45f6-4c3b-b1ef807879c1
+Power State: on
+
+--- VM [21] ---
+INFO: Get vm [ferw-020]
+UUID: f8dc0152-2427-4929-79dd-665f8713fb2b
+Power State: on
+
+--- VM [22] ---
+INFO: Get vm [ferw-021]
+UUID: ae5ba7c5-0ff8-4c49-4379-d8d7444a215f
+Power State: on
+
+--- VM [23] ---
+INFO: Get vm [ferw-022]
+UUID: 6ba58dce-bb81-45ef-6255-bedaeb151387
+Power State: on
+
+--- VM [24] ---
+INFO: Get vm [ferw-023]
+UUID: 55f478d6-5a7f-498c-49c3-b95ffa8014f6
+Power State: on
+
+--- VM [25] ---
+INFO: Get vm [ferw-024]
+UUID: 81d68e36-e459-471a-491e-61ebd04b26e8
+Power State: on
+
+--- VM [26] ---
+INFO: Get vm [ferw-025]
+UUID: b49d5736-3c7f-4301-61f2-e32062cbf0f0
+Power State: on
+
+--- VM [27] ---
+INFO: Get vm [ferw-026]
+UUID: 5fb51868-14ae-432a-5a51-fad9f71375e1
+Power State: on
+
+--- VM [28] ---
+INFO: Get vm [ferw-027]
+UUID: efc25923-df3a-4fbd-56ba-06751f6ec1b9
+Power State: on
+
+--- VM [29] ---
+INFO: Get vm [ferw-028]
+UUID: 852e7c6c-0923-4efc-7a32-d04bb23df100
+Power State: on
+
+--- VM [30] ---
+INFO: Get vm [ferw-029]
+UUID: fc479f7c-e6fc-4809-5f3a-f15ce7c20595
+Power State: on
+
+--- VM [31] ---
+INFO: Get vm [ferw-030]
+UUID: 39c8fde7-40c3-4236-5261-5197e42c44b1
+Power State: on
+
+--- VM [32] ---
+INFO: Get vm [ferw-031]
+UUID: cee047ec-e462-45c1-72e7-a1b274825ca1
+Power State: on
+
+--- VM [33] ---
+INFO: Get vm [ferw-032]
+UUID: 0a512dfa-ee1d-41f9-4ea3-9bd8e22a3202
+Power State: on
+
+--- VM [34] ---
+INFO: Get vm [ferw-033]
+UUID: a81e536b-931d-46a4-42e9-60ad2f69ad44
+Power State: on
+
+--- VM [35] ---
+INFO: Get vm [ferw-034]
+UUID: d7a808c2-1d2b-41ac-4d01-a535d56600fa
+Power State: on
+
+--- VM [36] ---
+INFO: Get vm [ferw-035]
+UUID: 421d3641-d83e-4276-6df2-99315caa227b
+Power State: on
+
+--- VM [37] ---
+INFO: Get vm [ferw-036]
+UUID: 14a27532-f05a-4433-759d-62fae72423d6
+Power State: on
+
+--- VM [38] ---
+INFO: Get vm [ferw-037]
+UUID: 176fc065-6932-4dad-615e-0b387778cd35
+Power State: on
+
+--- VM [39] ---
+INFO: Get vm [ferw-038]
+UUID: aaaab477-31d9-4013-6b9b-65840421c7bb
+Power State: on
+
+--- VM [40] ---
+INFO: Get vm [ferw-039]
+UUID: 51cba00f-95d6-4c54-4fc9-dd56f2adfd7b
+Power State: on
+
+--- VM [41] ---
+INFO: Get vm [ferw-040]
+UUID: 4e0c43c6-a049-4880-782e-86c4034b5f37
+Power State: on
+
+--- VM [42] ---
+INFO: Get vm [ferw-041]
+UUID: 5e907346-e631-4032-5d87-316b698a787c
+Power State: on
+
+--- VM [43] ---
+INFO: Get vm [ferw-042]
+UUID: 93d71e15-a7fa-4f0e-5fac-800bfc6d04ac
+Power State: on
+
+--- VM [44] ---
+INFO: Get vm [ferw-043]
+UUID: cd3cdeb3-56af-4d36-73d8-c8eceb72e008
+Power State: on
+
+--- VM [45] ---
+INFO: Get vm [ferw-044]
+UUID: eca89944-42e6-4f2d-79ec-5206208e4167
+Power State: on
+
+--- VM [46] ---
+INFO: Get vm [ferw-045]
+UUID: 45ef5d08-d03d-4954-5f1d-ce6cbd2a48fa
+Power State: on
+
+--- VM [47] ---
+INFO: Get vm [ferw-046]
+UUID: 7f07b5c0-fc3e-4719-4441-f347e0efad53
+Power State: on
+
+--- VM [48] ---
+INFO: Get vm [ferw-047]
+UUID: 8490656a-7f1d-492a-5b12-5428aaee4a4a
+Power State: on
+
+--- VM [49] ---
+INFO: Get vm [ferw-048]
+UUID: 99acaa4b-d917-4dd4-464f-573352a25060
+Power State: on
+
+--- VM [50] ---
+INFO: Get vm [ferw-049]
+UUID: ad199eb4-e8c7-4efd-4924-ec9df64820fa
+Power State: on
+
+--- VM [51] ---
+INFO: Get vm [ferw-050]
+UUID: b77e11bb-5f0b-4ddb-6a9a-69ad07dbc1f3
+Power State: on
+
+--- VM [52] ---
+INFO: Get vm [ferw-051]
+UUID: c11e4e80-b2c0-4a00-5720-1166ced782f7
+Power State: on
+
+--- VM [53] ---
+INFO: Get vm [ferw-052]
+UUID: 8928a5d4-b32e-4deb-6444-9dc897c0b0e6
+Power State: on
+
+--- VM [54] ---
+INFO: Get vm [ferw-053]
+UUID: 4efb8360-e343-4d2c-6d5a-545c8cf32f2f
+Power State: on
+
+--- VM [55] ---
+INFO: Get vm [ferw-054]
+UUID: 37ede60b-6312-4412-51a2-6249f21f155f
+Power State: on
+
+--- VM [56] ---
+INFO: Get vm [ferw-055]
+UUID: 6806457f-1936-48e9-5233-24edb598314d
+Power State: on
+
+--- VM [57] ---
+INFO: Get vm [ferw-056]
+UUID: 844aac98-0f29-4097-4c68-aacfcb138e3c
+Power State: on
+
+--- VM [58] ---
+INFO: Get vm [ferw-057]
+UUID: c630889f-ac8d-46dc-46f0-3f5ac17ced80
+Power State: on
+
+--- VM [59] ---
+INFO: Get vm [ferw-058]
+UUID: 852299ba-3cb3-4857-5622-9c5371f4b82c
+Power State: on
+
+--- VM [60] ---
+INFO: Get vm [ferw-059]
+UUID: 945aadd4-1eab-4557-6138-8e969b9d1912
+Power State: on
+
+--- VM [61] ---
+INFO: Get vm [ferw-060]
+UUID: b392ecdb-033b-440c-40fa-c8f6334832de
+Power State: on
+
+--- VM [62] ---
+INFO: Get vm [ferw-061]
+UUID: f31b52f9-0d62-4094-50f8-e5686ca98530
+Power State: on
+
+--- VM [63] ---
+INFO: Get vm [ferw-062]
+UUID: 94b7c099-3ea2-422c-5258-e8537c8fc930
+Power State: on
+
+--- VM [64] ---
+INFO: Get vm [ferw-063]
+UUID: 68eaf5aa-99de-4fca-5322-d48e5edb0cf1
+Power State: on
+
+--- VM [65] ---
+INFO: Get vm [ferw-064]
+UUID: d8d62d19-d1e9-4366-68f6-491b7c5f5a72
+Power State: on
+
+--- VM [66] ---
+INFO: Get vm [ferw-065]
+UUID: 565b259a-c044-473d-6e22-54f1827a5bb8
+Power State: on
+
+--- VM [67] ---
+INFO: Get vm [ferw-066]
+UUID: 2d10e550-9962-4f63-706c-20694364bf26
+Power State: on
+
+--- VM [68] ---
+INFO: Get vm [ferw-067]
+UUID: 3accb44f-3ec8-4a84-712f-e0f1ffae3490
+Power State: on
+
+--- VM [69] ---
+INFO: Get vm [ferw-068]
+UUID: a62c8e0f-4a59-4c6b-62eb-31e9437dfeaa
+Power State: on
+
+--- VM [70] ---
+INFO: Get vm [ferw-069]
+UUID: e38a02dd-4185-4ebf-79bb-cdf25ad3ac4f
+Power State: on
+
+--- VM [71] ---
+INFO: Get vm [ferw-070]
+UUID: 6cca555e-8bad-44ed-4561-dfa8f81101ac
+Power State: on
+
+--- VM [72] ---
+INFO: Get vm [ferw-071]
+UUID: a16b0082-9dc0-458f-58e3-e9589b73e3ac
+Power State: on
+
+--- VM [73] ---
+INFO: Get vm [ferw-072]
+UUID: f11dcdaa-9fc2-43ad-5db2-eef6588cae76
+Power State: on
+
+--- VM [74] ---
+INFO: Get vm [ferw-073]
+UUID: 96973275-c02a-4f5e-50d0-df8d841caaac
+Power State: on
+
+--- VM [75] ---
+INFO: Get vm [ferw-074]
+UUID: d492c702-d83d-4354-7c53-fd907677a5e8
+Power State: on
+
+--- VM [76] ---
+INFO: Get vm [ferw-075]
+UUID: 53a9864f-ca0b-463b-628b-6ff712773a8b
+Power State: on
+
+--- VM [77] ---
+INFO: Get vm [ferw-076]
+UUID: 65828d90-c597-45da-480a-9b7623f95d95
+Power State: on
+
+--- VM [78] ---
+INFO: Get vm [ferw-077]
+UUID: 5153e39a-0d22-4d9a-70d0-c6fd16cc19bb
+Power State: on
+
+--- VM [79] ---
+INFO: Get vm [ferw-078]
+UUID: b708ad5d-a4e2-4ceb-43e3-30110f9c1cba
+Power State: on
+
+--- VM [80] ---
+INFO: Get vm [ferw-079]
+UUID: 4f172d52-e241-460e-4463-b69e1f758d38
+Power State: on
+
+--- VM [81] ---
+INFO: Get vm [ferw-080]
+UUID: cdb88b6f-e3aa-44e4-4445-9b7e684bcdf7
+Power State: on
+
+--- VM [82] ---
+INFO: Get vm [ferw-081]
+UUID: 136377ff-a5ff-4724-5b87-6a3ab5b05a6a
+Power State: on
+
+--- VM [83] ---
+INFO: Get vm [ferw-082]
+UUID: fe4cae5b-cc91-446b-6b03-0a61204e405d
+Power State: on
+
+--- VM [84] ---
+INFO: Get vm [ferw-083]
+UUID: 561ed671-60c7-41f1-49d1-59c4f9d45186
+Power State: on
+
+--- VM [85] ---
+INFO: Get vm [ferw-084]
+UUID: b070fc07-4c3e-4468-762e-bd95136234ab
+Power State: on
+
+--- VM [86] ---
+INFO: Get vm [ferw-085]
+UUID: 128c7d1c-0a6e-43a8-4a93-53b51ac64426
+Power State: on
+
+--- VM [87] ---
+INFO: Get vm [ferw-086]
+UUID: caa33d6a-6da2-44cc-52ad-38aaae2dd37b
+Power State: on
+
+--- VM [88] ---
+INFO: Get vm [ferw-087]
+UUID: 2bd783c2-fdfe-4e86-4197-f0bc0a932ebb
+Power State: on
+
+--- VM [89] ---
+INFO: Get vm [ferw-088]
+UUID: 0982e6b2-d558-41e2-4cc8-a58e5bb76795
+Power State: on
+
+--- VM [90] ---
+INFO: Get vm [ferw-089]
+UUID: 44a53f93-b9b3-454f-469b-0add0d340e8c
+Power State: on
+
+--- VM [91] ---
+INFO: Get vm [ferw-090]
+UUID: 62373378-e332-4b2e-4337-9dac50357409
+Power State: on
+
+--- VM [92] ---
+INFO: Get vm [ferw-091]
+UUID: e74258cc-ea4a-472f-5ba6-dce93b073f30
+Power State: on
+
+--- VM [93] ---
+INFO: Get vm [ferw-092]
+UUID: d78d96cf-45a6-4276-6d5d-cf521b13d931
+Power State: on
+
+--- VM [94] ---
+INFO: Get vm [ferw-093]
+UUID: e1277546-19ff-4154-5dd0-60ab751066c3
+Power State: on
+
+--- VM [95] ---
+INFO: Get vm [ferw-094]
+UUID: f0cad2c2-1950-4a3c-5cb3-665b288382cc
+Power State: on
+
+--- VM [96] ---
+INFO: Get vm [ferw-095]
+UUID: d3a63e14-8e20-468b-5600-e295d8cd250c
+Power State: on
+
+--- VM [97] ---
+INFO: Get vm [ferw-096]
+UUID: 2eda7dfc-2d22-4f72-60d6-cb02a0b49dda
+Power State: on
+
+--- VM [98] ---
+INFO: Get vm [ferw-097]
+UUID: 8274f01a-efc6-49f4-7aaa-8079c1d852a5
+Power State: on
+
+--- VM [99] ---
+INFO: Get vm [ferw-098]
+UUID: 4404a9d6-1ccf-4e44-44c8-4d919f9f5f03
+Power State: on
+
+--- VM [100] ---
+INFO: Get vm [ferw-099]
+UUID: 2eae714a-a368-4df1-4170-54ca9c60b3f4
+Power State: on
+
+--- VM [101] ---
+INFO: Get vm [ferw-100]
+UUID: 78303a55-a7d9-469a-7bf5-c5525c546c53
+Power State: on
+
+--- VM [102] ---
+INFO: Get vm [ferw-101]
+UUID: 3a6b802d-e78d-474e-6718-fc77dec40456
+Power State: on
+
+--- VM [103] ---
+INFO: Get vm [ferw-102]
+UUID: 49399fd2-176e-4709-7f9f-6befbdbcac0e
+Power State: on
+
+--- VM [104] ---
+INFO: Get vm [ferw-103]
+UUID: 93ab1cdf-1b52-4dd9-53f9-31cdaa240b1d
+Power State: on
+
+--- VM [105] ---
+INFO: Get vm [ferw-104]
+UUID: 742fdfbe-5602-4120-61b0-3630359e2dd4
+Power State: on
+
+--- VM [106] ---
+INFO: Get vm [ferw-105]
+UUID: 97639613-b015-4029-7948-14c5b86ca5c4
+Power State: on
+
+--- VM [107] ---
+INFO: Get vm [ferw-106]
+UUID: be6eb4a4-6477-4b04-6ced-6db4ecc476c9
+Power State: on
+
+--- VM [108] ---
+INFO: Get vm [ferw-107]
+UUID: 3943acff-93ec-400c-5b2d-7fb58893e670
+Power State: on
+
+--- VM [109] ---
+INFO: Get vm [ferw-108]
+UUID: 83aa3da3-364e-43da-679c-009639a14490
+Power State: on
+
+--- VM [110] ---
+INFO: Get vm [ferw-109]
+UUID: 9572c5d9-439a-4df3-5d7a-d2e203fbbede
+Power State: on
+
+--- VM [111] ---
+INFO: Get vm [ferw-110]
+UUID: 1625f93a-a56e-44cb-7a18-ceed8b8e07e6
+Power State: on
+
+--- VM [112] ---
+INFO: Get vm [ferw-111]
+UUID: 6446f3ee-fba1-4420-74b3-99041d32590c
+Power State: on
+
+--- VM [113] ---
+INFO: Get vm [ferw-112]
+UUID: 1bf6133a-f0d9-4e43-7518-f5ab8d669dc8
+Power State: on
+
+--- VM [114] ---
+INFO: Get vm [ferw-113]
+UUID: bdc79892-5023-4f6e-4eee-1ab3ec463315
+Power State: on
+
+--- VM [115] ---
+INFO: Get vm [ferw-114]
+UUID: 6fd08ccf-a824-419c-6017-bf41f8064bf2
+Power State: on
+
+--- VM [116] ---
+INFO: Get vm [ferw-115]
+UUID: 9ed64080-aa7b-4a65-5a43-053e02ff0afb
+Power State: on
+
+--- VM [117] ---
+INFO: Get vm [ferw-116]
+UUID: 24e2c244-02b5-4d6e-66d1-971f7a6c9bcf
+Power State: on
+
+--- VM [118] ---
+INFO: Get vm [ferw-117]
+UUID: 60423300-4277-4c4e-5be7-c216e18cb88d
+Power State: on
+
+--- VM [119] ---
+INFO: Get vm [ferw-118]
+UUID: 535f6995-633c-4b0a-4f05-abb3a262fd98
+Power State: on
+
+--- VM [120] ---
+INFO: Get vm [ferw-119]
+UUID: d7c51d63-6c5f-4c6d-46b4-5eb74122e041
+Power State: on
+
+--- VM [121] ---
+INFO: Get vm [ferw-120]
+UUID: 8964b409-5367-49e8-5e94-c4e9889729bf
+Power State: on
+
+--- VM [122] ---
+INFO: Get vm [ferw-121]
+UUID: 9964ea5f-752c-43ff-46ea-561a03ed0437
+Power State: on
+
+--- VM [123] ---
+INFO: Get vm [ferw-122]
+UUID: ab38dc8c-ed91-4355-7e70-a4bac123afc6
+Power State: on
+
+--- VM [124] ---
+INFO: Get vm [ferw-123]
+UUID: c8615ab2-55c3-4d00-7f76-720002706957
+Power State: on
+
+--- VM [125] ---
+INFO: Get vm [ferw-124]
+UUID: b8e64111-94b7-408d-56ce-85f02d68dcb2
+Power State: on
+
+--- VM [126] ---
+INFO: Get vm [ferw-125]
+UUID: 493ecdb2-ba08-4058-6917-fd8a62169174
+Power State: on
+
+--- VM [127] ---
+INFO: Get vm [ferw-126]
+UUID: 0f3ed6bd-3e7e-4a05-419c-093612ac6365
+Power State: on
+
+--- VM [128] ---
+INFO: Get vm [ferw-127]
+UUID: 70be05ae-8788-44d3-467a-2c96fb39a74e
+Power State: on
+
+--- VM [129] ---
+INFO: Get vm [ferw-128]
+UUID: 5b051890-b4ec-4d2e-567f-e8b2b4c8a6c5
+Power State: on
+
+--- VM [130] ---
+INFO: Get vm [ferw-129]
+UUID: 2897072e-2e44-4096-5c88-de072bc37e49
+Power State: on
+
+--- VM [131] ---
+INFO: Get vm [ferw-130]
+UUID: 6ce5d483-5073-4b7d-7d39-5f3815bf01b7
+Power State: on
+
+--- VM [132] ---
+INFO: Get vm [ferw-131]
+UUID: af5fdd68-c3c8-44b9-778e-8340c0acf3fe
+Power State: on
+
+--- VM [133] ---
+INFO: Get vm [ferw-132]
+UUID: be1b8959-4af5-4639-5f6c-df015112c5ef
+Power State: on
+
+--- VM [134] ---
+INFO: Get vm [ferw-133]
+UUID: f2135508-fd95-4ab7-5a50-f8275f8bb544
+Power State: on
+
+--- VM [135] ---
+INFO: Get vm [ferw-134]
+UUID: d2534e23-e9a4-4b04-4a2e-d48e07359614
+Power State: on
+
+--- VM [136] ---
+INFO: Get vm [ferw-135]
+UUID: 419a628d-3244-419f-6521-8ca92309969d
+Power State: on
+
+--- VM [137] ---
+INFO: Get vm [ferw-136]
+UUID: 68df0ac6-9a56-456e-7450-5227ad02381b
+Power State: on
+
+--- VM [138] ---
+INFO: Get vm [ferw-137]
+UUID: 9cf71ab9-f995-45ce-6ed0-81114766e078
+Power State: on
+
+--- VM [139] ---
+INFO: Get vm [ferw-138]
+UUID: 3c15acbd-c7c7-4222-4e33-14a7c0891f78
+Power State: on
+
+--- VM [140] ---
+INFO: Get vm [ferw-139]
+UUID: defac94d-bbba-4c7e-6b4a-1771d8c3df49
+Power State: on
+
+--- VM [141] ---
+INFO: Get vm [ferw-140]
+UUID: 78655f18-04f8-4982-6ad6-7a800549090c
+Power State: on
+
+--- VM [142] ---
+INFO: Get vm [ferw-141]
+UUID: fd8c25e5-ba2a-4a5a-7761-5e69f14bdb2a
+Power State: on
+
+--- VM [143] ---
+INFO: Get vm [ferw-142]
+UUID: b6d37a48-e5e2-4d7f-41c8-1e529e410965
+Power State: on
+
+--- VM [144] ---
+INFO: Get vm [ferw-143]
+UUID: 18d6ed02-5211-470f-4e22-dcef12642d44
+Power State: on
+
+--- VM [145] ---
+INFO: Get vm [ferw-144]
+UUID: 7450fe43-48da-4524-6445-bdcda4fcafb9
+Power State: on
+
+--- VM [146] ---
+INFO: Get vm [ferw-145]
+UUID: b65656fc-cf47-472f-61b6-419a2575fdad
+Power State: on
+
+--- VM [147] ---
+INFO: Get vm [ferw-146]
+UUID: c6cddc9b-326c-4215-59bd-52b3927647ec
+Power State: on
+
+--- VM [148] ---
+INFO: Get vm [ferw-147]
+UUID: d63ea09c-8f54-4da8-5ded-01ec25ea3f47
+Power State: on
+
+--- VM [149] ---
+INFO: Get vm [ferw-148]
+UUID: 4e2ec35b-ab89-403f-43cf-b9375960a83d
+Power State: on
+
+--- VM [150] ---
+INFO: Get vm [ferw-149]
+UUID: 4151beec-3e7a-40f7-4e16-1d1cfedaad62
+Power State: on
+
+--- VM [151] ---
+INFO: Get vm [ferw-150]
+UUID: 1e9580d6-61ff-4389-51a0-61c9c65eefc1
+Power State: on
+
+--- VM [152] ---
+INFO: Get vm [ferw-151]
+UUID: 4866dc21-8d2a-4409-613b-fda1a4af5212
+Power State: on
+
+--- VM [153] ---
+INFO: Get vm [ferw-152]
+UUID: 957ab596-831c-41de-4456-f58e3b1f24b8
+Power State: on
+
+--- VM [154] ---
+INFO: Get vm [ferw-153]
+UUID: d59217bf-03b9-47c5-7ebd-d4f674daf4ec
+Power State: on
+
+--- VM [155] ---
+INFO: Get vm [ferw-154]
+UUID: bdba5b5a-e0b0-4da0-689b-37bea59ad9a9
+Power State: on
+
+--- VM [156] ---
+INFO: Get vm [ferw-155]
+UUID: 8ba1f6f5-1aeb-4b03-65c7-5f06dcd3f7a9
+Power State: on
+
+--- VM [157] ---
+INFO: Get vm [ferw-156]
+UUID: f47bbc3c-f0a1-4737-6d9e-cc03c2c2c67f
+Power State: on
+
+--- VM [158] ---
+INFO: Get vm [ferw-157]
+UUID: b36b68ba-53f9-4989-67f6-4ce7f9cf1922
+Power State: on
+
+--- VM [159] ---
+INFO: Get vm [ferw-158]
+UUID: 0695914b-ea4a-4c46-6515-3a97c5f06929
+Power State: on
+
+--- VM [160] ---
+INFO: Get vm [ferw-159]
+UUID: c668807d-28a0-48e4-5a87-e9eed67a981f
+Power State: on
+
+--- VM [161] ---
+INFO: Get vm [ferw-160]
+UUID: 3ca42ccc-8aa9-4c2a-4b1e-51b85e9a6346
+Power State: on
+
+--- VM [162] ---
+INFO: Get vm [ferw-161]
+UUID: 2025cbff-73c0-4a95-5579-6183084860ae
+Power State: on
+
+--- VM [163] ---
+INFO: Get vm [ferw-162]
+UUID: c3f27dc3-d165-44d5-4c9a-1ad8a21e1296
+Power State: on
+
+--- VM [164] ---
+INFO: Get vm [ferw-163]
+UUID: a7e7d5b0-f6e6-4e02-5f4a-868a804f70f8
+Power State: on
+
+--- VM [165] ---
+INFO: Get vm [ferw-164]
+UUID: a644dacf-c05e-4952-74cf-ef2dd47bca63
+Power State: on
+
+--- VM [166] ---
+INFO: Get vm [ferw-165]
+UUID: 0dd9b36d-3d74-4953-722f-e4ca19d8f173
+Power State: on
+
+--- VM [167] ---
+INFO: Get vm [ferw-166]
+UUID: 474e27f5-fd0a-427e-46b4-5a04ae1a6541
+Power State: on
+
+--- VM [168] ---
+INFO: Get vm [ferw-167]
+UUID: b7d22c55-d9a7-4aab-7a29-cf11fd2393e6
+Power State: on
+
+--- VM [169] ---
+INFO: Get vm [ferw-168]
+UUID: 2dd09af4-c07a-4dcc-64b2-4664fd8e5635
+Power State: on
+
+--- VM [170] ---
+INFO: Get vm [ferw-169]
+UUID: ba8b763a-759d-42e6-79a5-1e78a3d222c5
+Power State: on
+
+--- VM [171] ---
+INFO: Get vm [ferw-170]
+UUID: 3f99dc8b-a38f-4728-48b6-33ea61307295
+Power State: on
+
+--- VM [172] ---
+INFO: Get vm [ferw-171]
+UUID: 521badc9-9f6f-475d-732f-8041d594a130
+Power State: on
+
+--- VM [173] ---
+INFO: Get vm [ferw-172]
+UUID: 5a493ed7-9e1c-49c6-7c6a-77afaa9065dc
+Power State: on
+
+--- VM [174] ---
+INFO: Get vm [ferw-173]
+UUID: 3093dcbc-6c41-4285-7a95-be393afbf3cb
+Power State: on
+
+--- VM [175] ---
+INFO: Get vm [ferw-174]
+UUID: 85e77983-d57a-45e4-46f6-0b02e6c1c274
+Power State: on
+
+--- VM [176] ---
+INFO: Get vm [ferw-175]
+UUID: 7ce54f5a-64c6-4fd5-7210-9c13d9178937
+Power State: on
+
+--- VM [177] ---
+INFO: Get vm [ferw-176]
+UUID: 35e6c4e2-def1-474a-4668-aec6e7826b43
+Power State: on
+
+--- VM [178] ---
+INFO: Get vm [ferw-177]
+UUID: 6a817b18-1966-4e38-4672-598caa06b868
+Power State: on
+
+--- VM [179] ---
+INFO: Get vm [ferw-178]
+UUID: 55b9b5be-3f76-431f-5da0-bf16b5811098
+Power State: on
+
+--- VM [180] ---
+INFO: Get vm [ferw-179]
+UUID: afca5ac6-56a1-4d41-7a64-3eed72975f69
+Power State: on
+
+--- VM [181] ---
+INFO: Get vm [ferw-180]
+UUID: b9066e43-c644-42ae-7849-85b8c70ba535
+Power State: on
+
+--- VM [182] ---
+INFO: Get vm [ferw-181]
+UUID: ee8521d8-8344-47c8-574f-1a8f3a7a6e9b
+Power State: on
+
+--- VM [183] ---
+INFO: Get vm [ferw-182]
+UUID: 02cf17ef-0963-47f5-524c-cfec6ed7b461
+Power State: on
+
+--- VM [184] ---
+INFO: Get vm [ferw-183]
+UUID: d4b0c17f-db16-4ab7-57b8-2708c142cb08
+Power State: on
+
+--- VM [185] ---
+INFO: Get vm [ferw-184]
+UUID: 5064d0cf-6bd6-4180-7ebb-ed2f719154f7
+Power State: on
+
+--- VM [186] ---
+INFO: Get vm [ferw-185]
+UUID: 6b98e596-bc85-41c2-6d18-5399380fc2d3
+Power State: on
+
+--- VM [187] ---
+INFO: Get vm [ferw-186]
+UUID: 9f8d8cc6-f2fc-4f3b-409c-6d796a701f1e
+Power State: on
+
+--- VM [188] ---
+INFO: Get vm [ferw-187]
+UUID: 1a63321b-b02c-44d9-555d-832b8e269356
+Power State: on
+
+--- VM [189] ---
+INFO: Get vm [ferw-188]
+UUID: d35e3e99-c0cd-4e2b-73b4-2adee8558bf4
+Power State: on
+
+--- VM [190] ---
+INFO: Get vm [ferw-189]
+UUID: eb720998-edf1-4a7f-5517-703b6045f72b
+Power State: on
+
+--- VM [191] ---
+INFO: Get vm [ferw-190]
+UUID: 45dd0aab-5618-4aa3-6705-4b59853dac92
+Power State: on
+
+--- VM [192] ---
+INFO: Get vm [ferw-191]
+UUID: 4a6b886c-5c6a-40fd-445a-ec975fca2519
+Power State: on
+
+--- VM [193] ---
+INFO: Get vm [ferw-192]
+UUID: a7526e10-4989-4ad5-7896-ca3d6e975270
+Power State: on
+
+--- VM [194] ---
+INFO: Get vm [ferw-193]
+UUID: aa996cb3-1fb8-469d-70ac-e4301a09813f
+Power State: on
+
+--- VM [195] ---
+INFO: Get vm [ferw-194]
+UUID: 0787402e-d78c-4da7-5f4c-8d8259b83be7
+Power State: on
+
+--- VM [196] ---
+INFO: Get vm [ferw-195]
+UUID: 22da1f87-3ba2-4984-7586-1fd6d9e48e84
+Power State: on
+
+--- VM [197] ---
+INFO: Get vm [ferw-196]
+UUID: 08024734-21b8-455f-7827-5eb5f680a515
+Power State: on
+
+--- VM [198] ---
+INFO: Get vm [ferw-197]
+UUID: a99a9a43-242c-4fa1-5f4d-da13d339833c
+Power State: on
+
+--- VM [199] ---
+INFO: Get vm [ferw-198]
+UUID: 8373e82f-9023-4bca-609e-413792c7a5fb
+Power State: on
+
+--- VM [200] ---
+INFO: Get vm [ferw-199]
+UUID: dce1652c-a099-403b-539d-b8bddf681e42
+Power State: on
+
+--- VM [201] ---
+INFO: Get vm [ferw-200]
+UUID: cfd88c50-1b6d-4b99-5fd3-1697ebf22c00
+Power State: on
+
+--- VM [202] ---
+INFO: Get vm [ferw-201]
+UUID: f8b11baa-367f-4bb8-4a4c-4e7a3bf605fa
+Power State: on
+
+--- VM [203] ---
+INFO: Get vm [ferw-202]
+UUID: b8978102-6e77-4ed1-4c84-75982ac27817
+Power State: on
+
+--- VM [204] ---
+INFO: Get vm [ferw-203]
+UUID: eacf78c7-0214-442e-43f9-b7312e3642d0
+Power State: on
+
+--- VM [205] ---
+INFO: Get vm [ferw-204]
+UUID: 4b7cbb34-b6b0-4f3a-40fe-3320585f3c0b
+Power State: on
+
+--- VM [206] ---
+INFO: Get vm [ferw-205]
+UUID: c7e65251-6812-4a93-405f-36d6d18ef1a2
+Power State: on
+
+--- VM [207] ---
+INFO: Get vm [ferw-206]
+UUID: d02f339d-38c4-4c02-4e9f-590d3a6f306d
+Power State: on
+
+--- VM [208] ---
+INFO: Get vm [ferw-207]
+UUID: 9cd1f4db-4007-47f7-6137-f0bd885a4e67
+Power State: on
+
+--- VM [209] ---
+INFO: Get vm [ferw-208]
+UUID: 07a67645-65b7-4acd-5d87-213f300237fa
+Power State: on
+
+--- VM [210] ---
+INFO: Get vm [ferw-209]
+UUID: 1a299898-3c06-4509-451b-8b1dcd69cf4a
+Power State: on
+
+--- VM [211] ---
+INFO: Get vm [ferw-210]
+UUID: eb43cdb6-04ca-4326-469a-12ff49fa16f3
+Power State: on
+
+--- VM [212] ---
+INFO: Get vm [ferw-211]
+UUID: cdd0282e-eaba-4c19-496f-90a5f835fd3b
+Power State: on
+
+--- VM [213] ---
+INFO: Get vm [ferw-212]
+UUID: 89e5ef5d-daa7-4b1d-6423-49ab810cd0f3
+Power State: on
+
+--- VM [214] ---
+INFO: Get vm [ferw-213]
+UUID: 188691f8-ecfc-41d3-7c6a-9d13ba60836d
+Power State: on
+
+--- VM [215] ---
+INFO: Get vm [ferw-214]
+UUID: fe1b63fa-c0d4-47e9-743a-36c3384c0c49
+Power State: on
+
+--- VM [216] ---
+INFO: Get vm [ferw-215]
+UUID: 71b95eed-2bef-4021-5b16-6b866b76d9fe
+Power State: on
+
+--- VM [217] ---
+INFO: Get vm [ferw-216]
+UUID: 16dcbde3-86ec-470b-4b42-9134778b4412
+Power State: on
+
+--- VM [218] ---
+INFO: Get vm [ferw-217]
+UUID: 7f633c45-624e-415e-4936-ae08aaf1e785
+Power State: on
+
+--- VM [219] ---
+INFO: Get vm [ferw-218]
+UUID: 057ecf73-e447-4010-65a5-cb03e1207183
+Power State: on
+
+--- VM [220] ---
+INFO: Get vm [ferw-219]
+UUID: bab2a0b6-488d-4003-695a-253bc7f7df6a
+Power State: on
+
+--- VM [221] ---
+INFO: Get vm [ferw-220]
+UUID: 353ee371-aaae-4580-5b50-71db0e374fce
+Power State: on
+
+--- VM [222] ---
+INFO: Get vm [ferw-221]
+UUID: d1767abc-5d71-41ef-4034-b4e9445080c4
+Power State: on
+
+--- VM [223] ---
+INFO: Get vm [ferw-222]
+UUID: 490cf54c-4950-4e5a-53de-f0febd5c119b
+Power State: on
+
+--- VM [224] ---
+INFO: Get vm [ferw-223]
+UUID: cea3f87d-bc1b-432d-582a-e1f0c9e3ecc9
+Power State: on
+
+--- VM [225] ---
+INFO: Get vm [ferw-224]
+UUID: ae5818f8-a442-4248-7b88-3c9ab407519d
+Power State: on
+
+--- VM [226] ---
+INFO: Get vm [ferw-225]
+UUID: 0f5889a2-5c4d-4991-65dd-0595e6c9c3e6
+Power State: on
+
+--- VM [227] ---
+INFO: Get vm [ferw-226]
+UUID: bc034e82-b269-4b83-637c-b6a39c0437b4
+Power State: on
+
+--- VM [228] ---
+INFO: Get vm [ferw-227]
+UUID: 1a1c6cc4-8622-45a7-731d-d82ef91842a8
+Power State: on
+
+--- VM [229] ---
+INFO: Get vm [ferw-228]
+UUID: 9634d8c2-03ef-4b04-6c9b-8babe688c7a4
+Power State: on
+
+--- VM [230] ---
+INFO: Get vm [ferw-229]
+UUID: 24c0700f-25ee-43b9-5513-6cf279213ea4
+Power State: on
+
+--- VM [231] ---
+INFO: Get vm [ferw-230]
+UUID: 1d5b1e7b-175d-4cfb-517d-8b8c6d726652
+Power State: on
+
+--- VM [232] ---
+INFO: Get vm [ferw-231]
+UUID: c9ece0cb-dec9-452d-67da-d00f0bda3037
+Power State: on
+
+--- VM [233] ---
+INFO: Get vm [ferw-232]
+UUID: 19697f40-77a9-48ec-732c-3e2309487373
+Power State: on
+
+--- VM [234] ---
+INFO: Get vm [ferw-233]
+UUID: 1603bc5a-0b9d-4be0-72b2-3200ffe51b3f
+Power State: on
+
+--- VM [235] ---
+INFO: Get vm [ferw-234]
+UUID: aec0d5ef-17bb-4f0b-7c9c-23036ad38d4b
+Power State: on
+
+--- VM [236] ---
+INFO: Get vm [ferw-235]
+UUID: 4d57b17e-0c21-4427-6d30-db9e0cbc3f78
+Power State: on
+
+--- VM [237] ---
+INFO: Get vm [ferw-236]
+UUID: 1713c87c-5af6-4c04-7ec2-aa6704744375
+Power State: on
+
+--- VM [238] ---
+INFO: Get vm [ferw-237]
+UUID: 87a52e40-34b5-475d-5844-3fba7dd52df5
+Power State: on
+
+--- VM [239] ---
+INFO: Get vm [ferw-238]
+UUID: b76b9c44-6060-4931-7265-291b438464f3
+Power State: on
+
+--- VM [240] ---
+INFO: Get vm [ferw-239]
+UUID: 5b3dc222-c723-4283-75b3-fee7253f2a49
+Power State: on
+
+--- VM [241] ---
+INFO: Get vm [ferw-240]
+UUID: 380a5bf5-6ef2-49c2-6365-8445ad30a8a8
+Power State: on
+
+--- VM [242] ---
+INFO: Get vm [ferw-241]
+UUID: 6510d61e-893d-402f-7d2a-00a827ba1358
+Power State: on
+
+--- VM [243] ---
+INFO: Get vm [ferw-242]
+UUID: bc5dc3fd-9918-4fae-5797-3b40b394eee7
+Power State: on
+
+--- VM [244] ---
+INFO: Get vm [ferw-243]
+UUID: 43b65675-0d86-41d6-49e5-49333d28f2af
+Power State: on
+
+--- VM [245] ---
+INFO: Get vm [ferw-244]
+UUID: e59e6a07-ba94-45e5-71ee-619ced6ef387
+Power State: on
+
+--- VM [246] ---
+INFO: Get vm [ferw-245]
+UUID: 157afb7f-6884-4194-7080-c62d38f17d6f
+Power State: on
+
+--- VM [247] ---
+INFO: Get vm [ferw-246]
+UUID: ebcafc37-3394-4e60-50fd-2772ad1edf58
+Power State: on
+
+--- VM [248] ---
+INFO: Get vm [ferw-247]
+UUID: b3c5a861-f3a6-47d7-4f38-7f3c6355bc54
+Power State: on
+
+--- VM [249] ---
+INFO: Get vm [ferw-248]
+UUID: 4f273eb9-b0f8-43d3-469b-b62a3d3a78bd
+Power State: on
+
+--- VM [250] ---
+INFO: Get vm [ferw-249]
+UUID: 984d8f2b-3780-41fe-7cff-2a3159012bbc
+Power State: on
+
+--- VM [251] ---
+INFO: Get vm [ferw-250]
+UUID: b2268aa0-ca42-4fd6-5f17-168b90c17ce6
+Power State: on
+
+--- VM [252] ---
+INFO: Get vm [ferw-251]
+UUID: 22e053f5-a9d0-4dd7-7d92-98c82e05dbd0
+Power State: on
+
+--- VM [253] ---
+INFO: Get vm [ferw-252]
+UUID: 7c24332b-19f8-4595-612e-ea52d3ec30f9
+Power State: on
+
+--- VM [254] ---
+INFO: Get vm [ferw-253]
+UUID: 228c15fe-8d78-415a-5090-72d163144946
+Power State: on
+
+--- VM [255] ---
+INFO: Get vm [ferw-254]
+UUID: afa981fb-ba9a-4eaa-5a23-f56c49fe1c9c
+Power State: on
+
+--- VM [256] ---
+INFO: Get vm [ferw-255]
+UUID: 78d35e3a-7c93-48a7-6a09-9093e7ada49f
+Power State: on
+
+--- VM [257] ---
+INFO: Get vm [ferw-256]
+UUID: e1497b61-f356-478b-6a09-cc3667b0dc6c
+Power State: on
+
+--- VM [258] ---
+INFO: Get vm [ferw-257]
+UUID: 3a082f1b-cbd3-48ac-727b-7b98080c5936
+Power State: on
+
+--- VM [259] ---
+INFO: Get vm [ferw-258]
+UUID: e337bfe0-f7bb-4abf-68ce-9fe9dd0be21d
+Power State: on
+
+--- VM [260] ---
+INFO: Get vm [ferw-259]
+UUID: 1fc8eaef-35e4-4524-6f28-b1b779b5d634
+Power State: on
+
+--- VM [261] ---
+INFO: Get vm [ferw-260]
+UUID: 4d1449ee-51f5-4567-4dbd-d9360b94e42d
+Power State: on
+
+--- VM [262] ---
+INFO: Get vm [ferw-261]
+UUID: 0a6f3455-94ad-4b5f-5f0c-46a344241421
+Power State: on
+
+--- VM [263] ---
+INFO: Get vm [ferw-262]
+UUID: 31cc5082-4dae-4104-5206-d4b4a13c6d44
+Power State: on
+
+--- VM [264] ---
+INFO: Get vm [ferw-263]
+UUID: 7e1fd23e-6474-4cc5-63a4-5c92b7df1715
+Power State: on
+
+--- VM [265] ---
+INFO: Get vm [ferw-264]
+UUID: dc8476cd-8041-47c8-4b5d-56a546f66f92
+Power State: on
+
+--- VM [266] ---
+INFO: Get vm [ferw-265]
+UUID: 0fc5c874-853d-421e-671a-620a0183694d
+Power State: on
+
+--- VM [267] ---
+INFO: Get vm [ferw-266]
+UUID: b040bf70-f147-4ae0-51a8-6b5de2f29d48
+Power State: on
+
+--- VM [268] ---
+INFO: Get vm [ferw-267]
+UUID: 49887389-99ac-47b0-5e32-f281d4dd2874
+Power State: on
+
+--- VM [269] ---
+INFO: Get vm [ferw-268]
+UUID: 898b6e8b-0744-4936-5f08-c3f90ddc584f
+Power State: on
+
+--- VM [270] ---
+INFO: Get vm [ferw-269]
+UUID: 595b296e-4e7c-49b1-66d0-92f0fb936c57
+Power State: on
+
+--- VM [271] ---
+INFO: Get vm [ferw-270]
+UUID: 05ff5883-177b-498a-40a7-5d4934800a5b
+Power State: on
+
+--- VM [272] ---
+INFO: Get vm [ferw-271]
+UUID: d2a2b713-891e-4064-6487-384a52569766
+Power State: on
+
+--- VM [273] ---
+INFO: Get vm [ferw-272]
+UUID: 7f7b5a34-874f-4786-68f8-08b75ea467c8
+Power State: on
+
+--- VM [274] ---
+INFO: Get vm [ferw-273]
+UUID: 54430465-1d63-4d67-7200-08dc958c778f
+Power State: on
+
+--- VM [275] ---
+INFO: Get vm [ferw-274]
+UUID: 0179a271-0e8e-4d0d-598f-ba0c89116564
+Power State: on
+
+--- VM [276] ---
+INFO: Get vm [ferw-275]
+UUID: c8aed7e1-cdae-4db6-6eee-196bfd06352f
+Power State: on
+
+--- VM [277] ---
+INFO: Get vm [ferw-276]
+UUID: 035ae1da-7ac3-49cd-5330-002c75ec5324
+Power State: on
+
+--- VM [278] ---
+INFO: Get vm [ferw-277]
+UUID: 8955adb9-c7a0-4dd4-7422-077ce95218d5
+Power State: on
+
+--- VM [279] ---
+INFO: Get vm [ferw-278]
+UUID: 06fc017f-d1ce-49b1-7cfe-9301bf708aa7
+Power State: on
+
+--- VM [280] ---
+INFO: Get vm [ferw-279]
+UUID: e4252d45-c459-4b96-4f90-9b1d4292bf25
+Power State: on
+
+--- VM [281] ---
+INFO: Get vm [ferw-280]
+UUID: e469e5e6-fa30-43d5-5e15-b85c740ab7f3
+Power State: on
+
+--- VM [282] ---
+INFO: Get vm [ferw-281]
+UUID: 13e2106e-5b90-458b-596b-04c485c77836
+Power State: on
+
+--- VM [283] ---
+INFO: Get vm [ferw-282]
+UUID: a3ca92f0-24c2-4dd4-434c-7d8535fdd6af
+Power State: on
+
+--- VM [284] ---
+INFO: Get vm [ferw-283]
+UUID: ede4e2bb-8f52-419b-65be-99d6167058f5
+Power State: on
+
+--- VM [285] ---
+INFO: Get vm [ferw-284]
+UUID: 0565de19-2b82-474d-5773-7e94e386b34b
+Power State: on
+
+--- VM [286] ---
+INFO: Get vm [ferw-285]
+UUID: c44a706a-c4f0-48d5-6a03-cf059a6ab124
+Power State: on
+
+--- VM [287] ---
+INFO: Get vm [ferw-286]
+UUID: bc9f8b4c-b252-4356-55ef-6c06846532e6
+Power State: on
+
+--- VM [288] ---
+INFO: Get vm [ferw-287]
+UUID: 265d022c-96a9-4b06-5878-4163635ca631
+Power State: on
+
+--- VM [289] ---
+INFO: Get vm [ferw-288]
+UUID: 56fd2a98-a895-4c84-5306-a6ee514709b4
+Power State: on
+
+--- VM [290] ---
+INFO: Get vm [ferw-289]
+UUID: edf7731e-2723-44fd-6a98-bad446e630d7
+Power State: on
+
+--- VM [291] ---
+INFO: Get vm [ferw-290]
+UUID: 8542baaa-fa5e-470a-6a66-41f2178ecdd7
+Power State: on
+
+--- VM [292] ---
+INFO: Get vm [ferw-291]
+UUID: 7cb4c589-c53c-48c3-7759-6cb9f7ec6e3b
+Power State: on
+
+--- VM [293] ---
+INFO: Get vm [ferw-292]
+UUID: 8d2bfbeb-3867-4dbd-5b55-2ea9f8528311
+Power State: on
+
+--- VM [294] ---
+INFO: Get vm [ferw-293]
+UUID: c466e052-effc-4067-6623-21fd0c07369f
+Power State: on
+
+--- VM [295] ---
+INFO: Get vm [ferw-294]
+UUID: c175ec58-5bb0-40ff-438c-11f105f66a29
+Power State: on
+
+--- VM [296] ---
+INFO: Get vm [ferw-295]
+UUID: 749783cf-8648-4a57-764d-4fd186e78edf
+Power State: on
+
+--- VM [297] ---
+INFO: Get vm [ferw-296]
+UUID: cd8f8644-cd48-464c-7327-4b093fcb5071
+Power State: on
+
+--- VM [298] ---
+INFO: Get vm [ferw-297]
+UUID: 50c8c610-687c-4d25-452f-17bdc718885d
+Power State: on
+
+--- VM [299] ---
+INFO: Get vm [ferw-298]
+UUID: 00ef35f4-319d-403e-59be-82efb157f4d6
+Power State: on
+
+--- VM [300] ---
+INFO: Get vm [ferw-299]
+UUID: 667c29a2-c5cc-45bc-7ed2-68fcf5779180
+Power State: on
+
+--- VM [301] ---
+INFO: Get vm [ferw-300]
+UUID: 219a169a-0960-4e78-56e7-12ebae8a2dc5
+Power State: on
+
+--- VM [302] ---
+INFO: Get vm [ferw-301]
+UUID: 0991eeae-5363-43c4-72c8-c56ed005b5bf
+Power State: on
+
+--- VM [303] ---
+INFO: Get vm [ferw-302]
+UUID: 090d1fd4-a6c7-4561-6359-83ab25e8ee40
+Power State: on
+
+--- VM [304] ---
+INFO: Get vm [ferw-303]
+UUID: 35e42986-1eb3-4bba-5b46-3bb2cf22d0ec
+Power State: on
+
+--- VM [305] ---
+INFO: Get vm [ferw-304]
+UUID: 4f63af69-ae99-4ee8-6139-53748fd0e161
+Power State: on
+
+--- VM [306] ---
+INFO: Get vm [ferw-305]
+UUID: 68d02ea7-4524-4aa0-4745-502840b07076
+Power State: on
+
+--- VM [307] ---
+INFO: Get vm [ferw-306]
+UUID: 1c09aa91-e502-4944-4d94-9fa845db4f0f
+Power State: on
+
+--- VM [308] ---
+INFO: Get vm [ferw-307]
+UUID: 574c7c9d-4068-42bb-4c4d-46c3275140ea
+Power State: on
+
+--- VM [309] ---
+INFO: Get vm [ferw-308]
+UUID: f0237817-5de5-4077-71e9-fc4a97e86581
+Power State: on
+
+--- VM [310] ---
+INFO: Get vm [ferw-309]
+UUID: a1cfc7d0-e643-471e-4c4f-0e2552279aba
+Power State: on
+
+--- VM [311] ---
+INFO: Get vm [ferw-310]
+UUID: 6a4a5704-579a-4268-73e2-739b9cd8f951
+Power State: on
+
+--- VM [312] ---
+INFO: Get vm [ferw-311]
+UUID: b8fced06-649f-4035-452d-f1c5aa19af83
+Power State: on
+
+--- VM [313] ---
+INFO: Get vm [ferw-312]
+UUID: 3a70430e-6f56-4eab-42ed-9220ad360d23
+Power State: on
+
+--- VM [314] ---
+INFO: Get vm [ferw-313]
+UUID: 18841376-9efc-4001-4d62-f9e291cbc95a
+Power State: on
+
+--- VM [315] ---
+INFO: Get vm [ferw-314]
+UUID: 3f2d882d-a1d3-4318-7da4-34b15c88de1d
+Power State: on
+
+--- VM [316] ---
+INFO: Get vm [ferw-315]
+UUID: ac36c497-e89e-4664-6608-274cb066f978
+Power State: on
+
+--- VM [317] ---
+INFO: Get vm [ferw-316]
+UUID: 929f533c-73f0-4fb6-4bba-6f5a7eb5cf97
+Power State: on
+
+--- VM [318] ---
+INFO: Get vm [ferw-317]
+UUID: 2d4dc8a5-754f-4bb6-72d3-a86c0716dd00
+Power State: on
+
+--- VM [319] ---
+INFO: Get vm [ferw-318]
+UUID: 5a0f7155-a80d-4015-53a4-d7b1aab3abd4
+Power State: on
+
+--- VM [320] ---
+INFO: Get vm [ferw-319]
+UUID: 01ba8652-aee4-452b-611b-b572119dd358
+Power State: on
+
+--- VM [321] ---
+INFO: Get vm [ferw-320]
+UUID: c1ba7109-8212-4dcf-4650-7b559ed79a0b
+Power State: on
+
+--- VM [322] ---
+INFO: Get vm [ferw-321]
+UUID: 6d23bcd0-c6ef-4a9b-5a44-77c72c524085
+Power State: on
+
+--- VM [323] ---
+INFO: Get vm [ferw-322]
+UUID: 9b5fa7eb-4e04-4798-6766-638f7debef09
+Power State: on
+
+--- VM [324] ---
+INFO: Get vm [ferw-323]
+UUID: bceb5949-ca01-48fb-6782-3c28561d569d
+Power State: on
+
+--- VM [325] ---
+INFO: Get vm [ferw-324]
+UUID: eb3533cd-6b1d-47fd-734d-3dc19b4d650a
+Power State: on
+
+--- VM [326] ---
+INFO: Get vm [ferw-325]
+UUID: 2ea1917f-e5ce-409c-7d5e-1541f024311a
+Power State: on
+
+--- VM [327] ---
+INFO: Get vm [ferw-326]
+UUID: 661e5ee9-8385-4265-6832-f1d90670159d
+Power State: on
+
+--- VM [328] ---
+INFO: Get vm [ferw-327]
+UUID: e9666bee-6ebf-4202-413f-915f079e8a93
+Power State: on
+
+--- VM [329] ---
+INFO: Get vm [ferw-328]
+UUID: 77935aea-b352-4995-7d9b-845ecaed0c02
+Power State: on
+
+--- VM [330] ---
+INFO: Get vm [ferw-329]
+UUID: 60afd38c-8443-4c4b-6375-d5d0e0c74c50
+Power State: on
+
+--- VM [331] ---
+INFO: Get vm [ferw-330]
+UUID: 9dbf9143-4cf6-4e0b-56a1-1e51850eaf09
+Power State: on
+
+--- VM [332] ---
+INFO: Get vm [ferw-331]
+UUID: 56a3f39a-49ed-4ab5-759d-f775631a7e94
+Power State: on
+
+--- VM [333] ---
+INFO: Get vm [ferw-332]
+UUID: 89a5d85c-1766-4c2b-6e2c-04f03209e547
+Power State: on
+
+--- VM [334] ---
+INFO: Get vm [ferw-333]
+UUID: 8a2a20c3-5128-4501-5af4-a1c9a891447d
+Power State: on
+
+--- VM [335] ---
+INFO: Get vm [ferw-334]
+UUID: 245ac2ad-3e2f-4513-660d-1c9e0ed51611
+Power State: on
+
+--- VM [336] ---
+INFO: Get vm [ferw-335]
+UUID: 5202ee48-5b19-4009-7285-f0a0bb69b1b5
+Power State: on
+
+--- VM [337] ---
+INFO: Get vm [ferw-336]
+UUID: b8c830fa-079f-4bd4-4a86-021562e14f46
+Power State: on
+
+--- VM [338] ---
+INFO: Get vm [ferw-337]
+UUID: d1f43295-618b-48b8-6ea7-ee695185792f
+Power State: on
+
+--- VM [339] ---
+INFO: Get vm [ferw-338]
+UUID: 24e8323f-8166-4565-5b81-5aaf4db83bd5
+Power State: on
+
+--- VM [340] ---
+INFO: Get vm [ferw-339]
+UUID: 1dbf17b5-dea2-44b1-6e4d-6ea1ec38214b
+Power State: on
+
+--- VM [341] ---
+INFO: Get vm [ferw-340]
+UUID: d69de1e3-a5a0-40dc-6bd9-0505aa446b65
+Power State: on
+
+--- VM [342] ---
+INFO: Get vm [ferw-341]
+UUID: dda792ab-6d54-423f-7577-00d596a3318e
+Power State: on
+
+--- VM [343] ---
+INFO: Get vm [ferw-342]
+UUID: 6eaff5d2-eaa5-43c9-44d3-dd155a9c8f91
+Power State: on
+
+--- VM [344] ---
+INFO: Get vm [ferw-343]
+UUID: 10e857d2-8aba-4c83-4782-228f57f5b5bf
+Power State: on
+
+--- VM [345] ---
+INFO: Get vm [ferw-344]
+UUID: 860e4cf2-e9c6-46c2-789a-83442c4e7ff9
+Power State: on
+
+--- VM [346] ---
+INFO: Get vm [ferw-345]
+UUID: 3f684307-6633-43f4-4793-face9b3dc4fd
+Power State: on
+
+--- VM [347] ---
+INFO: Get vm [ferw-346]
+UUID: 0c0695d7-ef56-45a5-65f0-627e682e7ab4
+Power State: on
+
+--- VM [348] ---
+INFO: Get vm [ferw-347]
+UUID: 90960d50-bcca-4aea-5539-d5ee34b48508
+Power State: on
+
+--- VM [349] ---
+INFO: Get vm [ferw-348]
+UUID: 155725d2-9f15-430a-51a4-aa88a4a7abd0
+Power State: on
+
+--- VM [350] ---
+INFO: Get vm [ferw-349]
+UUID: 9ad705f0-8bca-4e72-4ba2-2e5f1bfa94e4
+Power State: on
+
+--- VM [351] ---
+INFO: Get vm [ferw-350]
+UUID: 557bf2ec-83b8-4c8d-6329-b018e264562f
+Power State: on
+
+--- VM [352] ---
+INFO: Get vm [ferw-351]
+UUID: b06dd4bf-1b64-4400-7a5b-c769b6d345f0
+Power State: on
+
+--- VM [353] ---
+INFO: Get vm [ferw-352]
+UUID: 6a68c779-4e16-4174-6fae-acdb90bac135
+Power State: on
+
+--- VM [354] ---
+INFO: Get vm [ferw-353]
+UUID: fc7b46bc-8acf-4a8a-40a7-81eae7596c1c
+Power State: on
+
+--- VM [355] ---
+INFO: Get vm [ferw-354]
+UUID: 5fc3345a-062c-42e3-734b-847a24ba5616
+Power State: on
+
+--- VM [356] ---
+INFO: Get vm [ferw-355]
+UUID: ab6ac76e-4071-4475-7a4a-4dce34789012
+Power State: on
+
+--- VM [357] ---
+INFO: Get vm [ferw-356]
+UUID: 736ef4af-7423-42cb-4c80-0536d710bde9
+Power State: on
+
+--- VM [358] ---
+INFO: Get vm [ferw-357]
+UUID: 250b4e9a-6ecb-4c5d-5af8-68cc92dd5b26
+Power State: on
+
+--- VM [359] ---
+INFO: Get vm [ferw-358]
+UUID: 92a0dc18-a811-45fb-4017-dfca8d88efe6
+Power State: on
+
+--- VM [360] ---
+INFO: Get vm [ferw-359]
+UUID: 0d46254d-2c2e-4716-736e-c2a5be4241b8
+Power State: on
+
+--- VM [361] ---
+INFO: Get vm [ferw-360]
+UUID: 9a645f0f-6cc7-4f14-6502-4299bcabada4
+Power State: on
+
+--- VM [362] ---
+INFO: Get vm [ferw-361]
+UUID: f9acc1da-44a2-44f0-7b9b-223fc10e0f39
+Power State: on
+
+--- VM [363] ---
+INFO: Get vm [ferw-362]
+UUID: 1d1edf8c-190b-4dea-6ffa-875f92e78c6e
+Power State: on
+
+--- VM [364] ---
+INFO: Get vm [ferw-363]
+UUID: f13281df-46a8-48b0-7b04-601d23c6abcf
+Power State: on
+
+--- VM [365] ---
+INFO: Get vm [ferw-364]
+UUID: cd440c77-e1a9-4317-6d04-1f68fa79cbec
+Power State: on
+
+--- VM [366] ---
+INFO: Get vm [ferw-365]
+UUID: 4b90bf9a-2277-4961-7511-a151e15d31e9
+Power State: on
+
+--- VM [367] ---
+INFO: Get vm [ferw-366]
+UUID: 74180f9d-9a1b-4414-6e62-a20fb721a0c6
+Power State: on
+
+--- VM [368] ---
+INFO: Get vm [ferw-367]
+UUID: fbdfad08-4db0-494f-5fdb-cd38a16cd886
+Power State: on
+
+--- VM [369] ---
+INFO: Get vm [ferw-368]
+UUID: 82f0fb61-7286-4e79-6578-a632ed866234
+Power State: on
+
+--- VM [370] ---
+INFO: Get vm [ferw-369]
+UUID: fc318132-8c43-4006-4994-ce06867d3932
+Power State: on
+
+--- VM [371] ---
+INFO: Get vm [ferw-370]
+UUID: c8ce3a2e-bdf4-409a-43ba-7f307b6e846e
+Power State: on
+
+--- VM [372] ---
+INFO: Get vm [ferw-371]
+UUID: 1c57e3f5-ad3e-490a-53b5-3daa09ab78db
+Power State: on
+
+--- VM [373] ---
+INFO: Get vm [ferw-372]
+UUID: 68f6322a-324d-416d-7523-a79e116aa338
+Power State: on
+
+--- VM [374] ---
+INFO: Get vm [ferw-373]
+UUID: 2e77993a-8c4f-4f13-6906-bd0168d982de
+Power State: on
+
+--- VM [375] ---
+INFO: Get vm [ferw-374]
+UUID: 5a878896-59db-40aa-5eb5-d9c6c5d98779
+Power State: on
+
+--- VM [376] ---
+INFO: Get vm [ferw-375]
+UUID: 2dafef16-7cd0-43f8-4f6e-51a3fe9da1e9
+Power State: on
+
+--- VM [377] ---
+INFO: Get vm [ferw-376]
+UUID: 194554f2-2290-458b-4ccf-bb7ec9177241
+Power State: on
+
+--- VM [378] ---
+INFO: Get vm [ferw-377]
+UUID: 77cdee41-10c8-4546-77c4-aaac82a34774
+Power State: on
+
+--- VM [379] ---
+INFO: Get vm [ferw-378]
+UUID: e1ecefd5-758e-4ef4-773e-ab6ec46381b0
+Power State: on
+
+--- VM [380] ---
+INFO: Get vm [ferw-379]
+UUID: 50f00c4d-70a9-4cd4-66a0-2e0bd08766c3
+Power State: on
+
+--- VM [381] ---
+INFO: Get vm [ferw-380]
+UUID: f705f53c-b782-40a2-4889-1e0d853e5d74
+Power State: on
+
+--- VM [382] ---
+INFO: Get vm [ferw-381]
+UUID: 000dcf43-d153-4756-48cd-99e1c13b13df
+Power State: on
+
+--- VM [383] ---
+INFO: Get vm [ferw-382]
+UUID: 19d359f9-f487-4bff-6369-3c4c581be93d
+Power State: on
+
+--- VM [384] ---
+INFO: Get vm [ferw-383]
+UUID: 225160b3-73ca-449f-5b11-130294cbc013
+Power State: on
+
+--- VM [385] ---
+INFO: Get vm [ferw-384]
+UUID: 4e554b09-3a4d-4ce1-791e-2d83b19c348a
+Power State: on
+
+--- VM [386] ---
+INFO: Get vm [ferw-385]
+UUID: f95f4a93-1a03-4804-4f60-1ce0a5805336
+Power State: on
+
+--- VM [387] ---
+INFO: Get vm [ferw-386]
+UUID: ad3ea3d8-4cc3-448d-50e8-22460f1ed7ad
+Power State: on
+
+--- VM [388] ---
+INFO: Get vm [ferw-387]
+UUID: 04019f46-69d7-4957-5a5b-16553f40bf51
+Power State: on
+
+--- VM [389] ---
+INFO: Get vm [ferw-388]
+UUID: 8906120d-3fc0-4cb6-582e-d1cbf672707e
+Power State: on
+
+--- VM [390] ---
+INFO: Get vm [ferw-389]
+UUID: 015b427b-9749-4675-6af3-5973a13373fb
+Power State: on
+
+--- VM [391] ---
+INFO: Get vm [ferw-390]
+UUID: 64e2c017-6a0b-4118-6d5c-b42e49bc634e
+Power State: on
+
+--- VM [392] ---
+INFO: Get vm [ferw-391]
+UUID: ffe9a9d3-3de4-4826-6a72-976c3189e98b
+Power State: on
+
+--- VM [393] ---
+INFO: Get vm [ferw-392]
+UUID: 189679a3-ce26-4bfa-7759-91df788b9c71
+Power State: on
+
+--- VM [394] ---
+INFO: Get vm [ferw-393]
+UUID: 430cea5e-d2fb-4b52-56df-0397f6fb4f61
+Power State: on
+
+--- VM [395] ---
+INFO: Get vm [ferw-394]
+UUID: de214553-80f1-47f0-65cb-1364f3ef858f
+Power State: on
+
+--- VM [396] ---
+INFO: Get vm [ferw-395]
+UUID: 53f249c4-2bb0-4f41-66c6-e58b3a50a2c8
+Power State: on
+
+--- VM [397] ---
+INFO: Get vm [ferw-396]
+UUID: f33cf1ce-4d17-483b-47fc-ea14432a9be7
+Power State: on
+
+--- VM [398] ---
+INFO: Get vm [ferw-397]
+UUID: 3417d0a6-cc09-489f-797f-11d2a1d61c9b
+Power State: on
+
+--- VM [399] ---
+INFO: Get vm [ferw-398]
+UUID: dfffebc9-ca26-4488-5f96-9bab69f7b3fe
+Power State: on
+
+--- VM [400] ---
+INFO: Get vm [ferw-399]
+UUID: 307ef0f1-85dc-4d9a-6862-001a9cf80634
+Power State: on
+
+--- VM [401] ---
+INFO: Get vm [ferw-400]
+UUID: 7abd5fc1-9a22-43a1-7bb9-f9211e9daac8
+Power State: on
+
+--- VM [402] ---
+INFO: Get vm [ferw-401]
+UUID: 1f4b3cc9-3f36-435a-6b02-f39fcd5d9a3b
+Power State: on
+
+--- VM [403] ---
+INFO: Get vm [ferw-402]
+UUID: b034f02c-c4cb-4918-4126-f2a2795fe47e
+Power State: on
+
+--- VM [404] ---
+INFO: Get vm [ferw-403]
+UUID: 7cc94115-0485-48f0-4075-bbdb5496e6e0
+Power State: on
+
+--- VM [405] ---
+INFO: Get vm [ferw-404]
+UUID: a2c9fa30-7b3d-4496-7ff0-dad49d4f5550
+Power State: on
+
+--- VM [406] ---
+INFO: Get vm [ferw-405]
+UUID: 956df508-5581-438a-5f44-8ddcc65b8b62
+Power State: on
+
+--- VM [407] ---
+INFO: Get vm [ferw-406]
+UUID: a5bea6cd-432c-4bf3-526b-9cf0059a402c
+Power State: on
+
+--- VM [408] ---
+INFO: Get vm [ferw-407]
+UUID: a7fa6f4c-2ac9-4e16-6a18-9f42977ffae1
+Power State: on
+
+--- VM [409] ---
+INFO: Get vm [ferw-408]
+UUID: a61f144c-3f30-49db-77a3-69b79476459a
+Power State: on
+
+--- VM [410] ---
+INFO: Get vm [ferw-409]
+UUID: 9709cfa8-98cd-4366-73b8-33457ce256ef
+Power State: on
+
+--- VM [411] ---
+INFO: Get vm [ferw-410]
+UUID: c955844d-aa59-4bae-78bf-cd4712a59fe3
+Power State: on
+
+--- VM [412] ---
+INFO: Get vm [ferw-411]
+UUID: 7e19fa34-9b44-41c2-7b02-328f9a879dc2
+Power State: on
+
+--- VM [413] ---
+INFO: Get vm [ferw-412]
+UUID: f7672134-1483-490f-7bfc-39aa54b9deb8
+Power State: on
+
+--- VM [414] ---
+INFO: Get vm [ferw-413]
+UUID: d1eba5e4-0f83-413b-41a7-4270f318b987
+Power State: on
+
+--- VM [415] ---
+INFO: Get vm [ferw-414]
+UUID: 2733b340-ba00-48c0-4c2e-bbeae95cadf6
+Power State: on
+
+--- VM [416] ---
+INFO: Get vm [ferw-415]
+UUID: dd8494f2-b902-4213-5e3e-f501db96a9a5
+Power State: on
+
+--- VM [417] ---
+INFO: Get vm [ferw-416]
+UUID: 6c7dc868-89ce-4b10-4570-354268882296
+Power State: on
+
+--- VM [418] ---
+INFO: Get vm [ferw-417]
+UUID: 6c74b6c6-5aa8-4de6-42a1-c4249a4adbce
+Power State: on
+
+--- VM [419] ---
+INFO: Get vm [ferw-418]
+UUID: fdb5352b-9d36-4193-5529-d11bdf2fb698
+Power State: on
+
+--- VM [420] ---
+INFO: Get vm [ferw-419]
+UUID: 85f770a9-85a5-4550-7883-647b124fb9bc
+Power State: on
+
+--- VM [421] ---
+INFO: Get vm [ferw-420]
+UUID: 8b285e40-3180-444e-7773-e2cacd7e901e
+Power State: on
+
+--- VM [422] ---
+INFO: Get vm [ferw-421]
+UUID: 3940cbff-b406-4800-660e-1c6a61e2f317
+Power State: on
+
+--- VM [423] ---
+INFO: Get vm [ferw-422]
+UUID: 0e612266-a76a-49db-4e7a-90fd09a34f60
+Power State: on
+
+--- VM [424] ---
+INFO: Get vm [ferw-423]
+UUID: a00cc58d-1db9-48f0-6401-235069b2fff4
+Power State: on
+
+--- VM [425] ---
+INFO: Get vm [ferw-424]
+UUID: 78002585-5df0-4c8c-6751-a4dd5e067298
+Power State: on
+
+--- VM [426] ---
+INFO: Get vm [ferw-425]
+UUID: fe681a1b-12d7-4074-6bf3-c03c6c074678
+Power State: on
+
+--- VM [427] ---
+INFO: Get vm [ferw-426]
+UUID: 08959675-a4f5-414a-7b66-6f6ed7a461a2
+Power State: on
+
+--- VM [428] ---
+INFO: Get vm [ferw-427]
+UUID: 871067f1-f2ff-4372-5815-361432c63b26
+Power State: on
+
+--- VM [429] ---
+INFO: Get vm [ferw-428]
+UUID: 6dfefacb-7a6f-4c7c-6fa5-c01cf7712b0c
+Power State: on
+
+--- VM [430] ---
+INFO: Get vm [ferw-429]
+UUID: 82f1cba4-7428-4007-4b88-cf405294cbb2
+Power State: on
+
+--- VM [431] ---
+INFO: Get vm [ferw-430]
+UUID: a36c2998-6632-4e56-58ca-a0d8005d9472
+Power State: on
+
+--- VM [432] ---
+INFO: Get vm [ferw-431]
+UUID: 2486bd7e-fd2c-472f-462b-ea63cdb5a15a
+Power State: on
+
+--- VM [433] ---
+INFO: Get vm [ferw-432]
+UUID: 64d672c4-6c6c-4429-7d13-55fa40f44ffa
+Power State: on
+
+--- VM [434] ---
+INFO: Get vm [ferw-433]
+UUID: 6ffc1b8e-cbbb-446f-65d1-4e669f73b19a
+Power State: on
+
+--- VM [435] ---
+INFO: Get vm [ferw-434]
+UUID: fcb76690-68ec-4d52-5026-9963e187f6ae
+Power State: on
+
+--- VM [436] ---
+INFO: Get vm [ferw-435]
+UUID: 0a76741a-a318-43fd-7eb8-17eb6dd87730
+Power State: on
+
+--- VM [437] ---
+INFO: Get vm [ferw-436]
+UUID: b963160a-7e7e-45cb-68f6-a5ee686389cd
+Power State: on
+
+--- VM [438] ---
+INFO: Get vm [ferw-437]
+UUID: 1a0270ff-a371-4d2f-7be0-5a79d18eab0f
+Power State: on
+
+--- VM [439] ---
+INFO: Get vm [ferw-438]
+UUID: af0a0f78-4f88-4065-7289-2d211a4d4318
+Power State: on
+
+--- VM [440] ---
+INFO: Get vm [ferw-439]
+UUID: e6020231-813a-4e7f-5aca-6b4d4cc06616
+Power State: on
+
+--- VM [441] ---
+INFO: Get vm [ferw-440]
+UUID: 97b9005d-7b55-4762-6ed4-e10993525f4b
+Power State: on
+
+--- VM [442] ---
+INFO: Get vm [ferw-441]
+UUID: 584b05ba-49af-4b89-4834-3d55fbefc2a7
+Power State: on
+
+--- VM [443] ---
+INFO: Get vm [ferw-442]
+UUID: f2386a2b-bbe6-450a-6d49-e567c88f8705
+Power State: on
+
+--- VM [444] ---
+INFO: Get vm [ferw-443]
+UUID: e14ff44f-a810-4cc9-4385-ffeaf2814175
+Power State: on
+
+--- VM [445] ---
+INFO: Get vm [ferw-444]
+UUID: 42ce2ad7-5e62-41ad-7f19-9a01399a2191
+Power State: on
+
+--- VM [446] ---
+INFO: Get vm [ferw-445]
+UUID: 568accb4-fd5e-4bc4-62a0-e747b99cdef3
+Power State: on
+
+--- VM [447] ---
+INFO: Get vm [ferw-446]
+UUID: 2db58be2-eaf7-466e-4327-4751bffcdc74
+Power State: on
+
+--- VM [448] ---
+INFO: Get vm [ferw-447]
+UUID: f49065ef-63ec-4192-701f-988886861b73
+Power State: on
+
+--- VM [449] ---
+INFO: Get vm [ferw-448]
+UUID: 7c197a71-c80e-4bf5-44e6-7520714f6921
+Power State: on
+
+--- VM [450] ---
+INFO: Get vm [ferw-449]
+UUID: 688e251d-1f78-4fa1-4878-f78736a63b3a
+Power State: on
+
+--- VM [451] ---
+INFO: Get vm [ferw-450]
+UUID: 22e38cb7-4647-4297-6509-a39057cabb0f
+Power State: on
+
+--- VM [452] ---
+INFO: Get vm [ferw-451]
+UUID: 8fe7e4e0-487d-4056-6aad-9eacba943f61
+Power State: on
+
+--- VM [453] ---
+INFO: Get vm [ferw-452]
+UUID: e648f775-ea79-4842-70c9-d419cfd15745
+Power State: on
+
+--- VM [454] ---
+INFO: Get vm [ferw-453]
+UUID: 29d13564-96c3-4ef4-5e10-c0cfd7d18361
+Power State: on
+
+--- VM [455] ---
+INFO: Get vm [ferw-454]
+UUID: 6514f1ba-9d2c-4540-4434-3e5dc913bdc4
+Power State: on
+
+--- VM [456] ---
+INFO: Get vm [ferw-455]
+UUID: 3de4b377-ce33-443c-63e1-891e368438d9
+Power State: on
+
+--- VM [457] ---
+INFO: Get vm [ferw-456]
+UUID: 5f0c5b29-531e-4a82-6a2a-8e233a0a2232
+Power State: on
+
+--- VM [458] ---
+INFO: Get vm [ferw-457]
+UUID: 2b4135fc-83df-44c2-50b2-47d00201437c
+Power State: on
+
+--- VM [459] ---
+INFO: Get vm [ferw-458]
+UUID: 193daa13-788c-4579-5f51-427c2478fb16
+Power State: on
+
+--- VM [460] ---
+INFO: Get vm [ferw-459]
+UUID: 88e0ec1c-5d1a-4fb6-7cba-a12871cacae7
+Power State: on
+
+--- VM [461] ---
+INFO: Get vm [ferw-460]
+UUID: 82b65009-1da9-4490-7afd-dda45a22ce51
+Power State: on
+
+--- VM [462] ---
+INFO: Get vm [ferw-461]
+UUID: 379d62dd-8db2-4359-670b-eb558e570a7f
+Power State: on
+
+--- VM [463] ---
+INFO: Get vm [ferw-462]
+UUID: f934e284-f519-49f9-7067-e2feafc39095
+Power State: on
+
+--- VM [464] ---
+INFO: Get vm [ferw-463]
+UUID: 18d072a3-f081-451b-5f78-6ade135317a7
+Power State: on
+
+--- VM [465] ---
+INFO: Get vm [ferw-464]
+UUID: 9b544586-547d-45cd-4506-0554456b7891
+Power State: on
+
+--- VM [466] ---
+INFO: Get vm [ferw-465]
+UUID: b50f7295-9cc6-4617-68b7-122c72d51c5a
+Power State: on
+
+--- VM [467] ---
+INFO: Get vm [ferw-466]
+UUID: b142daab-efa7-4b5f-40e6-c0f17672e582
+Power State: on
+
+--- VM [468] ---
+INFO: Get vm [ferw-467]
+UUID: d5dfab41-e42c-437b-6415-034961d8983e
+Power State: on
+
+--- VM [469] ---
+INFO: Get vm [ferw-468]
+UUID: 625427ae-0473-4fee-531c-fc6925ea1912
+Power State: on
+
+--- VM [470] ---
+INFO: Get vm [ferw-469]
+UUID: d9eb8cf2-5c40-4a5d-583a-1bf42e900e41
+Power State: on
+
+--- VM [471] ---
+INFO: Get vm [ferw-470]
+UUID: 5460abc9-3cb7-4cf7-4d37-0e8553671ac0
+Power State: on
+
+--- VM [472] ---
+INFO: Get vm [ferw-471]
+UUID: 8ad468ff-17b6-43a5-66fa-c124eb2860c9
+Power State: on
+
+--- VM [473] ---
+INFO: Get vm [ferw-472]
+UUID: c46bfb43-d873-4665-4b6a-7d4a35c9f09a
+Power State: on
+
+--- VM [474] ---
+INFO: Get vm [ferw-473]
+UUID: 35ead851-8afe-4a9e-472d-9dd166b42bf7
+Power State: on
+
+--- VM [475] ---
+INFO: Get vm [ferw-474]
+UUID: 4a791183-9254-4eed-51a9-90a1763c9027
+Power State: on
+
+--- VM [476] ---
+INFO: Get vm [ferw-475]
+UUID: 39778d85-0081-4b41-49e1-bfbd8fb0651f
+Power State: on
+
+--- VM [477] ---
+INFO: Get vm [ferw-476]
+UUID: 0e1d7486-9ea2-430f-4e32-35d9c980584c
+Power State: on
+
+--- VM [478] ---
+INFO: Get vm [ferw-477]
+UUID: 916ba26d-eca7-400b-7527-154e2604f9b1
+Power State: on
+
+--- VM [479] ---
+INFO: Get vm [ferw-478]
+UUID: 70bed41a-2947-4b60-7219-7d36a1b54990
+Power State: on
+
+--- VM [480] ---
+INFO: Get vm [ferw-479]
+UUID: 39cce500-ebc7-4fcd-402a-a66eb1882329
+Power State: on
+
+--- VM [481] ---
+INFO: Get vm [ferw-480]
+UUID: 4dc776b7-ad93-4c37-4ea9-1166bd479dd5
+Power State: on
+
+--- VM [482] ---
+INFO: Get vm [ferw-481]
+UUID: fda81c5c-9d07-4807-4f9d-66e82cdf3665
+Power State: on
+
+--- VM [483] ---
+INFO: Get vm [ferw-482]
+UUID: 2e300bdd-11a6-42ae-4271-73853d2382f6
+Power State: on
+
+--- VM [484] ---
+INFO: Get vm [ferw-483]
+UUID: bac8fa60-1d57-45ad-69ba-b9c045bde39e
+Power State: on
+
+--- VM [485] ---
+INFO: Get vm [ferw-484]
+UUID: a7a2dd0e-f61d-4f4d-70a8-3ea2bb7d0081
+Power State: on
+
+--- VM [486] ---
+INFO: Get vm [ferw-485]
+UUID: 962e0b05-c251-4494-6302-45cef551e38d
+Power State: on
+
+--- VM [487] ---
+INFO: Get vm [ferw-486]
+UUID: 3d8017ce-b289-4f74-427d-c1cabd6d38d2
+Power State: on
+
+--- VM [488] ---
+INFO: Get vm [ferw-487]
+UUID: d35922c2-cb91-4b50-576d-20ee4d12b954
+Power State: on
+
+--- VM [489] ---
+INFO: Get vm [ferw-488]
+UUID: 7ad877fc-5a84-495e-57a1-36742071d3ac
+Power State: on
+
+--- VM [490] ---
+INFO: Get vm [ferw-489]
+UUID: d688969f-defe-4532-464f-aecf00eee341
+Power State: on
+
+--- VM [491] ---
+INFO: Get vm [ferw-490]
+UUID: 1f397ac0-5f7c-41a1-7adf-dbecfa45019f
+Power State: on
+
+--- VM [492] ---
+INFO: Get vm [ferw-491]
+UUID: 3c757168-010d-4a73-7afc-4c38b68b6b16
+Power State: on
+
+--- VM [493] ---
+INFO: Get vm [ferw-492]
+UUID: 608961f7-c69b-44d2-427b-65f3e866b88d
+Power State: on
+
+--- VM [494] ---
+INFO: Get vm [ferw-493]
+UUID: 077dfd2e-f646-4891-68b7-423335b23260
+Power State: on
+
+--- VM [495] ---
+INFO: Get vm [ferw-494]
+UUID: ecbb7918-c3e7-4ce0-6a85-3d319e6e22e7
+Power State: on
+
+--- VM [496] ---
+INFO: Get vm [ferw-495]
+UUID: f651b1ac-c9c0-4426-52ca-82121f7783b6
+Power State: on
+
+--- VM [497] ---
+INFO: Get vm [ferw-496]
+UUID: 408377b5-89b0-4b3f-6ec4-6dd62e39c614
+Power State: on
+
+--- VM [498] ---
+INFO: Get vm [ferw-497]
+UUID: 1201ba7f-0f7a-4935-7598-571955df879a
+Power State: on
+
+--- VM [499] ---
+INFO: Get vm [ferw-498]
+UUID: e4792be1-2c62-49ed-71d3-62a596c44b38
+Power State: on
+
+--- VM [500] ---
+INFO: Get vm [ferw-499]
+UUID: 89eee217-acd8-4e6a-708a-1bd0ea8347ce
+Power State: on
+
+================================================================================
+Processing batch [2/8] - Offset: 500
+================================================================================
+
+--- VM [501] ---
+INFO: Get vm [ferw-500]
+UUID: 60dbb4a0-3b11-4ce2-4cc1-84d07c2b04c1
+Power State: on
+
+--- VM [502] ---
+INFO: Get vm [ferw-501]
+UUID: 213dbd62-96b4-4748-78d3-035aed81f7bf
+Power State: on
+
+--- VM [503] ---
+INFO: Get vm [ferw-502]
+UUID: 43f065eb-4f6c-4c83-4a36-01ee3e192352
+Power State: on
+
+--- VM [504] ---
+INFO: Get vm [ferw-503]
+UUID: d7569391-17d5-48b1-57bc-9be811561c40
+Power State: on
+
+--- VM [505] ---
+INFO: Get vm [ferw-504]
+UUID: 49be04ce-7725-4da8-7d0e-94739321e029
+Power State: on
+
+--- VM [506] ---
+INFO: Get vm [ferw-505]
+UUID: e980c4a0-5b63-47c9-675d-e6287014408d
+Power State: on
+
+--- VM [507] ---
+INFO: Get vm [ferw-506]
+UUID: 5c279892-9086-48f3-4a74-3c734e9fe14f
+Power State: on
+
+--- VM [508] ---
+INFO: Get vm [ferw-507]
+UUID: 52c6e784-1de7-451e-673a-ef2932c4ed93
+Power State: on
+
+--- VM [509] ---
+INFO: Get vm [ferw-508]
+UUID: 89e359a2-c90f-455b-4f8e-5bbba14896d1
+Power State: on
+
+--- VM [510] ---
+INFO: Get vm [ferw-509]
+UUID: d33d3628-c0a3-44ec-51c9-2c82086b7a06
+Power State: on
+
+--- VM [511] ---
+INFO: Get vm [ferw-510]
+UUID: 27529fed-e44b-4d35-6e55-8e9a2293f28a
+Power State: on
+
+--- VM [512] ---
+INFO: Get vm [ferw-511]
+UUID: 8bf8b5c1-8291-4788-65b1-f3183a93e655
+Power State: on
+
+--- VM [513] ---
+INFO: Get vm [ferw-512]
+UUID: c87105ec-1382-42ae-4fd8-48c7edc29706
+Power State: on
+
+--- VM [514] ---
+INFO: Get vm [ferw-513]
+UUID: eb4c9a79-f8ff-450d-4203-3631f127124f
+Power State: on
+
+--- VM [515] ---
+INFO: Get vm [ferw-514]
+UUID: 920dce7c-db0a-4691-5642-6ddcd1afd8a1
+Power State: on
+
+--- VM [516] ---
+INFO: Get vm [ferw-515]
+UUID: 84e08565-dbd1-43e4-7ae5-bed574423527
+Power State: on
+
+--- VM [517] ---
+INFO: Get vm [ferw-516]
+UUID: c38d6647-16ad-44e7-5a83-ac84e170a1df
+Power State: on
+
+--- VM [518] ---
+INFO: Get vm [ferw-517]
+UUID: edaadc87-f6bb-4b61-7e95-5b28334e1aa8
+Power State: on
+
+--- VM [519] ---
+INFO: Get vm [ferw-518]
+UUID: e49efc94-30b7-4425-7058-bf6fb2aff32a
+Power State: on
+
+--- VM [520] ---
+INFO: Get vm [ferw-519]
+UUID: f0ed463c-03c1-4aea-4581-c0a8ceb7ef45
+Power State: on
+
+--- VM [521] ---
+INFO: Get vm [ferw-520]
+UUID: c1c87c4c-672c-4226-7d96-0babaf32535c
+Power State: on
+
+--- VM [522] ---
+INFO: Get vm [ferw-521]
+UUID: ef366fd4-9c24-45d1-67c1-540a0a500140
+Power State: on
+
+--- VM [523] ---
+INFO: Get vm [ferw-522]
+UUID: d3387b19-331a-41e3-4b9a-6ded9cbe59ab
+Power State: on
+
+--- VM [524] ---
+INFO: Get vm [ferw-523]
+UUID: 1c389b17-a1bf-4839-4fa5-e22fcd844774
+Power State: on
+
+--- VM [525] ---
+INFO: Get vm [ferw-524]
+UUID: 987ca796-d590-4e39-4872-61ddddb7f230
+Power State: on
+
+--- VM [526] ---
+INFO: Get vm [ferw-525]
+UUID: 3e311225-1ac5-452f-7c21-163147f04152
+Power State: on
+
+--- VM [527] ---
+INFO: Get vm [ferw-526]
+UUID: 17a083bd-5678-4189-75af-4925ef387688
+Power State: on
+
+--- VM [528] ---
+INFO: Get vm [ferw-527]
+UUID: 55068c14-00ed-4679-59e7-dbaca0a7e257
+Power State: on
+
+--- VM [529] ---
+INFO: Get vm [ferw-528]
+UUID: 9146a92a-713b-43ed-7177-0268153d735d
+Power State: on
+
+--- VM [530] ---
+INFO: Get vm [ferw-529]
+UUID: 9dbfce7f-f2a3-49cc-4e12-6e7501298266
+Power State: on
+
+--- VM [531] ---
+INFO: Get vm [ferw-530]
+UUID: 0388c70e-c28b-471c-56ea-33e541e6fa1c
+Power State: on
+
+--- VM [532] ---
+INFO: Get vm [ferw-531]
+UUID: b3403885-a419-40a4-731e-48d5c9d1acdd
+Power State: on
+
+--- VM [533] ---
+INFO: Get vm [ferw-532]
+UUID: 76457f61-64fc-4cc6-7990-37853a41aa76
+Power State: on
+
+--- VM [534] ---
+INFO: Get vm [ferw-533]
+UUID: 412ad638-2042-4fe8-5d96-25382176e309
+Power State: on
+
+--- VM [535] ---
+INFO: Get vm [ferw-534]
+UUID: 4d3f3ffe-0de6-4e71-62f0-6dd76a836812
+Power State: on
+
+--- VM [536] ---
+INFO: Get vm [ferw-535]
+UUID: afb33280-4b51-4f02-7dc7-875100d2cc41
+Power State: on
+
+--- VM [537] ---
+INFO: Get vm [ferw-536]
+UUID: 6dd18db3-84eb-4519-46ab-d7b1aece09c2
+Power State: on
+
+--- VM [538] ---
+INFO: Get vm [ferw-537]
+UUID: 6031881f-f07e-451a-4005-94fdfba96709
+Power State: on
+
+--- VM [539] ---
+INFO: Get vm [ferw-538]
+UUID: a7e04062-eeee-4ece-6a57-416b1af3e19a
+Power State: on
+
+--- VM [540] ---
+INFO: Get vm [ferw-539]
+UUID: b10f07c1-f520-4255-5ab2-765a150d98b0
+Power State: on
+
+--- VM [541] ---
+INFO: Get vm [ferw-540]
+UUID: 4f4efaf9-2e67-4212-57af-f635709c660e
+Power State: on
+
+--- VM [542] ---
+INFO: Get vm [ferw-541]
+UUID: 38495616-97aa-48aa-7db6-7148c9b94381
+Power State: on
+
+--- VM [543] ---
+INFO: Get vm [ferw-542]
+UUID: c4c3d863-624f-441b-53ef-7c1e6f15384e
+Power State: on
+
+--- VM [544] ---
+INFO: Get vm [ferw-543]
+UUID: e76ce16c-ca7b-4ce3-5f35-14aa2be613bd
+Power State: on
+
+--- VM [545] ---
+INFO: Get vm [ferw-544]
+UUID: aa0b144f-345a-4d36-7d0a-4bbe14e4a025
+Power State: on
+
+--- VM [546] ---
+INFO: Get vm [ferw-545]
+UUID: a8370930-769d-4ffd-5db8-a02286bced5e
+Power State: on
+
+--- VM [547] ---
+INFO: Get vm [ferw-546]
+UUID: 6be3d7d3-27b1-4b0b-5be3-70d0847dcc29
+Power State: on
+
+--- VM [548] ---
+INFO: Get vm [ferw-547]
+UUID: ceaacc0a-edb4-4a81-60d5-50a60cbeb7bc
+Power State: on
+
+--- VM [549] ---
+INFO: Get vm [ferw-548]
+UUID: 41fb578b-20ea-4745-5c91-837a5c17f8df
+Power State: on
+
+--- VM [550] ---
+INFO: Get vm [ferw-549]
+UUID: 14171751-c5aa-4b41-5efa-45bc0d8c1159
+Power State: on
+
+--- VM [551] ---
+INFO: Get vm [ferw-550]
+UUID: e1c4b0cb-d58b-46b6-566e-f0b5e5e86251
+Power State: on
+
+--- VM [552] ---
+INFO: Get vm [ferw-551]
+UUID: a1444b5d-fe02-44e4-43a8-7dfe33e50704
+Power State: on
+
+--- VM [553] ---
+INFO: Get vm [ferw-552]
+UUID: 9f9e9ffb-bcb7-48a6-40cd-12270527bb32
+Power State: on
+
+--- VM [554] ---
+INFO: Get vm [ferw-553]
+UUID: a4bb9c03-e6e5-489a-74f0-d11628e98e34
+Power State: on
+
+--- VM [555] ---
+INFO: Get vm [ferw-554]
+UUID: 8cdfe361-3761-4d32-6007-d24a9b2431a9
+Power State: on
+
+--- VM [556] ---
+INFO: Get vm [ferw-555]
+UUID: f152960f-991f-49de-6ad5-ec677e763ead
+Power State: on
+
+--- VM [557] ---
+INFO: Get vm [ferw-556]
+UUID: 9751d63e-b4b5-4c0a-5c01-efdc0582b0e3
+Power State: on
+
+--- VM [558] ---
+INFO: Get vm [ferw-557]
+UUID: 846f9afc-ebba-4d15-6d8b-b7fea7bb5fd8
+Power State: on
+
+--- VM [559] ---
+INFO: Get vm [ferw-558]
+UUID: b65ca8e4-a360-4bd5-50cb-5880a512df41
+Power State: on
+
+--- VM [560] ---
+INFO: Get vm [ferw-559]
+UUID: 8adbb4fc-96f2-4c93-5f96-60ea1e1f80f9
+Power State: on
+
+--- VM [561] ---
+INFO: Get vm [ferw-560]
+UUID: 6551c841-10aa-4a6a-58aa-ca2b86e41246
+Power State: on
+
+--- VM [562] ---
+INFO: Get vm [ferw-561]
+UUID: d90e7ad4-ef8e-4592-5abe-f8431643eb6b
+Power State: on
+
+--- VM [563] ---
+INFO: Get vm [ferw-562]
+UUID: 185e051d-dd1a-4a12-6745-9315fa171ee9
+Power State: on
+
+--- VM [564] ---
+INFO: Get vm [ferw-563]
+UUID: 77bdc7a1-c654-4216-5d75-1618158e7a15
+Power State: on
+
+--- VM [565] ---
+INFO: Get vm [ferw-564]
+UUID: dd3e5502-d9b7-425e-7476-f1269e6ef1ba
+Power State: on
+
+--- VM [566] ---
+INFO: Get vm [ferw-565]
+UUID: 42e02b0f-01c9-4a7a-538c-8dac26c102ce
+Power State: on
+
+--- VM [567] ---
+INFO: Get vm [ferw-566]
+UUID: 6378d18f-c97d-4db8-652e-6c8ee35d45bb
+Power State: on
+
+--- VM [568] ---
+INFO: Get vm [ferw-567]
+UUID: 59a597de-5ad8-4460-5cda-12f70c4967e4
+Power State: on
+
+--- VM [569] ---
+INFO: Get vm [ferw-568]
+UUID: c748dda6-310a-410b-4a42-20b136aa8abe
+Power State: on
+
+--- VM [570] ---
+INFO: Get vm [ferw-569]
+UUID: e177e225-8a18-44f1-6700-6e2b5779cf9d
+Power State: on
+
+--- VM [571] ---
+INFO: Get vm [ferw-570]
+UUID: 8b12b341-ecb2-444b-76eb-db60e8e7fd1f
+Power State: on
+
+--- VM [572] ---
+INFO: Get vm [ferw-571]
+UUID: 1314e5ea-5146-4d83-5536-f533647c7711
+Power State: on
+
+--- VM [573] ---
+INFO: Get vm [ferw-572]
+UUID: 9a6eb5d2-b0ef-47f7-440a-61ddc59624b0
+Power State: on
+
+--- VM [574] ---
+INFO: Get vm [ferw-573]
+UUID: c6065758-cd21-4b70-4d28-e595babaa373
+Power State: on
+
+--- VM [575] ---
+INFO: Get vm [ferw-574]
+UUID: 892ad0e4-1e94-469b-7297-b06fa3977adb
+Power State: on
+
+--- VM [576] ---
+INFO: Get vm [ferw-575]
+UUID: ebb6dc60-7d61-4750-5cd9-887d1f8d7740
+Power State: on
+
+--- VM [577] ---
+INFO: Get vm [ferw-576]
+UUID: 8ed08f52-719d-480b-665f-2bcc5fe06e7f
+Power State: on
+
+--- VM [578] ---
+INFO: Get vm [ferw-577]
+UUID: ab9a4c30-bfab-4ca7-6f4d-ac46310dadd3
+Power State: on
+
+--- VM [579] ---
+INFO: Get vm [ferw-578]
+UUID: b643fe14-d321-4dee-6952-fb5147c862b3
+Power State: on
+
+--- VM [580] ---
+INFO: Get vm [ferw-579]
+UUID: 15aaf199-83a9-4375-50fe-38aa5a169920
+Power State: on
+
+--- VM [581] ---
+INFO: Get vm [ferw-580]
+UUID: df7ebfdc-0766-4bd5-6acd-e6363b6c21d1
+Power State: on
+
+--- VM [582] ---
+INFO: Get vm [ferw-581]
+UUID: 9b20f8d8-98bf-496e-7988-c73f502b894c
+Power State: on
+
+--- VM [583] ---
+INFO: Get vm [ferw-582]
+UUID: bd5427d9-7f51-4a9d-6a58-36c95b941935
+Power State: on
+
+--- VM [584] ---
+INFO: Get vm [ferw-583]
+UUID: 76a16e75-c63e-466e-5d2d-899482c91162
+Power State: on
+
+--- VM [585] ---
+INFO: Get vm [ferw-584]
+UUID: 0b7a9f5b-4f31-4b9d-4a24-f89653fe79c2
+Power State: on
+
+--- VM [586] ---
+INFO: Get vm [ferw-585]
+UUID: d703d845-bdbb-4a10-62d3-de637c20dc45
+Power State: on
+
+--- VM [587] ---
+INFO: Get vm [ferw-586]
+UUID: 07046a89-5fc7-4c7c-4178-2c90bfc704c6
+Power State: on
+
+--- VM [588] ---
+INFO: Get vm [ferw-587]
+UUID: 70f53d45-c875-4581-4549-dc8fe2538ec0
+Power State: on
+
+--- VM [589] ---
+INFO: Get vm [ferw-588]
+UUID: dab40b10-1ec1-4668-4ee9-159a9a75af3f
+Power State: on
+
+--- VM [590] ---
+INFO: Get vm [ferw-589]
+UUID: 9bd68e32-7fc1-44e2-6a6c-6c1794aab2ad
+Power State: on
+
+--- VM [591] ---
+INFO: Get vm [ferw-590]
+UUID: ce33f0eb-b769-4a1b-6de1-95dd1aad9c2a
+Power State: on
+
+--- VM [592] ---
+INFO: Get vm [ferw-591]
+UUID: 6349dc9f-ddac-469e-4ec5-1b106e7048a9
+Power State: on
+
+--- VM [593] ---
+INFO: Get vm [ferw-592]
+UUID: 17dfeb1e-815b-4295-6934-ba2b10b58b47
+Power State: on
+
+--- VM [594] ---
+INFO: Get vm [ferw-593]
+UUID: d01b7c1b-515a-431b-733c-b553f41058ef
+Power State: on
+
+--- VM [595] ---
+INFO: Get vm [ferw-594]
+UUID: e9114c04-cbf3-4569-4c42-ff834d34b62b
+Power State: on
+
+--- VM [596] ---
+INFO: Get vm [ferw-595]
+UUID: 1b44a04c-203c-4d9c-769f-f987e9c77671
+Power State: on
+
+--- VM [597] ---
+INFO: Get vm [ferw-596]
+UUID: cf684b93-9e43-4b58-6c66-eb8e8a4b3532
+Power State: on
+
+--- VM [598] ---
+INFO: Get vm [ferw-597]
+UUID: d1265961-504b-4a4e-61c2-0b3233ed1009
+Power State: on
+
+--- VM [599] ---
+INFO: Get vm [ferw-598]
+UUID: 462ec9ef-3fd4-45a4-73f3-4730e55ef1b5
+Power State: on
+
+--- VM [600] ---
+INFO: Get vm [ferw-599]
+UUID: f2da2683-7c28-4975-6bbb-d3225b559899
+Power State: on
+
+--- VM [601] ---
+INFO: Get vm [ferw-600]
+UUID: 206b37d5-3dd7-42b8-7568-50c258a495b5
+Power State: on
+
+--- VM [602] ---
+INFO: Get vm [test]
+UUID: cbd82017-70ae-495c-584a-fa984c7a69ef
+Power State: on
+
+--- VM [603] ---
+INFO: Get vm [test-001]
+UUID: 7bcc824a-97bd-4058-7e46-42622ace2906
+Power State: on
+
+--- VM [604] ---
+INFO: Get vm [test-002]
+UUID: ed0edf2c-8305-43d3-570a-6b8bdb61bb7e
+Power State: on
+
+--- VM [605] ---
+INFO: Get vm [test-003]
+UUID: f30d5770-3b1d-40f4-631c-1a6a15e0c863
+Power State: on
+
+--- VM [606] ---
+INFO: Get vm [test-004]
+UUID: 60fbe9c0-c53f-4068-6525-a52c9d08e25e
+Power State: on
+
+--- VM [607] ---
+INFO: Get vm [test-005]
+UUID: 72143609-99b9-4f97-7856-e669bc19df5f
+Power State: on
+
+--- VM [608] ---
+INFO: Get vm [test-008]
+UUID: 9ab3d524-0dd8-4332-5ff0-c4500a7c03d9
+Power State: on
+
+--- VM [609] ---
+INFO: Get vm [test-009]
+UUID: 963dc2a2-b26f-49c1-432b-9b5fab97522e
+Power State: on
+
+--- VM [610] ---
+INFO: Get vm [test-010]
+UUID: d28e0ee0-006f-4a52-4663-79f32b569d7a
+Power State: on
+
+--- VM [611] ---
+INFO: Get vm [test-012]
+UUID: e1653c7e-6517-42fe-7439-418eaa075c72
+Power State: on
+
+--- VM [612] ---
+INFO: Get vm [test-013]
+UUID: 72d47653-202c-4d31-5cbc-5281c5f992e0
+Power State: on
+
+--- VM [613] ---
+INFO: Get vm [test-014]
+UUID: 46dfdaa9-4869-4123-52f1-6afca9253867
+Power State: on
+
+--- VM [614] ---
+INFO: Get vm [test-016]
+UUID: b95bba46-282d-41ad-50f7-890fc9cb076c
+Power State: on
+
+--- VM [615] ---
+INFO: Get vm [test-017]
+UUID: c43c7521-9a5d-4ed6-582b-90ecab49ba38
+Power State: on
+
+--- VM [616] ---
+INFO: Get vm [test-018]
+UUID: 5b11bfe8-7fc4-4d62-4f13-1432ec31e5d8
+Power State: on
+
+--- VM [617] ---
+INFO: Get vm [test-019]
+UUID: 413ee62a-6c3b-4d24-4395-3cce432abb27
+Power State: on
+
+--- VM [618] ---
+INFO: Get vm [test-020]
+UUID: fdbf360f-5d37-4ecd-6922-8625d1d3a97e
+Power State: on
+
+--- VM [619] ---
+INFO: Get vm [test-022]
+UUID: f1430c56-c5a1-4a8f-4cbc-b1670b0d3269
+Power State: on
+
+--- VM [620] ---
+INFO: Get vm [test-024]
+UUID: 4bbb2264-a8cf-4eb3-7fc9-e00fee2814ce
+Power State: on
+
+--- VM [621] ---
+INFO: Get vm [test-025]
+UUID: 9871d17c-10ea-457f-548c-18cd461b0a0a
+Power State: on
+
+--- VM [622] ---
+INFO: Get vm [test-027]
+UUID: a9d6f277-1dc1-42df-75f9-840115046c0f
+Power State: on
+
+--- VM [623] ---
+INFO: Get vm [test-028]
+UUID: 5bd2da19-76f7-4a26-59ab-b63d96870779
+Power State: on
+
+--- VM [624] ---
+INFO: Get vm [test-029]
+UUID: 44b08316-1f37-48d4-68d3-9167ac2e64db
+Power State: on
+
+--- VM [625] ---
+INFO: Get vm [test-030]
+UUID: 56a2eab8-2739-4023-5f2a-35cde5ccd978
+Power State: on
+
+--- VM [626] ---
+INFO: Get vm [test-031]
+UUID: c4c5762f-5751-40e0-601b-050ee2da272e
+Power State: on
+
+--- VM [627] ---
+INFO: Get vm [test-032]
+UUID: f1dca7c2-88b5-4ae1-722f-691b50f3ba34
+Power State: on
+
+--- VM [628] ---
+INFO: Get vm [test-033]
+UUID: bb846f27-e95b-41ae-6718-e0c93edfa3ec
+Power State: on
+
+--- VM [629] ---
+INFO: Get vm [test-034]
+UUID: d9f53047-8fa6-43ca-7907-97ebb4761ae0
+Power State: on
+
+--- VM [630] ---
+INFO: Get vm [test-035]
+UUID: 423b1166-dce3-418c-46a8-53e7e1514fb3
+Power State: on
+
+--- VM [631] ---
+INFO: Get vm [test-036]
+UUID: 42293a97-4f32-4395-422c-60f96b2e66bc
+Power State: on
+
+--- VM [632] ---
+INFO: Get vm [test-037]
+UUID: 4948d39f-49b7-4002-5945-c53be429e94b
+Power State: on
+
+--- VM [633] ---
+INFO: Get vm [test-038]
+UUID: b28c41de-4939-4b3c-5655-fb0baed3e537
+Power State: on
+
+--- VM [634] ---
+INFO: Get vm [test-039]
+UUID: b7160f23-88ab-4bfe-67cf-1ada7cebc67a
+Power State: on
+
+--- VM [635] ---
+INFO: Get vm [test-040]
+UUID: 9bd4cb60-62a0-4bf8-6e58-6f80fccdf610
+Power State: on
+
+--- VM [636] ---
+INFO: Get vm [test-041]
+UUID: 4848577d-b8bb-4823-556d-3c1b20c5f996
+Power State: on
+
+--- VM [637] ---
+INFO: Get vm [test-042]
+UUID: 962c147b-e78a-4272-5a42-a044f22f0de2
+Power State: on
+
+--- VM [638] ---
+INFO: Get vm [test-043]
+UUID: a3414772-9d38-468d-6bac-f3534d33b434
+Power State: on
+
+--- VM [639] ---
+INFO: Get vm [test-044]
+UUID: 50b5d9bf-ea50-4fbc-7317-4ff070cb1faf
+Power State: on
+
+--- VM [640] ---
+INFO: Get vm [test-045]
+UUID: 6fed1e8b-7941-422c-6a79-9270c2ad46de
+Power State: on
+
+--- VM [641] ---
+INFO: Get vm [test-047]
+UUID: fe5a086e-1f97-44cb-46d9-e1fbb5145d8b
+Power State: on
+
+--- VM [642] ---
+INFO: Get vm [test-051]
+UUID: ca4a4e0c-7728-49ff-78ee-0748832f66a1
+Power State: on
+
+--- VM [643] ---
+INFO: Get vm [test-052]
+UUID: e34422cf-409d-40ec-7baf-ed708a99ecac
+Power State: on
+
+--- VM [644] ---
+INFO: Get vm [test-053]
+UUID: 637b5395-725b-43e5-76d6-0958b8f1dabb
+Power State: on
+
+--- VM [645] ---
+INFO: Get vm [test-054]
+UUID: a897aa1e-5954-438e-48a2-bffaf92a7d12
+Power State: on
+
+--- VM [646] ---
+INFO: Get vm [test-055]
+UUID: 37ca0b5c-73c2-4005-4a1e-9011a6f5d795
+Power State: on
+
+--- VM [647] ---
+INFO: Get vm [test-056]
+UUID: 6e5e53bc-b0ea-476e-534c-b27b9ca16afb
+Power State: on
+
+--- VM [648] ---
+INFO: Get vm [test-057]
+UUID: f55e21b1-b3a7-445e-7384-036618fec783
+Power State: on
+
+--- VM [649] ---
+INFO: Get vm [test-058]
+UUID: 3594f651-12b7-49fa-7834-7e9393bb84aa
+Power State: on
+
+--- VM [650] ---
+INFO: Get vm [test-060]
+UUID: 3b3ee3bd-4d86-4d1d-63f8-fb8a6880a809
+Power State: on
+
+--- VM [651] ---
+INFO: Get vm [test-061]
+UUID: 724920f0-736e-4ba9-4ed5-be860cdc8d46
+Power State: on
+
+--- VM [652] ---
+INFO: Get vm [test-062]
+UUID: 657c6db4-4bb8-49cd-6d27-ad4a9252b6d7
+Power State: on
+
+--- VM [653] ---
+INFO: Get vm [test-063]
+UUID: d4563ec3-c8f6-4b1a-4883-6f51d28fc345
+Power State: on
+
+--- VM [654] ---
+INFO: Get vm [test-064]
+UUID: 51abc8ca-eef7-4442-6775-69f8aaed0c1f
+Power State: on
+
+--- VM [655] ---
+INFO: Get vm [test-065]
+UUID: daf20b01-a5ec-49d9-7b97-9ee9450faa8c
+Power State: on
+
+--- VM [656] ---
+INFO: Get vm [test-067]
+UUID: 8b35664b-0032-4d9d-49bc-6b36caaa6b6d
+Power State: on
+
+--- VM [657] ---
+INFO: Get vm [test-069]
+UUID: a60b131e-110c-401e-646e-29b35c54eba7
+Power State: on
+
+--- VM [658] ---
+INFO: Get vm [test-070]
+UUID: 3fce94e8-ca07-4c0f-4d0f-932d6d73e65c
+Power State: on
+
+--- VM [659] ---
+INFO: Get vm [test-071]
+UUID: 4a3c193f-83e5-4b5e-6fab-b4e83f467d9b
+Power State: on
+
+--- VM [660] ---
+INFO: Get vm [test-072]
+UUID: fe19b6f6-8c42-4b5a-4866-f503749f0de7
+Power State: on
+
+--- VM [661] ---
+INFO: Get vm [test-075]
+UUID: a6f18cbb-adf9-40ac-5413-1ae5db361cbf
+Power State: on
+
+--- VM [662] ---
+INFO: Get vm [test-076]
+UUID: d7e10e45-25cc-44de-56f6-e10c88bc992a
+Power State: on
+
+--- VM [663] ---
+INFO: Get vm [test-077]
+UUID: 636da9b6-a220-42ad-49a9-73b745f47d98
+Power State: on
+
+--- VM [664] ---
+INFO: Get vm [test-078]
+UUID: aaff4e37-10e7-47e9-7838-c8da3daf31c7
+Power State: on
+
+--- VM [665] ---
+INFO: Get vm [test-079]
+UUID: 92fa4601-1b87-4aa1-570c-7f9feaa0d832
+Power State: on
+
+--- VM [666] ---
+INFO: Get vm [test-080]
+UUID: b81a1dd8-a1fe-4feb-6939-155c3c9fd858
+Power State: on
+
+--- VM [667] ---
+INFO: Get vm [test-081]
+UUID: cca03095-6f62-4359-6b90-77487ea75ba9
+Power State: on
+
+--- VM [668] ---
+INFO: Get vm [test-082]
+UUID: d1d5ff9e-94ed-42e7-565b-9c6d062ec842
+Power State: on
+
+--- VM [669] ---
+INFO: Get vm [test-083]
+UUID: 5510706f-8897-41f2-580c-6d212db57b1d
+Power State: on
+
+--- VM [670] ---
+INFO: Get vm [test-084]
+UUID: 4d0c7880-45f0-48fa-7766-8e7ca39027e0
+Power State: on
+
+--- VM [671] ---
+INFO: Get vm [test-085]
+UUID: 9b9256a2-04f1-4348-5de1-a3f2abfb7152
+Power State: on
+
+--- VM [672] ---
+INFO: Get vm [test-086]
+UUID: 373e577f-b461-4d52-7044-ab5301600ebf
+Power State: on
+
+--- VM [673] ---
+INFO: Get vm [test-087]
+UUID: b92801de-4331-4be4-6714-8cb2c27b4da3
+Power State: on
+
+--- VM [674] ---
+INFO: Get vm [test-088]
+UUID: 72dd9377-730f-44d9-4709-cfbab202c4df
+Power State: on
+
+--- VM [675] ---
+INFO: Get vm [test-089]
+UUID: 7c82477e-ea00-4cee-58e0-ea99aea5c37e
+Power State: on
+
+--- VM [676] ---
+INFO: Get vm [test-090]
+UUID: db932c81-4c05-419e-7ee3-8627ccc2d794
+Power State: on
+
+--- VM [677] ---
+INFO: Get vm [test-091]
+UUID: c2332c8d-32c7-455f-4550-8c4ad50904e7
+Power State: on
+
+--- VM [678] ---
+INFO: Get vm [test-092]
+UUID: 35f848c0-b5e9-4dd5-660b-730524560cbe
+Power State: on
+
+--- VM [679] ---
+INFO: Get vm [test-093]
+UUID: 77f8ee57-3ee9-4011-7755-bb4464278b5b
+Power State: on
+
+--- VM [680] ---
+INFO: Get vm [test-094]
+UUID: f6bd0789-d872-4eff-5152-f1f8ed01a070
+Power State: on
+
+--- VM [681] ---
+INFO: Get vm [test-098]
+UUID: 4c66e9e6-de89-4d4d-774d-cfb1a6d631ca
+Power State: on
+
+--- VM [682] ---
+INFO: Get vm [test-099]
+UUID: 45a32c0a-4bb6-4fcd-679e-dee151848b25
+Power State: on
+
+--- VM [683] ---
+INFO: Get vm [test-100]
+UUID: 923e81f3-51b7-4f4b-6f24-1eb8edd885f6
+Power State: on
+
+--- VM [684] ---
+INFO: Get vm [test-101]
+UUID: aff968b7-9da5-46f9-73e6-42ac78fee6d5
+Power State: on
+
+--- VM [685] ---
+INFO: Get vm [test-103]
+UUID: feea4ee5-b71b-4742-65de-8159353668e8
+Power State: on
+
+--- VM [686] ---
+INFO: Get vm [test-104]
+UUID: fe384e68-8c9f-4dd3-6d5f-e4f4fc4a68fb
+Power State: on
+
+--- VM [687] ---
+INFO: Get vm [test-105]
+UUID: 50269512-3bdc-41f6-7272-82da4e402145
+Power State: on
+
+--- VM [688] ---
+INFO: Get vm [test-106]
+UUID: 78e0a3da-815e-40fa-696f-81388e6d0033
+Power State: on
+
+--- VM [689] ---
+INFO: Get vm [test-108]
+UUID: 542299e3-1a27-4f0d-7c55-f3db38237686
+Power State: on
+
+--- VM [690] ---
+INFO: Get vm [test-109]
+UUID: 99d3d935-944d-430b-5b1b-db4951713805
+Power State: on
+
+--- VM [691] ---
+INFO: Get vm [test-110]
+UUID: 48435f09-2f75-4202-440f-68a30409d18f
+Power State: on
+
+--- VM [692] ---
+INFO: Get vm [test-111]
+UUID: 3f32165e-b7d1-49a6-45da-5fcf9d426912
+Power State: on
+
+--- VM [693] ---
+INFO: Get vm [test-113]
+UUID: c0491fd9-0c49-4c7e-7a10-f0664224d2c9
+Power State: on
+
+--- VM [694] ---
+INFO: Get vm [test-114]
+UUID: b49d7a4c-8e88-480b-7de3-027a1b8fa943
+Power State: on
+
+--- VM [695] ---
+INFO: Get vm [test-115]
+UUID: c917a0ca-f094-42a5-4cb6-d6fcc64a4b9c
+Power State: on
+
+--- VM [696] ---
+INFO: Get vm [test-116]
+UUID: 723a7062-b705-4c76-4ad5-d48aad149448
+Power State: on
+
+--- VM [697] ---
+INFO: Get vm [test-117]
+UUID: e078fc88-78ec-48f9-5d4c-e0101f28c605
+Power State: on
+
+--- VM [698] ---
+INFO: Get vm [test-118]
+UUID: e88bba69-0407-493b-670f-f6dd3641fba7
+Power State: on
+
+--- VM [699] ---
+INFO: Get vm [test-119]
+UUID: 8e2cd7b2-fd89-48b9-6c61-91b48344c4f7
+Power State: on
+
+--- VM [700] ---
+INFO: Get vm [test-121]
+UUID: 8de7bae8-0c2f-4c50-44e8-6d4937660db6
+Power State: on
+
+--- VM [701] ---
+INFO: Get vm [test-123]
+UUID: e20a6650-f481-415e-5936-21a0c88c03a6
+Power State: on
+
+--- VM [702] ---
+INFO: Get vm [test-124]
+UUID: a7e4d9b7-0ca7-4628-7b7d-5101a85bf1ab
+Power State: on
+
+--- VM [703] ---
+INFO: Get vm [test-125]
+UUID: b1452798-6862-4e98-6ea5-cc0676ce211e
+Power State: on
+
+--- VM [704] ---
+INFO: Get vm [test-126]
+UUID: b3e04959-52dc-442f-680d-ffdb62d4e2f4
+Power State: on
+
+--- VM [705] ---
+INFO: Get vm [test-127]
+UUID: 83fb6296-c73b-4326-5731-ebc679817c6f
+Power State: on
+
+--- VM [706] ---
+INFO: Get vm [test-128]
+UUID: 485d12a5-32f4-4c4c-6928-a246225522c0
+Power State: on
+
+--- VM [707] ---
+INFO: Get vm [test-129]
+UUID: 742f1130-69d3-425e-605b-16ed75811668
+Power State: on
+
+--- VM [708] ---
+INFO: Get vm [test-130]
+UUID: a29dace2-654d-425e-4125-d1f2a028c11d
+Power State: on
+
+--- VM [709] ---
+INFO: Get vm [test-131]
+UUID: a1962a37-a753-4e02-6f3c-2b793db8216b
+Power State: on
+
+--- VM [710] ---
+INFO: Get vm [test-132]
+UUID: 9c42cb98-07a2-42b1-54ca-d2abe15e6110
+Power State: on
+
+--- VM [711] ---
+INFO: Get vm [test-135]
+UUID: 6e51418f-f175-431f-5192-662bd996a53e
+Power State: on
+
+--- VM [712] ---
+INFO: Get vm [test-136]
+UUID: 8817df01-a4a7-491f-58b4-d8b1844c8d40
+Power State: on
+
+--- VM [713] ---
+INFO: Get vm [test-137]
+UUID: 7f67f00a-8110-4bd8-6dee-1849264bf225
+Power State: on
+
+--- VM [714] ---
+INFO: Get vm [test-138]
+UUID: c07c4df5-5c25-4564-5779-b6ae8a7118e1
+Power State: on
+
+--- VM [715] ---
+INFO: Get vm [test-139]
+UUID: 700e33ff-22aa-404c-5384-90a5aa98d772
+Power State: on
+
+--- VM [716] ---
+INFO: Get vm [test-140]
+UUID: dae5c92d-6f5e-4019-61e5-48c587d8a6fd
+Power State: on
+
+--- VM [717] ---
+INFO: Get vm [test-142]
+UUID: 3fcf362e-4557-43f3-6cdb-7bee2f2c8a43
+Power State: on
+
+--- VM [718] ---
+INFO: Get vm [test-144]
+UUID: 571a2774-ce4a-4608-7d1d-998d79d06350
+Power State: on
+
+--- VM [719] ---
+INFO: Get vm [test-145]
+UUID: f0c5b152-a711-4195-54db-a0f670f367c7
+Power State: on
+
+--- VM [720] ---
+INFO: Get vm [test-146]
+UUID: d406dea7-185f-4e43-7501-47e6b5c18ccf
+Power State: on
+
+--- VM [721] ---
+INFO: Get vm [test-147]
+UUID: 54feec1b-da01-4ede-7889-b35b78bd25a1
+Power State: on
+
+--- VM [722] ---
+INFO: Get vm [test-148]
+UUID: fe2e62b7-b617-44f5-5486-cb67188c40ed
+Power State: on
+
+--- VM [723] ---
+INFO: Get vm [test-149]
+UUID: 3c275b8f-1204-4b38-6f47-40dad76e27d8
+Power State: on
+
+--- VM [724] ---
+INFO: Get vm [test-150]
+UUID: daa44097-bc0e-4554-5c8c-47404836c030
+Power State: on
+
+--- VM [725] ---
+INFO: Get vm [test-151]
+UUID: fee9b47c-6bc7-4ae7-7553-6b02571f428d
+Power State: on
+
+--- VM [726] ---
+INFO: Get vm [test-152]
+UUID: e744f152-fc58-4ed0-7a81-66882ab34222
+Power State: on
+
+--- VM [727] ---
+INFO: Get vm [test-153]
+UUID: e4926dc8-41d7-4a7f-4772-1868f79a9158
+Power State: on
+
+--- VM [728] ---
+INFO: Get vm [test-154]
+UUID: bc051d0a-d221-47e7-66d6-e99e3b256d17
+Power State: on
+
+--- VM [729] ---
+INFO: Get vm [test-155]
+UUID: 8c72d24a-e3ec-4687-57f6-98c4151848ec
+Power State: on
+
+--- VM [730] ---
+INFO: Get vm [test-156]
+UUID: 63f85e0f-8ad5-4045-7e73-e77e8c247aed
+Power State: on
+
+--- VM [731] ---
+INFO: Get vm [test-157]
+UUID: aefb426e-e15e-4214-645d-1ee7290db4fd
+Power State: on
+
+--- VM [732] ---
+INFO: Get vm [test-158]
+UUID: 54ad4642-4133-4830-71d2-f6aa128d14bb
+Power State: on
+
+--- VM [733] ---
+INFO: Get vm [test-159]
+UUID: d74c8446-6800-4c98-6714-f429a369139a
+Power State: on
+
+--- VM [734] ---
+INFO: Get vm [test-160]
+UUID: e89221d5-a79b-4839-46cb-881cb6e378d0
+Power State: on
+
+--- VM [735] ---
+INFO: Get vm [test-161]
+UUID: f17261a8-9d18-4cfa-4957-c35692204172
+Power State: on
+
+--- VM [736] ---
+INFO: Get vm [test-162]
+UUID: 6feea86f-a024-47b7-5cf3-d849dcdcc260
+Power State: on
+
+--- VM [737] ---
+INFO: Get vm [test-163]
+UUID: c3f63afc-6369-4f74-7655-dc155f528cd0
+Power State: on
+
+--- VM [738] ---
+INFO: Get vm [test-166]
+UUID: b141481c-8142-40ef-49c4-844f25c1b809
+Power State: on
+
+--- VM [739] ---
+INFO: Get vm [test-167]
+UUID: 5a1a61f1-9209-4bbd-6273-0e83e937389c
+Power State: on
+
+--- VM [740] ---
+INFO: Get vm [test-168]
+UUID: 8f9a51ef-1cc7-44b5-5c9c-011a6441880c
+Power State: on
+
+--- VM [741] ---
+INFO: Get vm [test-169]
+UUID: 47fde277-b53c-4bfc-47fe-122cb2c5899a
+Power State: on
+
+--- VM [742] ---
+INFO: Get vm [test-170]
+UUID: a2a26f9b-4250-443f-77fa-2aac9da38652
+Power State: on
+
+--- VM [743] ---
+INFO: Get vm [test-173]
+UUID: adaddaac-64bd-4ad0-41ec-ed72da9e4b89
+Power State: on
+
+--- VM [744] ---
+INFO: Get vm [test-174]
+UUID: 76f794c2-ee8d-43d7-7106-a63334825d7f
+Power State: on
+
+--- VM [745] ---
+INFO: Get vm [test-175]
+UUID: 8e86e1dd-13af-44ce-6b78-b024a5442f3c
+Power State: on
+
+--- VM [746] ---
+INFO: Get vm [test-176]
+UUID: 99703681-4fbd-4c6e-4df1-fac732c55cd2
+Power State: on
+
+--- VM [747] ---
+INFO: Get vm [test-177]
+UUID: c695feac-bd7c-4daf-5089-d961f499dc76
+Power State: on
+
+--- VM [748] ---
+INFO: Get vm [test-178]
+UUID: 3cd053ee-9149-452e-7497-784eea017e3b
+Power State: on
+
+--- VM [749] ---
+INFO: Get vm [test-180]
+UUID: 6a0340b0-ce2e-4194-7e10-e2b97703554a
+Power State: on
+
+--- VM [750] ---
+INFO: Get vm [test-181]
+UUID: cc8d98bd-6614-4dc8-542f-e0707c2ef133
+Power State: on
+
+--- VM [751] ---
+INFO: Get vm [test-182]
+UUID: c3af8196-5578-4097-754c-95a90a60326f
+Power State: on
+
+--- VM [752] ---
+INFO: Get vm [test-183]
+UUID: e97bce8b-fb26-455e-62b6-48b703ac924a
+Power State: on
+
+--- VM [753] ---
+INFO: Get vm [test-184]
+UUID: d9b2685e-a6b4-4fee-4f64-3d049e64d7ff
+Power State: on
+
+--- VM [754] ---
+INFO: Get vm [test-185]
+UUID: d77da409-3c6f-4791-4054-c0dd87bd6fa9
+Power State: on
+
+--- VM [755] ---
+INFO: Get vm [test-186]
+UUID: 32da3db6-0e66-46ad-6e74-2fe41554d23c
+Power State: on
+
+--- VM [756] ---
+INFO: Get vm [test-187]
+UUID: 2793a045-11ee-44bc-4094-d0641f6392de
+Power State: on
+
+--- VM [757] ---
+INFO: Get vm [test-188]
+UUID: 99c73211-4304-46f6-761b-125c17b937f9
+Power State: on
+
+--- VM [758] ---
+INFO: Get vm [test-189]
+UUID: b2ede24f-e456-4a2e-682f-5b762a073411
+Power State: on
+
+--- VM [759] ---
+INFO: Get vm [test-190]
+UUID: 1bec2079-59b8-4248-44db-96a00a69e632
+Power State: on
+
+--- VM [760] ---
+INFO: Get vm [test-191]
+UUID: 142ca3cc-c1af-45e1-51d5-2b1487bddaa5
+Power State: on
+
+--- VM [761] ---
+INFO: Get vm [test-192]
+UUID: 62fce266-d398-4daa-6d61-c6168b75d446
+Power State: on
+
+--- VM [762] ---
+INFO: Get vm [test-193]
+UUID: 5b707670-ba51-4789-4064-e1b5ca799c14
+Power State: on
+
+--- VM [763] ---
+INFO: Get vm [test-194]
+UUID: 97de97a6-d1e1-4e85-4d0d-7417f3c72d71
+Power State: on
+
+--- VM [764] ---
+INFO: Get vm [test-195]
+UUID: c1abf3b5-e1b6-47ca-45c9-e590513e9096
+Power State: on
+
+--- VM [765] ---
+INFO: Get vm [test-196]
+UUID: cc9b3067-c064-4ef0-5fa4-025388d8ae64
+Power State: on
+
+--- VM [766] ---
+INFO: Get vm [test-197]
+UUID: 39b0420e-f435-4dce-4b7f-0e0a9c78ac9e
+Power State: on
+
+--- VM [767] ---
+INFO: Get vm [test-198]
+UUID: b74b0e5b-ddb5-479c-66c2-251e20b32bca
+Power State: on
+
+--- VM [768] ---
+INFO: Get vm [test-199]
+UUID: 08c5f7c8-553a-42a4-7e84-17d434a09c62
+Power State: on
+
+--- VM [769] ---
+INFO: Get vm [test-200]
+UUID: 988f5cca-13ef-4e67-41af-34570b7313db
+Power State: on
+
+--- VM [770] ---
+INFO: Get vm [test-201]
+UUID: 6c1e733a-9931-429a-7f0c-f39e1225ca1d
+Power State: on
+
+--- VM [771] ---
+INFO: Get vm [test-202]
+UUID: 98ca668b-5741-4ade-77b9-f52448c7cc80
+Power State: on
+
+--- VM [772] ---
+INFO: Get vm [test-203]
+UUID: 688081f4-7084-4404-76fe-6fdef4d60591
+Power State: on
+
+--- VM [773] ---
+INFO: Get vm [test-204]
+UUID: 8077450e-d2f6-4baf-474e-e22db87171ac
+Power State: on
+
+--- VM [774] ---
+INFO: Get vm [test-205]
+UUID: b07e7f0e-2463-4aee-47bd-3081d3537c5f
+Power State: on
+
+--- VM [775] ---
+INFO: Get vm [test-206]
+UUID: 8c3ba647-19b4-4d8a-4414-c3411e7d3fac
+Power State: on
+
+--- VM [776] ---
+INFO: Get vm [test-207]
+UUID: 7bf68b37-e397-49e3-54d6-9315e5dff578
+Power State: on
+
+--- VM [777] ---
+INFO: Get vm [test-208]
+UUID: 53ac925c-e901-418e-7ba1-07472cbb04fa
+Power State: on
+
+--- VM [778] ---
+INFO: Get vm [test-209]
+UUID: fb5dd293-0e2c-474e-565a-26dc3e486eae
+Power State: on
+
+--- VM [779] ---
+INFO: Get vm [test-210]
+UUID: c729cfb4-84a4-4dc9-6271-f07feef548b7
+Power State: on
+
+--- VM [780] ---
+INFO: Get vm [test-211]
+UUID: a1b86b49-4536-4f3a-5b4a-e5b9ff67a52b
+Power State: on
+
+--- VM [781] ---
+INFO: Get vm [test-212]
+UUID: fa6af74c-476c-433f-5f15-96c4ae24d316
+Power State: on
+
+--- VM [782] ---
+INFO: Get vm [test-213]
+UUID: 3d3e0cb8-fc53-408f-72d5-448bda49b45a
+Power State: on
+
+--- VM [783] ---
+INFO: Get vm [test-214]
+UUID: 4dacf13e-5a9a-477a-6c3e-60b3092774dc
+Power State: on
+
+--- VM [784] ---
+INFO: Get vm [test-215]
+UUID: c527750c-bc7b-43bd-56dd-f8a67047b526
+Power State: on
+
+--- VM [785] ---
+INFO: Get vm [test-216]
+UUID: ada24282-ba2f-4280-5d8a-5e674af82f76
+Power State: on
+
+--- VM [786] ---
+INFO: Get vm [test-217]
+UUID: 53a73b95-7855-4612-60e6-182eb574ef62
+Power State: on
+
+--- VM [787] ---
+INFO: Get vm [test-218]
+UUID: 6f5415d2-502b-42dc-697c-9d39dfaccae7
+Power State: on
+
+--- VM [788] ---
+INFO: Get vm [test-219]
+UUID: 3979c0e9-5c67-4946-63da-44b9c3470075
+Power State: on
+
+--- VM [789] ---
+INFO: Get vm [test-220]
+UUID: 3fd30257-4d09-4cee-459b-bf83a32f290c
+Power State: on
+
+--- VM [790] ---
+INFO: Get vm [test-221]
+UUID: 9961d5d3-ceed-449c-6bef-aa959887891b
+Power State: on
+
+--- VM [791] ---
+INFO: Get vm [test-222]
+UUID: 2d144f3f-076d-4571-5a7f-0950e401c05f
+Power State: on
+
+--- VM [792] ---
+INFO: Get vm [test-223]
+UUID: 1652e783-baae-480f-5c62-caeb235cf074
+Power State: on
+
+--- VM [793] ---
+INFO: Get vm [test-224]
+UUID: 481b3b8a-3d7c-4a44-63af-4098fc4d436c
+Power State: on
+
+--- VM [794] ---
+INFO: Get vm [test-225]
+UUID: a88e64a3-0d4b-4273-526a-2b49de1c16a2
+Power State: on
+
+--- VM [795] ---
+INFO: Get vm [test-226]
+UUID: cc8a4f85-b7fa-4d65-6c00-96edd928a1bd
+Power State: on
+
+--- VM [796] ---
+INFO: Get vm [test-227]
+UUID: b8b17a64-50d1-455a-496f-1c9e15b1b382
+Power State: on
+
+--- VM [797] ---
+INFO: Get vm [test-228]
+UUID: ef69566f-a8dc-42cc-6d75-d1de13eb5a4e
+Power State: on
+
+--- VM [798] ---
+INFO: Get vm [test-229]
+UUID: 38dbca80-07c4-4c06-41c2-72b149e54efe
+Power State: on
+
+--- VM [799] ---
+INFO: Get vm [test-230]
+UUID: 2f44c1b8-7a1b-499c-6611-1464736d6ea7
+Power State: on
+
+--- VM [800] ---
+INFO: Get vm [test-231]
+UUID: 7673d1fd-2445-4a1f-5041-6f95ee478f40
+Power State: on
+
+--- VM [801] ---
+INFO: Get vm [test-232]
+UUID: ee938a9b-fe51-431e-5b09-abf0e899fb93
+Power State: on
+
+--- VM [802] ---
+INFO: Get vm [test-233]
+UUID: d855104f-d9d1-4fc5-7a1e-e9e5bfa49f0e
+Power State: on
+
+--- VM [803] ---
+INFO: Get vm [test-234]
+UUID: 514cda47-d6bc-41b2-7c66-359c952c13de
+Power State: on
+
+--- VM [804] ---
+INFO: Get vm [test-235]
+UUID: 55871d61-91e2-4ad6-5547-c0e31e9a0013
+Power State: on
+
+--- VM [805] ---
+INFO: Get vm [test-236]
+UUID: 049a98f8-a744-45cb-6155-b9183eda4450
+Power State: on
+
+--- VM [806] ---
+INFO: Get vm [test-237]
+UUID: 10782227-6e36-4d09-45eb-0472a34c5c57
+Power State: on
+
+--- VM [807] ---
+INFO: Get vm [test-238]
+UUID: 03c89ccb-8c6d-481a-6d27-92b14ccd1078
+Power State: on
+
+--- VM [808] ---
+INFO: Get vm [test-239]
+UUID: 58e56390-6356-41fa-5cc4-d24357b0bf07
+Power State: on
+
+--- VM [809] ---
+INFO: Get vm [test-240]
+UUID: 0e7db7ea-cac0-4843-5185-479af8f92af4
+Power State: on
+
+--- VM [810] ---
+INFO: Get vm [test-241]
+UUID: a211cbdd-cd50-483d-72fd-d40e6070e78c
+Power State: on
+
+--- VM [811] ---
+INFO: Get vm [test-242]
+UUID: 77d7621a-a95d-4213-7b88-fd40733ca5ab
+Power State: on
+
+--- VM [812] ---
+INFO: Get vm [test-243]
+UUID: e1eb4af2-9baa-4ede-688f-16ef8f0cfeb3
+Power State: on
+
+--- VM [813] ---
+INFO: Get vm [test-244]
+UUID: 50b04085-3a4c-40ec-5f88-f88869b15741
+Power State: on
+
+--- VM [814] ---
+INFO: Get vm [test-245]
+UUID: 296d32fb-9619-4828-44c9-3fe3e56faae5
+Power State: on
+
+--- VM [815] ---
+INFO: Get vm [test-246]
+UUID: 6ba3a48e-eb81-4689-7dcc-c7c88a2789b7
+Power State: on
+
+--- VM [816] ---
+INFO: Get vm [test-247]
+UUID: f6748675-6ff3-4083-4307-b7e1b9d09a7c
+Power State: on
+
+--- VM [817] ---
+INFO: Get vm [test-248]
+UUID: bdb970d8-6119-4cc4-4cb5-dc81c6f3a9ea
+Power State: on
+
+--- VM [818] ---
+INFO: Get vm [test-249]
+UUID: 1e3af50a-3c94-494f-629d-59812eb05d6a
+Power State: on
+
+--- VM [819] ---
+INFO: Get vm [test-250]
+UUID: e8ecaaef-b636-4bdd-4ca2-a377ec77df67
+Power State: on
+
+--- VM [820] ---
+INFO: Get vm [test-251]
+UUID: d4c9c997-ba43-4a50-4893-d86e8662d3ab
+Power State: on
+
+--- VM [821] ---
+INFO: Get vm [test-252]
+UUID: 1711995b-879a-4fcd-5f9c-004e57fc9451
+Power State: on
+
+--- VM [822] ---
+INFO: Get vm [test-253]
+UUID: ed8eb8c6-0770-4872-4451-a6845515c555
+Power State: on
+
+--- VM [823] ---
+INFO: Get vm [test-254]
+UUID: 8e076ce3-e469-4795-40dd-c66d16274c53
+Power State: on
+
+--- VM [824] ---
+INFO: Get vm [test-255]
+UUID: 07eb41e4-ac41-496c-4c4b-8c4829d70c69
+Power State: on
+
+--- VM [825] ---
+INFO: Get vm [test-256]
+UUID: a2dd1c42-766f-4046-4738-24cc6e31d527
+Power State: on
+
+--- VM [826] ---
+INFO: Get vm [test-257]
+UUID: eb30140e-1737-4f24-6d78-d6182b3f94c7
+Power State: on
+
+--- VM [827] ---
+INFO: Get vm [test-258]
+UUID: 4da82588-fb6d-4260-77ac-706002450add
+Power State: on
+
+--- VM [828] ---
+INFO: Get vm [test-259]
+UUID: 4989a06d-02e8-4498-56c5-5af91104a9c3
+Power State: on
+
+--- VM [829] ---
+INFO: Get vm [test-260]
+UUID: 54dd6e6b-46ec-4f35-4570-29fc06c1eb99
+Power State: on
+
+--- VM [830] ---
+INFO: Get vm [test-261]
+UUID: f903b4ea-ff5f-489b-60cd-d07473a60477
+Power State: on
+
+--- VM [831] ---
+INFO: Get vm [test-262]
+UUID: aadcd074-886d-41b5-4008-3a9c300c8057
+Power State: on
+
+--- VM [832] ---
+INFO: Get vm [test-263]
+UUID: f5e0662b-5a81-4259-73a7-e25bb71f0507
+Power State: on
+
+--- VM [833] ---
+INFO: Get vm [test-264]
+UUID: 359c889b-dd09-4298-63db-e3a574080146
+Power State: on
+
+--- VM [834] ---
+INFO: Get vm [test-265]
+UUID: 84f11b26-2cdb-4efc-5870-63e5ea142d8f
+Power State: on
+
+--- VM [835] ---
+INFO: Get vm [test-266]
+UUID: 61b69f3e-bd87-4e1b-7b41-1d52cb2752f0
+Power State: on
+
+--- VM [836] ---
+INFO: Get vm [test-267]
+UUID: c783248f-544e-42a0-5e6e-a0715b04261f
+Power State: on
+
+--- VM [837] ---
+INFO: Get vm [test-268]
+UUID: d52daf68-9e39-41a6-5582-fbc9f4f19979
+Power State: on
+
+--- VM [838] ---
+INFO: Get vm [test-269]
+UUID: 1b496fd3-da62-4447-740f-b02bade4749c
+Power State: on
+
+--- VM [839] ---
+INFO: Get vm [test-270]
+UUID: 9a0f63e0-34a6-4508-4f46-9a4f37d0d3da
+Power State: on
+
+--- VM [840] ---
+INFO: Get vm [test-271]
+UUID: d6a921ba-8567-4b0f-5799-13ce923a4580
+Power State: on
+
+--- VM [841] ---
+INFO: Get vm [test-272]
+UUID: b57a6849-2aa3-4b5d-579f-17d7bd39f91c
+Power State: on
+
+--- VM [842] ---
+INFO: Get vm [test-273]
+UUID: ee4eace3-5faf-4951-5e67-da951f0667df
+Power State: on
+
+--- VM [843] ---
+INFO: Get vm [test-274]
+UUID: a4b08d47-e40d-4198-5b5d-a32b3480a290
+Power State: on
+
+--- VM [844] ---
+INFO: Get vm [test-275]
+UUID: e6eafad4-b37b-4d91-4859-f3419d647e1b
+Power State: on
+
+--- VM [845] ---
+INFO: Get vm [test-276]
+UUID: 0bd3b5f5-cb96-4f0c-59e6-13e33b7ba019
+Power State: on
+
+--- VM [846] ---
+INFO: Get vm [test-277]
+UUID: 457b6bd3-9ccf-41ef-4bc6-eaa19065a59b
+Power State: on
+
+--- VM [847] ---
+INFO: Get vm [test-278]
+UUID: d4bb8c45-416b-4c14-4e82-2048a5457383
+Power State: on
+
+--- VM [848] ---
+INFO: Get vm [test-279]
+UUID: 9c2346e6-66a8-44df-7fd1-96b0d76b6235
+Power State: on
+
+--- VM [849] ---
+INFO: Get vm [test-280]
+UUID: 8e112958-c06a-4b09-4b81-43d0f1ec5d7e
+Power State: on
+
+--- VM [850] ---
+INFO: Get vm [test-281]
+UUID: c071cce4-c920-46e1-60d3-ee29f9165833
+Power State: on
+
+--- VM [851] ---
+INFO: Get vm [test-282]
+UUID: ce185f03-ca45-4330-4f71-507e490329bd
+Power State: on
+
+--- VM [852] ---
+INFO: Get vm [test-283]
+UUID: 8821fdc9-6c39-4c47-45b3-ca45be5a4417
+Power State: on
+
+--- VM [853] ---
+INFO: Get vm [test-284]
+UUID: e6324b6f-132d-46d1-736b-e71945dc15de
+Power State: on
+
+--- VM [854] ---
+INFO: Get vm [test-285]
+UUID: ea67e49b-bb1c-4d3c-5fad-06b57fc5e803
+Power State: on
+
+--- VM [855] ---
+INFO: Get vm [test-286]
+UUID: fefeecbe-aa6c-475d-7c80-8e1b6a4ba2c8
+Power State: on
+
+--- VM [856] ---
+INFO: Get vm [test-287]
+UUID: a1e143bc-b5b8-4632-7467-b279df6ff6bc
+Power State: on
+
+--- VM [857] ---
+INFO: Get vm [test-288]
+UUID: ff7052d2-b58a-46bd-6689-7acf2bb10ff2
+Power State: on
+
+--- VM [858] ---
+INFO: Get vm [test-288-001]
+UUID: 8dc42420-97a4-41bc-64b5-ca76406633ad
+Power State: on
+
+--- VM [859] ---
+INFO: Get vm [test-288-002]
+UUID: 202c1faa-e9b3-4608-5e31-15ecce7f9597
+Power State: on
+
+--- VM [860] ---
+INFO: Get vm [test-288-003]
+UUID: 112e2612-94ce-421f-4bb6-1db3f64441dc
+Power State: on
+
+--- VM [861] ---
+INFO: Get vm [test-288-004]
+UUID: b6979d7f-b2d1-4657-6f17-f7f5d6ffb60d
+Power State: on
+
+--- VM [862] ---
+INFO: Get vm [test-288-005]
+UUID: 8ca4e814-c41c-48d7-50af-e09927902ba2
+Power State: on
+
+--- VM [863] ---
+INFO: Get vm [test-288-006]
+UUID: ab844e07-b4d1-49ab-5655-acb8bf8bf4a3
+Power State: on
+
+--- VM [864] ---
+INFO: Get vm [test-288-007]
+UUID: 6d06e4ad-5285-490b-4245-99115b6e3b5d
+Power State: on
+
+--- VM [865] ---
+INFO: Get vm [test-288-008]
+UUID: b0b51f4f-32e0-47ea-5c56-c3364b70ab2c
+Power State: on
+
+--- VM [866] ---
+INFO: Get vm [test-288-009]
+UUID: 9dd1b8e8-a96d-4c8e-46a8-fa51f461b0d4
+Power State: on
+
+--- VM [867] ---
+INFO: Get vm [test-288-010]
+UUID: ec1ccee5-5107-4796-7e87-0b8e24a460d6
+Power State: on
+
+--- VM [868] ---
+INFO: Get vm [test-288-011]
+UUID: 9d7a009c-8dde-45f2-68a9-cef015d39219
+Power State: on
+
+--- VM [869] ---
+INFO: Get vm [test-288-012]
+UUID: f7d35386-cf39-4ad6-6555-a43a72c3f13a
+Power State: on
+
+--- VM [870] ---
+INFO: Get vm [test-288-013]
+UUID: 4becd6de-a772-4683-4c7c-49a7ba4e56d0
+Power State: on
+
+--- VM [871] ---
+INFO: Get vm [test-288-014]
+UUID: 6e312026-b055-4850-709e-227d1f55b1a5
+Power State: on
+
+--- VM [872] ---
+INFO: Get vm [test-288-015]
+UUID: 53765652-2abe-4d8e-6657-621fb98c6828
+Power State: on
+
+--- VM [873] ---
+INFO: Get vm [test-288-016]
+UUID: c3538fbe-e9c0-4781-6be7-3a5af18c0204
+Power State: on
+
+--- VM [874] ---
+INFO: Get vm [test-288-017]
+UUID: af6cbb57-ad49-415b-7c9b-11ebdb4f8fdb
+Power State: on
+
+--- VM [875] ---
+INFO: Get vm [test-288-018]
+UUID: ac8646f1-baeb-4fa4-548a-44c3e76d421e
+Power State: on
+
+--- VM [876] ---
+INFO: Get vm [test-288-019]
+UUID: 6bacdf8a-1c5a-4338-5e6f-20242087139a
+Power State: on
+
+--- VM [877] ---
+INFO: Get vm [test-288-020]
+UUID: abcc571f-2669-4353-49a6-c814030dc1c2
+Power State: on
+
+--- VM [878] ---
+INFO: Get vm [test-288-021]
+UUID: de4c7af5-2edc-4ee5-5a30-7fcf2f80f336
+Power State: on
+
+--- VM [879] ---
+INFO: Get vm [test-288-022]
+UUID: a64f6700-2f8d-4c70-7388-358e9bf2c598
+Power State: on
+
+--- VM [880] ---
+INFO: Get vm [test-288-023]
+UUID: 44eef008-31f4-4296-5a81-a0c13b393994
+Power State: on
+
+--- VM [881] ---
+INFO: Get vm [test-288-024]
+UUID: ea7f8b95-ea79-40bb-5be3-f3b1e7a95c46
+Power State: on
+
+--- VM [882] ---
+INFO: Get vm [test-288-025]
+UUID: 6d7eb929-5093-4b54-5660-90d7a279ab38
+Power State: on
+
+--- VM [883] ---
+INFO: Get vm [test-288-026]
+UUID: f4815fda-09ee-4e8c-658f-983339f2e011
+Power State: on
+
+--- VM [884] ---
+INFO: Get vm [test-288-027]
+UUID: b4447502-b635-4588-602e-3fc946c8b6e0
+Power State: on
+
+--- VM [885] ---
+INFO: Get vm [test-288-028]
+UUID: 27b56db5-86a2-442a-51ab-41c315398671
+Power State: on
+
+--- VM [886] ---
+INFO: Get vm [test-288-029]
+UUID: d2fc8b96-0eae-4ec3-7cb8-208d4bcdb453
+Power State: on
+
+--- VM [887] ---
+INFO: Get vm [test-288-030]
+UUID: cd7bd202-11d4-4736-5de9-6267acc77d62
+Power State: on
+
+--- VM [888] ---
+INFO: Get vm [test-288-031]
+UUID: 830227e6-7efa-4258-7e7e-1d4c8f54a840
+Power State: on
+
+--- VM [889] ---
+INFO: Get vm [test-288-032]
+UUID: 11c2482f-232e-4274-620a-83f97c82c290
+Power State: on
+
+--- VM [890] ---
+INFO: Get vm [test-289]
+UUID: 02048b35-3712-47b9-722c-9660bfdd6d9d
+Power State: on
+
+--- VM [891] ---
+INFO: Get vm [test-290]
+UUID: 4b5434d0-a3b1-4a8f-4017-d4eb5a6fe803
+Power State: on
+
+--- VM [892] ---
+INFO: Get vm [test-291]
+UUID: 5e702722-ca4e-4b5e-5dcd-422bf9da233b
+Power State: on
+
+--- VM [893] ---
+INFO: Get vm [test-292]
+UUID: 316d5230-d134-4980-79fd-5ace5d5461b8
+Power State: on
+
+--- VM [894] ---
+INFO: Get vm [test-293]
+UUID: 43eb3f7d-739d-4813-47e6-65359fbb05ad
+Power State: on
+
+--- VM [895] ---
+INFO: Get vm [test-294]
+UUID: 70fe86ec-075f-4b35-67dd-65f2db22953f
+Power State: on
+
+--- VM [896] ---
+INFO: Get vm [test-295]
+UUID: c43208ff-418c-4a99-6938-16d33f4e493e
+Power State: on
+
+--- VM [897] ---
+INFO: Get vm [test-296]
+UUID: 641dd87b-1667-42b7-5d17-53ed5a09ecc2
+Power State: on
+
+--- VM [898] ---
+INFO: Get vm [test-297]
+UUID: 6bfb4224-701a-4be7-5a4d-fd743ae716cc
+Power State: on
+
+--- VM [899] ---
+INFO: Get vm [test-298]
+UUID: 9b19d917-86a9-42ee-4093-7a51d5626c7b
+Power State: on
+
+--- VM [900] ---
+INFO: Get vm [test-299]
+UUID: abb2222b-bc6d-4513-7549-2f3a15c29946
+Power State: on
+
+================================================================================
+Processing batch [3/8] - Offset: 1000
+================================================================================
+
+================================================================================
+Processing batch [4/8] - Offset: 1500
+================================================================================
+
+================================================================================
+Processing batch [5/8] - Offset: 2000
+================================================================================
+
+================================================================================
+Processing batch [6/8] - Offset: 2500
+================================================================================
+
+================================================================================
+Processing batch [7/8] - Offset: 3000
+================================================================================
+
+================================================================================
+Processing batch [8/8] - Offset: 3500
+================================================================================
+
+================================================================================
+SUMMARY
+================================================================================
+Total VMs Processed: 900
+VMs queued for power ON: 0
+Power-on + IP wait succeeded: 0
+Power-on + IP wait failed: 0
+VMs Powered OFF: 0
+================================================================================
+Log saved to: vm_power_status_change_20260413_044314.log
+Completed at: 2026-04-13 04:43:20
+================================================================================

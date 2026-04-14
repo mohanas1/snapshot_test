@@ -1,0 +1,25 @@
+Recovery summary (2026-04-14)
+=============================
+
+1. Python 3.12 .pyc decompilation
+   - uncompyle6 (including git master) does not decompile 3.12 in this environment.
+   - pycdc leaves large gaps (MAKE_CELL / POP_JUMP_IF_NONE, etc.); output is not trustworthy.
+
+2. app.cpython-312.pyc was overwritten
+   - After a stub app.py was saved and imported, Python recompiled and replaced the large
+     bytecode (~106 KB) with a tiny stub (~2 KB). The original app bytecode is gone from
+     __pycache__ unless you have a separate backup.
+
+3. What actually restored the project
+   - Cursor/VS Code Local History under:
+       ~/.cursor-server/data/User/History/
+   - Restored from the newest snapshots of:
+       bulk_snapshots_ui/app.py          -> 58408ae7/18yZ.py (fixed one typo: stray "what" in import)
+       bulk_snapshots_ui/vm_disk_runner.py -> -797c8aa4/1OiU.py
+       templates/index.html            -> -6ec363f2/Vs7B.html
+       templates/job.html              -> 60ebc9c3/NcGG.html
+
+4. vm_disk_runner.cpython-312.pyc
+   - Still matches the full disk-runner logic (~90 KB). Keeping it does not hurt; source is back.
+
+Tip: In Cursor, use Timeline / Local History on a file if this happens again.
