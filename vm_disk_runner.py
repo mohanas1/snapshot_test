@@ -252,15 +252,16 @@ class DiskOpConfig:
     parallel_clusters: bool = False
     # Max VMs to *select* per cluster when ``parallel_clusters`` (0 = all eligible in that cluster).
     vm_per_cluster: int = 0
-    # When True with ``parallel_clusters``: poll each PE Prism ``cluster/stats`` API; pause guest work
-    # if CPU or memory % is at/above the limits (see ``pe_cvm_ips_multiline``).
-    cluster_pe_top_monitor: bool = False
+    # When True (default): poll each PE Prism ``cluster/stats`` before guest SSH; pause until CPU is
+    # below ``cluster_cpu_max_pct`` when that limit is > 0 (see ``pe_cvm_ips_multiline``). Applies to
+    # all disk job modes (parallel shards or single pool).
+    cluster_pe_top_monitor: bool = True
     # Pause when PE stats report CPU usage %% >= this (0 = do not check CPU).
     cluster_cpu_max_pct: float = 85.0
-    # Pause when PE stats report memory usage %% >= this (0 = do not check memory).
-    cluster_mem_max_pct: float = 85.0
-    # When True with ``parallel_clusters`` and PE CVM IPs: raise per-cluster guest SSH concurrency
-    # gradually via ``cluster_adaptive_ramp`` while CPU/mem stay below limits; overload resets baseline.
+    # Pause when PE stats report memory usage %% >= this (0 = do not check memory; UI/API use 0).
+    cluster_mem_max_pct: float = 0.0
+    # Optional: with PE CVM IPs, raise per-cluster guest SSH concurrency via ``cluster_adaptive_ramp``
+    # while PE CPU stays below limits; overload resets baseline. Independent of ``parallel_clusters``.
     cluster_adaptive_ssh_parallel: bool = False
     # PE CPU%% from cluster stats; at or above → reset to baseline (no ramp increases while hot).
     cluster_adaptive_cpu_threshold_pct: float = 90.0
@@ -512,6 +513,258 @@ def _guest_sshpass_run(
         return -1, "", "ssh command timed out"
     except OSError as e:
         return -1, "", f"Could not run ssh/sshpass: {e}"
+
+
+_cvm_top_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+_cvm_top_lock = threading.Lock()
+_CVM_TOP_CACHE_TTL_SEC = 5.0
+
+
+def _top_process_header_indices(header_line: str) -> Optional[dict[str, int]]:
+    """Map ``top -bn1`` header tokens to indices for ``%CPU``, ``%MEM``, optional ``RES``, ``COMMAND``."""
+    parts = header_line.split()
+    if "PID" not in parts or "%CPU" not in parts or "%MEM" not in parts:
+        return None
+    try:
+        i_cpu = parts.index("%CPU")
+        i_mem = parts.index("%MEM")
+    except ValueError:
+        return None
+    i_cmd: Optional[int] = None
+    if "COMMAND" in parts:
+        i_cmd = parts.index("COMMAND")
+    elif "CMD" in parts:
+        i_cmd = parts.index("CMD")
+    if i_cmd is None:
+        return None
+    i_res: Optional[int] = None
+    if "RES" in parts:
+        try:
+            i_res = parts.index("RES")
+        except ValueError:
+            i_res = None
+    return {"cpu": i_cpu, "mem": i_mem, "res": i_res, "cmd": i_cmd}
+
+
+def _parse_top_res_token(tok: str) -> Optional[float]:
+    """Parse ``top`` RES column into **KiB** (plain KiB or suffix ``k``/``m``/``g``/…)."""
+    t = (tok or "").strip()
+    if not t:
+        return None
+    m = re.match(r"^(\d+\.?\d*)\s*([kmgtpezy])?.*$", t, re.I)
+    if not m:
+        try:
+            return float(t.replace(",", ""))
+        except ValueError:
+            return None
+    val = float(m.group(1))
+    suf = (m.group(2) or "").lower()
+    if suf in ("", "k"):
+        return val
+    if suf == "m":
+        return val * 1024.0
+    if suf == "g":
+        return val * 1024.0 * 1024.0
+    if suf == "t":
+        return val * 1024.0**3
+    if suf in ("p", "e", "z", "y"):
+        return val * 1024.0**4
+    return val
+
+
+def _stargate_metrics_from_top_data_line(
+    line: str, col: dict[str, int]
+) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    """Stargate row: ``%CPU``, ``%MEM``, RES (KiB). Header indices avoid wrong-column bugs vs argv offsets."""
+    parts = line.split()
+    i_cmd = int(col["cmd"])
+    if len(parts) <= i_cmd:
+        return None, None, None
+    joined_low = " ".join(p.lower() for p in parts[i_cmd:])
+    if "stargate" not in joined_low:
+        return None, None, None
+    try:
+        cpu = float(parts[int(col["cpu"])].replace(",", "."))
+        mem = float(parts[int(col["mem"])].replace(",", "."))
+    except (ValueError, IndexError):
+        return None, None, None
+    if math.isnan(cpu) or math.isnan(mem):
+        return None, None, None
+    if not (0.0 <= mem <= 100.0):
+        return None, None, None
+    if cpu < 0.0 or cpu > 1_000_000.0:
+        return None, None, None
+    res_kib: Optional[float] = None
+    ri = col.get("res")
+    if ri is not None and int(ri) < len(parts):
+        res_kib = _parse_top_res_token(parts[int(ri)])
+    return cpu, mem, res_kib
+
+
+def _parse_ps_stargate_metrics(text: str) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    """``ps -C stargate -o rss=,%cpu=,%mem=`` — RSS in KiB on Linux. Prefer row with largest RSS."""
+    best_rss = -1.0
+    pick_cpu: Optional[float] = None
+    pick_mem: Optional[float] = None
+    pick_rss: Optional[float] = None
+    for raw in (text or "").splitlines():
+        s = raw.strip()
+        if not s:
+            continue
+        parts = s.split()
+        if len(parts) < 3:
+            continue
+        try:
+            rss = float(parts[0].replace(",", "."))
+            cpu = float(parts[1].replace(",", "."))
+            mem = float(parts[2].replace(",", "."))
+        except ValueError:
+            continue
+        if rss >= best_rss:
+            best_rss = rss
+            pick_cpu = cpu
+            pick_mem = mem
+            pick_rss = rss
+    if best_rss < 0:
+        return None, None, None
+    return pick_cpu, pick_mem, pick_rss
+
+
+def _parse_top_bn1_pe_cvm(text: str) -> Dict[str, Any]:
+    """Extract CVM ``us`` / ``wa`` from the summary line and stargate ``%CPU`` / ``%MEM`` / RES (KiB)."""
+    out: Dict[str, Any] = {}
+    if not (text or "").strip():
+        return out
+    header_line = ""
+    for raw in text.splitlines():
+        s = raw.strip()
+        if "PID" in s and "%CPU" in s and ("COMMAND" in s or re.search(r"\bCMD\b", s)):
+            header_line = s
+            break
+    col = _top_process_header_indices(header_line)
+    for raw in text.splitlines():
+        s = raw.strip()
+        if "Cpu(s)" in s and "wa" in s.lower():
+            m_us = re.search(r"(\d+\.?\d*)\s*us\b", s, re.I)
+            m_wa = re.search(r"(\d+\.?\d*)\s*wa\b", s, re.I)
+            if m_us:
+                try:
+                    out["pe_cvm_cpu_us_pct"] = round(float(m_us.group(1)), 1)
+                except ValueError:
+                    pass
+            if m_wa:
+                try:
+                    out["pe_cvm_cpu_wa_pct"] = round(float(m_wa.group(1)), 1)
+                except ValueError:
+                    pass
+            break
+    st_cpu: Optional[float] = None
+    st_mem: Optional[float] = None
+    st_res: Optional[float] = None
+    for raw in text.splitlines():
+        s = raw.strip()
+        if "PID" in s and "%CPU" in s and ("COMMAND" in s or re.search(r"\bCMD\b", s)):
+            continue
+        if col is None:
+            continue
+        c_v, m_v, r_v = _stargate_metrics_from_top_data_line(s, col)
+        if c_v is not None:
+            st_cpu = c_v if st_cpu is None else max(st_cpu, c_v)
+        if m_v is not None:
+            st_mem = m_v if st_mem is None else max(st_mem, m_v)
+        if r_v is not None:
+            st_res = r_v if st_res is None else max(st_res, r_v)
+    if st_cpu is not None:
+        out["pe_stargate_cpu_pct"] = round(st_cpu, 1)
+    if st_mem is not None:
+        out["pe_stargate_mem_pct"] = round(st_mem, 1)
+    if st_res is not None:
+        out["pe_stargate_res_kib"] = int(round(float(st_res)))
+    return out
+
+
+_CVM_TOP_PS_MARKER = "BULK_SNAP_STG"
+
+
+def _pe_cvm_top_metrics_raw(
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    cfg: DiskOpConfig,
+) -> Dict[str, Any]:
+    ct = min(20.0, float(cfg.guest_ssh_connect_timeout or 30.0))
+    top_extra = (os.environ.get("BULK_SNAP_PE_TOP_BATCH_ARGS") or "").strip()
+    if top_extra:
+        top_extra = " " + top_extra
+    # ``ps`` RSS (resident) supplements RES; ``ps`` %cpu only if ``top`` lacks stargate row.
+    remote_cmd = (
+        f"LC_ALL=C top -bn1{top_extra}; "
+        f"printf '\\n{_CVM_TOP_PS_MARKER}\\n'; "
+        "LC_ALL=C ps -C stargate -o rss=,%cpu=,%mem= --no-headers 2>/dev/null || true"
+    )
+    ec, out, err = _guest_sshpass_run(
+        host,
+        user,
+        password,
+        remote_cmd,
+        port=port,
+        connect_timeout=ct,
+        command_timeout=25.0,
+        cancel_event=None,
+    )
+    if ec != 0:
+        msg = ((err or "").strip() or f"top exit {ec}")[:500]
+        return {"pe_cvm_top_err": msg}
+    top_text = out or ""
+    ps_block = ""
+    if _CVM_TOP_PS_MARKER in top_text:
+        top_text, ps_block = top_text.split(_CVM_TOP_PS_MARKER, 1)
+        ps_block = ps_block.lstrip("\n")
+    parsed = _parse_top_bn1_pe_cvm(top_text)
+    ps_cpu, ps_mem, ps_rss = _parse_ps_stargate_metrics(ps_block)
+    if ps_cpu is not None and parsed.get("pe_stargate_cpu_pct") is None:
+        parsed["pe_stargate_cpu_pct"] = round(ps_cpu, 1)
+    if ps_mem is not None and parsed.get("pe_stargate_mem_pct") is None:
+        parsed["pe_stargate_mem_pct"] = round(ps_mem, 1)
+    if ps_rss is not None and parsed.get("pe_stargate_res_kib") is None:
+        parsed["pe_stargate_res_kib"] = int(round(float(ps_rss)))
+    has_any = any(
+        k in parsed
+        for k in (
+            "pe_cvm_cpu_us_pct",
+            "pe_cvm_cpu_wa_pct",
+            "pe_stargate_cpu_pct",
+            "pe_stargate_mem_pct",
+            "pe_stargate_res_kib",
+        )
+    )
+    if not has_any:
+        parsed["pe_cvm_top_err"] = "could not parse top (us/wa/stargate)"
+    return parsed
+
+
+def _pe_cvm_top_metrics_cached(pe_ip: str, cfg: DiskOpConfig) -> Dict[str, Any]:
+    if os.environ.get("BULK_SNAP_PE_CVM_NO_TOP", "").strip().lower() in ("1", "true", "yes"):
+        return {}
+    user = (cfg.pe_cvm_ssh_user or "").strip()
+    pwd = (cfg.pe_cvm_ssh_password or "").strip()
+    if not user or not pwd:
+        return {}
+    host = _ssh_host_for_socket(pe_ip)
+    if not host:
+        return {}
+    port = max(1, min(int(cfg.pe_cvm_ssh_port or 22), 65535))
+    hk = f"{host}:{port}"
+    now = time.monotonic()
+    with _cvm_top_lock:
+        hit = _cvm_top_cache.get(hk)
+        if hit and (now - hit[0]) < _CVM_TOP_CACHE_TTL_SEC:
+            return dict(hit[1])
+    parsed = _pe_cvm_top_metrics_raw(host, port, user, pwd, cfg)
+    with _cvm_top_lock:
+        _cvm_top_cache[hk] = (now, parsed)
+    return dict(parsed)
 
 
 def _last_valid_ppm_as_percent(values: Any) -> Optional[float]:
@@ -812,8 +1065,6 @@ def _throttle_pe_before_guest_ssh(
             raise RunCancelled()
 
     pause = max(1.0, float(cfg.cluster_util_pause_sec or 30.0))
-    max_wait = max(pause, float(cfg.cluster_util_max_retry_sec or 1800.0))
-    deadline: Optional[float] = None
     thr_adapt = float(cfg.cluster_adaptive_cpu_threshold_pct or 90.0)
     mem_ramp_lim = float(cfg.cluster_mem_max_pct or 0)
     spike_d = float(cfg.cluster_adaptive_cpu_spike_delta_pct or 0.0)
@@ -833,6 +1084,7 @@ def _throttle_pe_before_guest_ssh(
     while True:
         _abort()
         pause_after = False
+        top_cvm = _pe_cvm_top_metrics_cached(pe_ip, cfg)
         with top_lock:
             cpu, mem, err = _pe_cluster_stats_snapshot(pe_ip, cfg)
             prev_cpu: Optional[float] = None
@@ -894,6 +1146,17 @@ def _throttle_pe_before_guest_ssh(
                 row_m["guest_ssh_parallel_effective"] = gate.current
                 row_m["guest_ssh_parallel_baseline"] = gate.baseline
                 row_m["guest_ssh_parallel_ceiling"] = gate.ceiling
+            for _k in (
+                "pe_cvm_cpu_us_pct",
+                "pe_cvm_cpu_wa_pct",
+                "pe_stargate_cpu_pct",
+                "pe_stargate_mem_pct",
+                "pe_stargate_res_kib",
+            ):
+                if top_cvm.get(_k) is not None:
+                    row_m[_k] = top_cvm[_k]
+            if top_cvm.get("pe_cvm_top_err"):
+                row_m["pe_cvm_top_err"] = top_cvm["pe_cvm_top_err"]
             if pe_metrics is not None and pe_metrics_lock is not None:
                 with pe_metrics_lock:
                     pe_metrics[cluster_name] = row_m
@@ -937,15 +1200,6 @@ def _throttle_pe_before_guest_ssh(
         over_cpu = check_cpu and cpu is not None and cpu >= cpu_lim
         over_mem = check_mem and mem is not None and mem >= mem_lim
         if not over_cpu and not over_mem:
-            return
-        if deadline is None:
-            deadline = time.monotonic() + max_wait
-        if time.monotonic() >= deadline:
-            log.warning(
-                "PE util cluster=%r still at/above limit after %.0fs; continuing guest work.",
-                cluster_name,
-                max_wait,
-            )
             return
         log.debug(
             "PE util cluster=%r over limit (cpu_high=%s mem_high=%s); pausing %.0fs.",
@@ -1139,6 +1393,17 @@ def _parse_guest_timing_output(text: str) -> Dict[str, Any]:
         "cleanup_sec": cleanup_sec,
         "rm_sec": span("pre_rm", "post_rm"),
     }
+    # Single-pipeline create/add/update (no split stages): openssl|dd bounded by pipeline_* markers.
+    if any(n == "pipeline_start" for n, _ in marks) and any(n == "pipeline_done" for n, _ in marks):
+        ps = span("guest_start", "pipeline_start")
+        pi = span("pipeline_start", "pipeline_done")
+        pc = span("pipeline_done", "guest_end")
+        if ps is not None:
+            out["setup_sec"] = ps
+        if pi is not None:
+            out["dd_sec"] = pi
+        if pc is not None:
+            out["cleanup_sec"] = pc
     return out
 
 
@@ -1198,12 +1463,15 @@ def _guest_timed_remote_body(op: str, cfg: DiskOpConfig) -> str:
             )
         # No pipefail: ``openssl | dd`` stops ``dd`` after ``count=N``; ``openssl`` then gets
         # SIGPIPE — with pipefail the pipeline is treated as failed even when ``dd`` succeeded.
+        # ``pipeline_start`` / ``pipeline_done`` bound the full openssl|dd span for UI (dd_sec, etc.).
         return (
             "set -e; "
             + _bs
             + "_bs guest_start; "
+            + "_bs pipeline_start; "
             + inner
             + "; ec=$?; "
+            + "_bs pipeline_done; "
             + "_bs guest_end; "
             "exit $ec"
         )
@@ -1271,7 +1539,7 @@ def preview_guest_disk_targets(
     """
     Count VMs eligible for guest disk churn (name rules, IP, powered on, RAM floor). No SSH.
 
-    Pass ``rows`` to skip Prism refetch (e.g. after **Fetch VMs** cache).
+    Pass ``rows`` to skip Prism refetch (e.g. inventory cache from index page load).
     """
     try:
         import urllib3
@@ -1350,6 +1618,116 @@ def preview_guest_disk_targets(
                 key=lambda x: (x == "—", x),
             )
     return out
+
+
+_DISK_METRICS_TIMELINE_MAX = 64
+_DISK_METRICS_TIMELINE_MIN_INTERVAL_SEC = 12.0
+
+
+def _mean_float(xs: List[float]) -> Optional[float]:
+    if not xs:
+        return None
+    return sum(xs) / float(len(xs))
+
+
+def _fallback_avg_wall_per_vm_cluster(completed: List[Dict[str, Any]], cluster: str) -> Optional[float]:
+    vals: List[float] = []
+    for r in completed:
+        if str(r.get("cluster") or "") != str(cluster):
+            continue
+        try:
+            vals.append(float(r["seconds"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return _mean_float(vals)
+
+
+def _fallback_avg_wall_per_vm_all(completed: List[Dict[str, Any]]) -> Optional[float]:
+    vals: List[float] = []
+    for r in completed:
+        try:
+            vals.append(float(r["seconds"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return _mean_float(vals)
+
+
+def _eta_for_progress_row(
+    row: Dict[str, Any],
+    cluster_key: str,
+    completed: List[Dict[str, Any]],
+) -> Tuple[Optional[float], Optional[float]]:
+    """Rough remaining wall for this shard.
+
+    When ``done > 0``, the row's ``avg_wall_sec_per_vm`` is ``cluster_wall_sec / done`` — seconds of
+    shard wall clock per completion — which **already** reflects parallel guest SSH. Throughput is
+    ``~ done / wall`` completions/s, so remaining time ``≈ pending / (done/wall) = pending * avg``.
+    Multiplying by ``(pending / SSH slots)`` would incorrectly divide by parallelism twice.
+
+    When ``done == 0``, fall back to ``(pending / SSH slots) *`` mean per-VM duration from completed
+    VMs (no shard throughput sample yet).
+    """
+    pending = int(row.get("pending") or 0)
+    if pending <= 0:
+        return 0.0, None
+    done = int(row.get("done") or 0)
+    eff = max(1, int(row.get("guest_ssh_parallel_effective") or 1))
+
+    avg_shard: Optional[float] = None
+    if done > 0 and row.get("avg_wall_sec_per_vm") is not None:
+        try:
+            avg_shard = float(row["avg_wall_sec_per_vm"])
+        except (TypeError, ValueError):
+            avg_shard = None
+    if avg_shard is not None and avg_shard >= 0.0 and done > 0:
+        basis = round(float(avg_shard), 2)
+        return round(float(pending) * float(avg_shard), 1), basis
+
+    avg_fb: Optional[float] = None
+    if cluster_key == "_all":
+        avg_fb = _fallback_avg_wall_per_vm_all(completed)
+    else:
+        avg_fb = _fallback_avg_wall_per_vm_cluster(completed, cluster_key)
+    if avg_fb is None or avg_fb < 0:
+        return None, None
+    basis = round(float(avg_fb), 2)
+    return round((float(pending) / float(eff)) * float(avg_fb), 1), basis
+
+
+_PE_VM_SNAPSHOT_KEYS = (
+    "pe_cpu_pct",
+    "pe_mem_pct",
+    "pe_cvm_cpu_us_pct",
+    "pe_cvm_cpu_wa_pct",
+    "pe_stargate_cpu_pct",
+    "pe_stargate_mem_pct",
+    "pe_stargate_res_kib",
+    "guest_ssh_parallel_effective",
+    "cluster_paused",
+)
+
+
+def _pe_metrics_row_snapshot(
+    pe_metrics: Optional[Dict[str, Dict[str, Any]]],
+    cluster: str,
+    lock: threading.Lock,
+) -> Dict[str, Any]:
+    """Copy live PE / CVM / stargate fields from the shard row (same source as Disk job progress)."""
+    if not pe_metrics:
+        return {}
+    ck = str(cluster or "")
+    with lock:
+        row = pe_metrics.get(ck)
+        if not row:
+            return {}
+        out: Dict[str, Any] = {}
+        for k in _PE_VM_SNAPSHOT_KEYS:
+            if k in row and row[k] is not None:
+                out[k] = row[k]
+        for ek in ("pe_cvm_top_err", "pe_top_err"):
+            if row.get(ek):
+                out[ek] = str(row[ek])[:500]
+        return dict(out)
 
 
 def run_disk_ops(
@@ -1486,7 +1864,7 @@ def run_disk_ops(
         cfg.parallel_clusters,
         parallel,
     )
-    adaptive_ssh = bool(cfg.cluster_adaptive_ssh_parallel and cfg.parallel_clusters)
+    adaptive_ssh = bool(cfg.cluster_adaptive_ssh_parallel)
     if adaptive_ssh:
         ceil_h = int(cfg.cluster_adaptive_ssh_ceiling or 0)
         if ceil_h > 0:
@@ -1516,22 +1894,14 @@ def run_disk_ops(
             ),
         )
 
-    if cfg.cluster_pe_top_monitor and not cfg.parallel_clusters:
-        log.warning(
-            "PE stats monitor is on but parallel-across-clusters is off; per-cluster throttling is skipped."
-        )
-    if cfg.cluster_adaptive_ssh_parallel and not cfg.parallel_clusters:
-        log.warning(
-            "Adaptive guest SSH concurrency is on but parallel-across-clusters is off; option ignored."
-        )
-
-    jobs_by_cluster: Dict[str, List[Tuple[int, str, str, str, str]]] = defaultdict(list)
+    jobs_by_cluster: Dict[str, List[Tuple[int, str, str, str, str, str]]] = defaultdict(list)
     shard_keys_sorted: List[str] = []
     if cfg.parallel_clusters:
         for i, (vm_uuid, vm_name, guest_ip, cname) in enumerate(candidates):
             _abort()
             op = _resolve_op(mode, rng) if mode == DISK_RANDOM_MIX else mode
-            jobs_by_cluster[cname].append((i, vm_uuid, vm_name or "", guest_ip, op))
+            cn = str(cname or "—").strip() or "—"
+            jobs_by_cluster[cn].append((i, vm_uuid, vm_name or "", guest_ip, op, cn))
         shard_keys_sorted = sorted(jobs_by_cluster.keys(), key=lambda x: (x == "—", x))
 
     progress_lock = threading.Lock()
@@ -1546,6 +1916,8 @@ def run_disk_ops(
     vm_inflight: Dict[str, Dict[str, Any]] = {}
     vm_completed: List[Dict[str, Any]] = []
     _vm_activity_completed_cap = 8000
+    _metrics_timeline: List[Dict[str, Any]] = []
+    _tl_state: Dict[str, Any] = {"last_mono": 0.0, "last_done": -1}
     if cfg.parallel_clusters:
         for ck in shard_keys_sorted:
             progress_by_cluster[ck] = {
@@ -1597,8 +1969,17 @@ def run_disk_ops(
             if pm:
                 if pm.get("pe_cpu_pct") is not None:
                     row["pe_cpu_pct"] = pm["pe_cpu_pct"]
-                if pm.get("pe_mem_pct") is not None:
-                    row["pe_mem_pct"] = pm["pe_mem_pct"]
+                for _pk in (
+                    "pe_cvm_cpu_us_pct",
+                    "pe_cvm_cpu_wa_pct",
+                    "pe_stargate_cpu_pct",
+                    "pe_stargate_mem_pct",
+                    "pe_stargate_res_kib",
+                ):
+                    if pm.get(_pk) is not None:
+                        row[_pk] = pm[_pk]
+                if pm.get("pe_cvm_top_err"):
+                    row["pe_cvm_top_err"] = str(pm["pe_cvm_top_err"])
                 row["cluster_paused"] = bool(pm.get("cluster_paused"))
                 if row["cluster_paused"] and pm.get("cluster_pause_reason"):
                     row["cluster_pause_reason"] = str(pm["cluster_pause_reason"])
@@ -1608,11 +1989,69 @@ def run_disk_ops(
                 row["guest_ssh_parallel_baseline"] = cg.baseline
                 row["guest_ssh_parallel_ceiling"] = cg.ceiling
                 row["cluster_adaptive_ssh_parallel"] = True
-            elif cfg.parallel_clusters:
+            else:
                 cap_pf = max(1, min(parallel, tot))
                 row["guest_ssh_parallel_effective"] = cap_pf
                 row["guest_ssh_parallel_baseline"] = cap_pf
             by_c[k] = row
+        if not cfg.parallel_clusters and "_all" in by_c and pe_metrics_by_cluster:
+            ra = by_c["_all"]
+            cpus: List[float] = []
+            paused_any = False
+            reasons: List[str] = []
+            for _pk, pm in pe_metrics_by_cluster.items():
+                v = pm.get("pe_cpu_pct")
+                if v is not None:
+                    try:
+                        cpus.append(float(v))
+                    except (TypeError, ValueError):
+                        pass
+                if pm.get("cluster_paused"):
+                    paused_any = True
+                    pr = pm.get("cluster_pause_reason")
+                    if pr:
+                        reasons.append(str(pr))
+            if cpus:
+                ra["pe_cpu_pct"] = round(max(cpus), 1)
+            for _mk in (
+                "pe_cvm_cpu_us_pct",
+                "pe_cvm_cpu_wa_pct",
+                "pe_stargate_cpu_pct",
+                "pe_stargate_mem_pct",
+            ):
+                acc: List[float] = []
+                for _pk, pm in pe_metrics_by_cluster.items():
+                    v = pm.get(_mk)
+                    if v is not None:
+                        try:
+                            acc.append(float(v))
+                        except (TypeError, ValueError):
+                            pass
+                if acc:
+                    ra[_mk] = round(max(acc), 1)
+            acc_r: List[float] = []
+            for _pk, pm in pe_metrics_by_cluster.items():
+                v = pm.get("pe_stargate_res_kib")
+                if v is not None:
+                    try:
+                        acc_r.append(float(v))
+                    except (TypeError, ValueError):
+                        pass
+            if acc_r:
+                ra["pe_stargate_res_kib"] = int(round(max(acc_r)))
+            for _pk, pm in pe_metrics_by_cluster.items():
+                te = pm.get("pe_cvm_top_err")
+                if te:
+                    ra["pe_cvm_top_err"] = str(te)
+                    break
+            if paused_any:
+                ra["cluster_paused"] = True
+                ra["cluster_pause_reason"] = reasons[0] if reasons else "Paused"
+            if cluster_gates:
+                ra["guest_ssh_parallel_effective"] = max(g.current for g in cluster_gates.values())
+                ra["guest_ssh_parallel_baseline"] = min(g.baseline for g in cluster_gates.values())
+                ra["guest_ssh_parallel_ceiling"] = max(g.ceiling for g in cluster_gates.values())
+                ra["cluster_adaptive_ssh_parallel"] = adaptive_ssh
         with vm_activity_lock:
             running: List[Dict[str, Any]] = []
             for rec in vm_inflight.values():
@@ -1625,10 +2064,91 @@ def run_disk_ops(
                         "op": rec.get("op") or "",
                         "state": "running",
                         "seconds": round(time.perf_counter() - t0v, 1),
+                        "pe_cluster_before": rec.get("pe_cluster_before") or {},
                     }
                 )
             running.sort(key=lambda r: (str(r["cluster"]), str(r["vm_name"]).lower()))
             completed_copy = list(vm_completed)
+        pred: Dict[str, Any] = {
+            "eta_rem_sec_by_cluster": {},
+            "eta_rem_sec_total": None,
+            "avg_wall_sec_basis": {},
+            "completed_vm_count": len(completed_copy),
+            # Mean of each finished VM's own ``seconds`` (SSH+guest); larger than Avg s/VM when many
+            # guests run in parallel — ETA uses shard Avg s/VM × pending, not mean per-VM × pending/SSH.
+            "mean_wall_sec_per_completed_vm": None,
+            "note": "ETA per cluster with progress: pending × (shard wall ÷ done) = pending × Avg s/VM; "
+            "Avg s/VM already includes parallel SSH throughput (do not divide by slots again). "
+            "With done=0, fallback uses (pending ÷ SSH) × mean per-VM time from finished VMs. "
+            "Multi-cluster parallel job total ETA ≈ max(shard ETAs). Throttle/adaptive SSH can stretch real time.",
+        }
+        _secs_done: List[float] = []
+        for r in completed_copy:
+            try:
+                _secs_done.append(float(r["seconds"]))
+            except (KeyError, TypeError, ValueError):
+                pass
+        if _secs_done:
+            pred["mean_wall_sec_per_completed_vm"] = round(
+                sum(_secs_done) / float(len(_secs_done)), 2
+            )
+        etas_nonneg: List[float] = []
+        any_pending_no_eta = False
+        for ck, row in by_c.items():
+            eta, basis = _eta_for_progress_row(row, ck, completed_copy)
+            pred["eta_rem_sec_by_cluster"][ck] = eta
+            if basis is not None:
+                pred["avg_wall_sec_basis"][ck] = round(float(basis), 2)
+            if int(row.get("pending") or 0) > 0 and eta is None:
+                any_pending_no_eta = True
+            if eta is not None:
+                etas_nonneg.append(float(eta))
+        if cfg.parallel_clusters:
+            pred["eta_rem_sec_total"] = (
+                None
+                if any_pending_no_eta
+                else (round(max(etas_nonneg), 1) if etas_nonneg else None)
+            )
+        else:
+            pred["eta_rem_sec_total"] = pred["eta_rem_sec_by_cluster"].get("_all")
+            if any_pending_no_eta:
+                pred["eta_rem_sec_total"] = None
+
+        now_m = time.monotonic()
+        if (
+            now_m - float(_tl_state["last_mono"]) >= _DISK_METRICS_TIMELINE_MIN_INTERVAL_SEC
+            or int(overall_done) != int(_tl_state["last_done"])
+        ):
+            _tl_state["last_mono"] = now_m
+            _tl_state["last_done"] = int(overall_done)
+            slim_bc: Dict[str, Any] = {}
+            for ck, rw in by_c.items():
+                ent: Dict[str, Any] = {
+                    "done": rw.get("done"),
+                    "pending": rw.get("pending"),
+                }
+                for _key in (
+                    "pe_cpu_pct",
+                    "pe_cvm_cpu_us_pct",
+                    "pe_cvm_cpu_wa_pct",
+                    "pe_stargate_cpu_pct",
+                    "pe_stargate_mem_pct",
+                    "pe_stargate_res_kib",
+                    "guest_ssh_parallel_effective",
+                ):
+                    if rw.get(_key) is not None:
+                        ent[_key] = rw[_key]
+                slim_bc[ck] = ent
+            _metrics_timeline.append(
+                {
+                    "t_monotonic_sec": round(now_m, 2),
+                    "overall_done": int(overall_done),
+                    "by_cluster": slim_bc,
+                }
+            )
+            while len(_metrics_timeline) > _DISK_METRICS_TIMELINE_MAX:
+                del _metrics_timeline[0]
+
         return {
             "overall_total": n_run,
             "overall_done": overall_done,
@@ -1638,6 +2158,8 @@ def run_disk_ops(
             "disk_adaptive_ssh_parallel": adaptive_ssh,
             "guest_ssh_parallel_config": parallel,
             "vm_activity": {"running": running, "completed": completed_copy},
+            "prediction": pred,
+            "metrics_timeline": list(_metrics_timeline),
         }
 
     def _emit_disk_progress() -> None:
@@ -1662,14 +2184,21 @@ def run_disk_ops(
             failures_by_cat.setdefault(cat, []).append(rec)
 
     def _ssh_task(
-        args: Tuple[int, str, str, str, str],
+        args: Tuple[Any, ...],
         cluster_tag: Optional[str] = None,
+        *,
+        pe_before: Optional[Dict[str, Any]] = None,
     ) -> int:
-        i, vm_uuid, vm_name, guest_ip, op = args
+        if len(args) == 6:
+            i, vm_uuid, vm_name, guest_ip, op, cname = args
+            tag = cluster_tag if cluster_tag is not None else str(cname or "_all")
+        else:
+            i, vm_uuid, vm_name, guest_ip, op = args  # type: ignore[misc]
+            tag = cluster_tag if cluster_tag is not None else "_all"
         _abort()
-        tag = cluster_tag if cluster_tag is not None else "_all"
         act_key = f"{i}:{vm_uuid}"
         t_vm0 = time.perf_counter()
+        pe_b = dict(pe_before) if pe_before else {}
         with vm_activity_lock:
             vm_inflight[act_key] = {
                 "vm_name": vm_name or "?",
@@ -1677,6 +2206,7 @@ def run_disk_ops(
                 "cluster": tag,
                 "op": op,
                 "t0": t_vm0,
+                "pe_cluster_before": pe_b,
             }
         _emit_disk_progress()
 
@@ -1732,9 +2262,13 @@ def run_disk_ops(
 
         dur_vm = time.perf_counter() - t_vm0
         guest_timing = _parse_guest_timing_output(combined)
+        ssh_overhead_sec: Optional[float] = None
+        guest_cmd_sec: Optional[float] = None
         if guest_timing.get("parse_ok") and guest_timing.get("guest_span_sec") is not None:
             gs = float(guest_timing["guest_span_sec"])
             guest_timing["overhead_sec"] = round(max(0.0, float(dur_vm) - gs), 3)
+            ssh_overhead_sec = float(guest_timing["overhead_sec"])
+            guest_cmd_sec = float(gs)
         else:
             guest_timing["overhead_sec"] = None
         if dur_vm >= 20.0:
@@ -1747,6 +2281,7 @@ def run_disk_ops(
                 op,
                 ec,
             )
+        pe_after = _pe_metrics_row_snapshot(pe_metrics_by_cluster, tag, pe_metrics_lock)
         with vm_activity_lock:
             vm_inflight.pop(act_key, None)
             vm_completed.append(
@@ -1758,13 +2293,25 @@ def run_disk_ops(
                     "state": "ok" if ec == 0 else "fail",
                     "seconds": round(dur_vm, 1),
                     "guest_timing": guest_timing,
+                    # UI: SSH/connect + shell startup + trailing I/O vs guest-measured script (BULK_SNAP_T span).
+                    "ssh_overhead_sec": round(ssh_overhead_sec, 2)
+                    if ssh_overhead_sec is not None
+                    else None,
+                    "guest_cmd_sec": round(guest_cmd_sec, 2)
+                    if guest_cmd_sec is not None
+                    else None,
+                    # Same live PE/CVM/stargate fields as Disk job progress, captured after throttle (pre)
+                    # and after guest SSH returns (post); for ETA / analysis (concurrent shards may interleave).
+                    "pe_cluster_before": pe_b,
+                    "pe_cluster_after": pe_after,
                 }
             )
             while len(vm_completed) > _vm_activity_completed_cap:
                 del vm_completed[0]
 
+        prog_key = "_all" if not cfg.parallel_clusters else tag
         with progress_lock:
-            st = progress_by_cluster.get(tag)
+            st = progress_by_cluster.get(prog_key)
             if st is not None:
                 st["done"] += 1
                 if ec == 0:
@@ -1796,7 +2343,7 @@ def run_disk_ops(
         rem_lock = threading.Lock()
 
         def _run_one_cluster(
-            cname: str, cjobs: List[Tuple[int, str, str, str, str]]
+            cname: str, cjobs: List[Tuple[int, str, str, str, str, str]]
         ) -> Tuple[int, int]:
             ct0 = time.perf_counter()
             with cluster_timing_lock:
@@ -1835,7 +2382,7 @@ def run_disk_ops(
                         len(cjobs),
                     )
 
-                def _guest_op(args: Tuple[int, str, str, str, str]) -> int:
+                def _guest_op(args: Tuple[int, str, str, str, str, str]) -> int:
                     if use_pe:
                         _throttle_pe_before_guest_ssh(
                             cname,
@@ -1852,13 +2399,14 @@ def run_disk_ops(
                             else None,
                             emit_progress=_emit_disk_progress,
                         )
+                    snap_b = _pe_metrics_row_snapshot(pe_metrics_by_cluster, cname, pe_metrics_lock)
                     if gate is not None:
                         gate.acquire()
                         try:
-                            return _ssh_task(args, cname)
+                            return _ssh_task(args, pe_before=snap_b)
                         finally:
                             gate.release()
-                    return _ssh_task(args, cname)
+                    return _ssh_task(args, pe_before=snap_b)
 
                 inner = max(1, min(parallel, len(cjobs)))
                 if gate is not None:
@@ -1955,27 +2503,112 @@ def run_disk_ops(
                         outer.shutdown(wait=False)
                     raise
     else:
-        jobs: List[Tuple[int, str, str, str, str]] = []
+        jobs_np: List[Tuple[int, str, str, str, str, str]] = []
         for i, (vm_uuid, vm_name, guest_ip, _c) in enumerate(candidates):
             _abort()
             op = _resolve_op(mode, rng) if mode == DISK_RANDOM_MIX else mode
-            jobs.append((i, vm_uuid, vm_name or "", guest_ip, op))
+            cn = str(_c or "—").strip() or "—"
+            jobs_np.append((i, vm_uuid, vm_name or "", guest_ip, op, cn))
+
+        job_counts = Counter(j[5] for j in jobs_np)
+        cluster_names_np = sorted(job_counts.keys(), key=lambda x: (x == "—", x))
+        top_locks_np: Dict[str, threading.Lock] = defaultdict(threading.Lock)
+        pe_map_np: Dict[str, str] = {}
+        want_pe_np = cfg.cluster_pe_top_monitor or cfg.cluster_adaptive_ssh_parallel
+        if want_pe_np:
+            pe_map_np = _build_cluster_pe_ip_map(list(cluster_names_np), cfg.pe_cvm_ips_multiline)
+            miss_np = [c for c in cluster_names_np if c not in pe_map_np]
+            if miss_np:
+                log.warning(
+                    "PE CVM map: no IP for cluster(s) %s — PE CPU throttle / adaptive skipped there "
+                    "(add lines: one IP per cluster in sort order, or Name=ip).",
+                    miss_np,
+                )
+
+        for cname in cluster_names_np:
+            pe_ip_g = pe_map_np.get(cname, "")
+            if adaptive_ssh and pe_ip_g.strip():
+                n_c = int(job_counts[cname])
+                ceil_cfg = int(cfg.cluster_adaptive_ssh_ceiling or 0)
+                auto_ceil = max(parallel, ADAPTIVE_GUEST_SSH_AUTO_CEILING)
+                auto_ceil = min(auto_ceil, 500)
+                cap = ceil_cfg if ceil_cfg > 0 else auto_ceil
+                base_pf = max(1, min(parallel, n_c))
+                cap = max(base_pf, max(1, min(cap, n_c)))
+                ramp_phases = _parse_adaptive_ramp_schedule(cfg.cluster_adaptive_ramp)
+                g_np = _ClusterConcurrencyGate(
+                    base_pf,
+                    cap,
+                    ramp_phases,
+                    cooldown_sec=float(cfg.cluster_adaptive_cooldown_sec or 300.0),
+                )
+                cluster_gates[cname] = g_np
+                log.info(
+                    "Cluster %r (single pool): adaptive guest SSH baseline=%d ceiling=%d "
+                    "(CPU ramp thresh=%.0f%%); %d VM(s).",
+                    cname,
+                    base_pf,
+                    cap,
+                    float(cfg.cluster_adaptive_cpu_threshold_pct or 90.0),
+                    n_c,
+                )
+
+        def _guest_op_np(args: Tuple[int, str, str, str, str, str]) -> int:
+            cname = args[5]
+            pe_ip = pe_map_np.get(cname, "") if want_pe_np else ""
+            use_pe = bool(pe_ip.strip()) and (
+                cfg.cluster_pe_top_monitor or cfg.cluster_adaptive_ssh_parallel
+            )
+            tlk = top_locks_np[cname]
+            gate = cluster_gates.get(cname)
+            if use_pe:
+                _throttle_pe_before_guest_ssh(
+                    cname,
+                    pe_ip,
+                    cfg,
+                    log,
+                    cancel_event,
+                    tlk,
+                    gate=gate,
+                    pe_metrics=pe_metrics_by_cluster,
+                    pe_metrics_lock=pe_metrics_lock,
+                    last_adaptive_pe_cpu=last_adaptive_pe_cpu if adaptive_ssh else None,
+                    emit_progress=_emit_disk_progress,
+                )
+            snap_b = _pe_metrics_row_snapshot(pe_metrics_by_cluster, cname, pe_metrics_lock)
+            if gate is not None:
+                gate.acquire()
+                try:
+                    return _ssh_task(args, pe_before=snap_b)
+                finally:
+                    gate.release()
+            return _ssh_task(args, pe_before=snap_b)
 
         pool_t0 = time.perf_counter()
         with cluster_timing_lock:
             cluster_timing["_all"] = {"t0": pool_t0, "duration_sec": None}
         try:
-            if parallel == 1:
-                for args in jobs:
-                    ec = _ssh_task(args)
+            pool_workers_np = max(1, min(parallel, len(jobs_np)))
+            if cluster_gates:
+                pool_workers_np = min(
+                    500,
+                    max(parallel, sum(g.ceiling for g in cluster_gates.values())),
+                )
+                pool_workers_np = max(1, min(pool_workers_np, len(jobs_np)))
+            if parallel == 1 and not cluster_gates:
+                for args in jobs_np:
+                    ec = _guest_op_np(args)
                     if ec == 0:
                         tally_s += 1
                     else:
                         tally_f += 1
             else:
-                log.debug("Guest SSH parallelism: up to %d concurrent sessions.", parallel)
-                with concurrent.futures.ThreadPoolExecutor(max_workers=parallel) as ex:
-                    futures = [ex.submit(_ssh_task, a) for a in jobs]
+                log.debug(
+                    "Guest SSH parallelism (single pool): up to %d worker thread(s).",
+                    pool_workers_np,
+                )
+                with concurrent.futures.ThreadPoolExecutor(max_workers=pool_workers_np) as ex:
+                    futures = [ex.submit(_guest_op_np, a) for a in jobs_np]
                     try:
                         for fut in concurrent.futures.as_completed(futures):
                             _abort()

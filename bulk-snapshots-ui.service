@@ -1,0 +1,18 @@
+[Unit]
+Description=Bulk VM Snapshots UI - Flask Web Application
+After=network.target
+
+[Service]
+Type=simple
+User=mohan.as1
+WorkingDirectory=/home/mohan.as1/mohan_helpers/bulk_snapshots_ui
+EnvironmentFile=/home/mohan.as1/mohan_helpers/bulk_snapshots_ui/.env
+ExecStart=/usr/local/bin/python3.12 /home/mohan.as1/mohan_helpers/bulk_snapshots_ui/app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bulk-snapshots-ui
+
+[Install]
+WantedBy=multi-user.target

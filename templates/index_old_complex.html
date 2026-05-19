@@ -26,10 +26,6 @@
       box-sizing: border-box;
     }
     
-    .config-card-hidden {
-      display: none !important;
-    }
-    
     body {
       font-family: var(--font-sans);
       background: var(--bg-light);
@@ -180,7 +176,7 @@
       z-index: 100;
       display: flex;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: space-between;
       padding: 0 2rem;
       gap: 1.5rem;
     }
@@ -218,7 +214,7 @@
     }
     
     .action-center-btn-primary {
-      background: linear-gradient(135deg, #55a630 0%, #4a8f2a 100%);
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
       color: white;
       border: none;
       font-weight: 700;
@@ -226,7 +222,7 @@
       padding: 0.875rem 2rem;
       border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(85, 166, 48, 0.4);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
       transition: all 0.2s ease;
       display: inline-flex;
       align-items: center;
@@ -234,8 +230,8 @@
     }
     
     .action-center-btn-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #6bc043 0%, #55a630 100%);
-      box-shadow: 0 4px 12px rgba(85, 166, 48, 0.6);
+      background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.6);
       transform: translateY(-2px);
     }
     
@@ -245,26 +241,15 @@
     }
     
     .action-center-btn-secondary {
-      background: linear-gradient(135deg, #007cba 0%, #0063a6 100%);
+      background: transparent;
       color: white;
-      border: none;
+      border: 2px solid rgba(255, 255, 255, 0.6);
       font-weight: 600;
       font-size: 0.9375rem;
       padding: 0.75rem 1.5rem;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s ease;
-    }
-    
-    .action-center-btn-secondary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #0090d9 0%, #007cba 100%);
-      box-shadow: 0 2px 6px rgba(0, 124, 186, 0.4);
-      transform: translateY(-1px);
-    }
-    
-    .action-center-btn-secondary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
     
     .action-center-btn-secondary:hover:not(:disabled) {
@@ -279,7 +264,11 @@
     }
     
     .action-center-status {
-      display: none;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-left: 1.5rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
     }
     
     .connection-status {
@@ -1177,12 +1166,8 @@
       display: inline-flex;
       align-items: center;
       gap: 0.28rem;
-      padding: 0.25rem 0.6rem;
+      padding: 0.12rem 0.45rem;
       border-radius: 4px;
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
       font-size: 0.78rem;
       font-weight: 600;
       white-space: nowrap;
@@ -1192,19 +1177,19 @@
         opacity 0.3s ease;
     }
     .cell-badge-ok {
-      background: rgba(85, 166, 48, 0.15);
-      color: #55a630;
-      border: 1px solid rgba(85, 166, 48, 0.4);
+      background: #1a3328;
+      color: #81c995;
+      border: 1px solid #2d5c45;
     }
     .cell-badge-fail {
-      background: rgba(153, 153, 153, 0.15);
-      color: #999999;
-      border: 1px solid rgba(153, 153, 153, 0.3);
+      background: #3d2020;
+      color: #f28b82;
+      border: 1px solid #6b3535;
     }
     .cell-badge-neutral {
-      background: rgba(255, 255, 255, 0.1);
+      background: #2a2d35;
       color: #9aa0a6;
-      border: 1px solid #444444;
+      border: 1px solid #3c434d;
     }
     .cell-badge-progress {
       background: #243044;
@@ -1813,8 +1798,6 @@
       .skel-bar, .skel-cell { animation: none; background: #2a2d35; }
     }
     .config-card {
-      display: block;
-      width: 100%;
       background: white;
       border: 1px solid var(--border-gray);
       border-radius: 12px;
@@ -1952,7 +1935,7 @@
     /* Strict 2-Column Grid: Label 220px + Input fills remaining */
     .form-grid-row {
       display: grid;
-      grid-template-columns: 250px 1fr;
+      grid-template-columns: 220px 1fr;
       gap: 1rem;
       align-items: center;
       margin-bottom: 1rem;
@@ -1966,40 +1949,25 @@
       padding-right: 0.5rem;
     }
     
-    /* Standardized Input Styling - White Background */
+    /* Standardized Input Styling - 40px Height */
     .form-grid-row input[type="text"],
     .form-grid-row input[type="password"],
     .form-grid-row input[type="number"],
-    .form-grid-row select,
-    .form-grid-row textarea {
+    .form-grid-row select {
       height: 40px;
       border-radius: 6px;
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
       padding: 0 0.75rem;
       font-size: 0.9375rem;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      background: #ffffff;
-      color: #000000;
-    }
-    
-    .form-grid-row textarea {
-      height: auto;
-      min-height: 60px;
-      padding: 0.5rem 0.75rem;
-      resize: vertical;
+      background: #fff;
     }
     
     .form-grid-row input:focus,
-    .form-grid-row select:focus,
-    .form-grid-row textarea:focus {
+    .form-grid-row select:focus {
       outline: none;
-      border-color: #007cba;
-      box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.15);
-    }
-    
-    .form-grid-row input::placeholder,
-    .form-grid-row textarea::placeholder {
-      color: rgba(0, 0, 0, 0.4);
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     
     .form-grid-row .segmented-control {
@@ -2063,18 +2031,6 @@
     body.form-sheet-mode .main-content {
       margin-left: 0;
       width: 100%;
-    }
-    
-    body.form-sheet-mode .sticky-footer-controls {
-      display: none;
-    }
-    
-    body.form-sheet-mode .primary-actions-toolbar {
-      display: none;
-    }
-    
-    body.form-sheet-mode .status-dashboard {
-      display: none;
     }
     
     @media (max-width: 768px) {
@@ -2659,45 +2615,34 @@
     /* Action Button Styles */
     
     /* Primary Action - Start/Run (Green Success) */
-    /* Nutanix Green - Run Actions */
     button.btn-impact-cta,
     button.btn-start,
     button.btn-run {
-      background: linear-gradient(135deg, #55a630 0%, #4a8f2a 100%);
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
       color: white;
       border: none;
       font-weight: 700;
       font-size: 1rem;
       padding: 0.75rem 1.5rem;
-      box-shadow: 0 2px 8px rgba(85, 166, 48, 0.4);
-      cursor: pointer;
-      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
     }
     
     button.btn-impact-cta:hover:not(:disabled),
     button.btn-start:hover:not(:disabled),
     button.btn-run:hover:not(:disabled) {
-      background: linear-gradient(135deg, #6bc043 0%, #55a630 100%);
-      box-shadow: 0 4px 12px rgba(85, 166, 48, 0.6);
+      background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
       transform: translateY(-1px);
     }
     
-    /* Nutanix Blue - Primary Actions */
+    /* Primary Blue Action */
     button.btn-primary-action {
-      background: linear-gradient(135deg, #007cba 0%, #0063a6 100%);
+      background: var(--primary-blue);
       color: white;
       border: none;
       font-weight: 600;
       padding: 0.75rem 1.5rem;
-      box-shadow: 0 2px 4px rgba(0, 124, 186, 0.3);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    button.btn-primary-action:hover:not(:disabled) {
-      background: linear-gradient(135deg, #0090d9 0%, #007cba 100%);
-      box-shadow: 0 4px 8px rgba(0, 124, 186, 0.4);
-      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     }
     
     button.btn-primary-action:hover:not(:disabled) {
@@ -2758,157 +2703,33 @@
       align-items: center;
       justify-content: center;
       padding: 1rem;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.55);
     }
     .confirm-modal {
-      background: #1a1c1e;
-      border: 1px solid #444;
+      background: #22252c;
+      border: 1px solid #3c434d;
       border-radius: 12px;
-      max-width: 500px;
+      max-width: 32rem;
       width: 100%;
-      padding: 1.5rem;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+      padding: 1.15rem 1.25rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
     }
     .confirm-modal-title {
-      margin: 0 0 1rem 0;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #007cba;
+      margin: 0 0 0.65rem 0;
+      font-size: 1.05rem;
+      font-weight: 600;
     }
     .confirm-modal-body {
-      font-size: 0.95rem;
-      line-height: 1.6;
-      margin-bottom: 1.5rem;
-      color: #FFFFFF;
-    }
-    .confirm-modal-body p {
-      color: #FFFFFF;
+      font-size: 0.9rem;
+      line-height: 1.5;
       margin-bottom: 1rem;
     }
-    .confirm-modal-body strong {
-      color: #FFFFFF;
-      font-weight: 600;
-    }
-    .confirm-modal-body ul { 
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    .confirm-modal-body ul li {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      gap: 1rem;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #333;
-    }
-    .confirm-modal-body ul li:last-child {
-      border-bottom: none;
-    }
-    .confirm-modal-body ul li strong {
-      color: #aaa;
-      font-weight: 400;
-    }
-    .confirm-modal-body ul li span {
-      color: #FFFFFF;
-      font-weight: 600;
-    }
+    .confirm-modal-body ul { margin: 0.35rem 0 0 1rem; padding: 0; }
     .confirm-modal-actions {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.65rem;
       justify-content: flex-end;
       flex-wrap: wrap;
-    }
-    
-    /* Loading Spinner */
-    .loading-spinner {
-      width: 60px;
-      height: 60px;
-      border: 6px solid #E5E7EB;
-      border-top-color: #007cba;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    #loading-overlay {
-      display: none;
-    }
-    
-    #loading-overlay.active {
-      display: flex !important;
-    }
-    
-    /* Schedule Preset Buttons */
-    .schedule-preset-btn {
-      transition: all 0.2s ease;
-      font-weight: 500;
-    }
-    
-    .schedule-preset-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .schedule-preset-btn:active {
-      transform: translateY(0);
-    }
-    
-    /* Day checkbox labels */
-    .day-checkbox-label {
-      transition: all 0.2s ease;
-      font-weight: 500;
-    }
-    
-    .day-checkbox-label:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Time preset buttons */
-    .time-preset-btn {
-      transition: all 0.2s ease;
-      font-weight: 500;
-    }
-    
-    .time-preset-btn:hover {
-      background: #E5E7EB !important;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    .confirm-modal-actions .secondary {
-      background: transparent;
-      border: 1px solid #FFFFFF;
-      color: #FFFFFF;
-      padding: 0.65rem 1.25rem;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .confirm-modal-actions .secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-    .confirm-modal-actions .btn-impact-cta,
-    .confirm-modal-actions .btn-confirm-danger {
-      background: linear-gradient(135deg, #55a630 0%, #4a8f2a 100%);
-      border: none;
-      color: white;
-      padding: 0.65rem 1.5rem;
-      border-radius: 6px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 2px 8px rgba(85, 166, 48, 0.4);
-    }
-    .confirm-modal-actions .btn-impact-cta:hover,
-    .confirm-modal-actions .btn-confirm-danger:hover {
-      background: linear-gradient(135deg, #6bc043 0%, #55a630 100%);
-      box-shadow: 0 4px 12px rgba(85, 166, 48, 0.6);
-      transform: translateY(-1px);
     }
     .sticky-controls-stack {
       position: sticky;
@@ -3062,104 +2883,33 @@
       font-weight: 700;
       color: var(--text-dark);
     }
-    /* VM Inventory Table Toolbar */
     .inventory-table-toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem 0.75rem;
       margin: 0.65rem 0 0.5rem 0;
-      padding: 12px;
-      background: #f5f5f5;
-      border-radius: 8px;
-      border: 1px solid #ddd;
     }
     .inventory-table-toolbar input[type="search"] {
       flex: 1;
       min-width: 12rem;
       max-width: 24rem;
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #ccc;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-    }
-    .inventory-table-toolbar input[type="search"]::placeholder {
-      color: rgba(0, 0, 0, 0.4);
-    }
-    .inventory-table-toolbar select {
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #ccc;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-    }
-    .inventory-table-toolbar .muted {
-      color: #666;
-    }
-    .inventory-table-toolbar button.secondary {
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #ccc;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .inventory-table-toolbar button.secondary:hover:not(:disabled) {
-      background: #f0f0f0;
-      border-color: #007cba;
-    }
-    .inventory-table-toolbar button.secondary:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
     }
     .inventory-table-scroll {
       max-height: 28rem;
-      overflow-x: auto;
-      overflow-y: auto;
-      border: 1px solid #333;
+      overflow: auto;
+      border: 1px solid #3c434d;
       border-radius: 8px;
-      background: #1a1c1e;
+      background: #0e1014;
     }
-    table.inventory-vm-table { 
-      margin: 0; 
-      width: 100%;
-      font-size: 0.82rem;
-      border-collapse: collapse;
-      table-layout: auto;
-      background: #1a1c1e;
-      color: #FFFFFF !important;
-    }
+    table.inventory-vm-table { margin: 0; font-size: 0.82rem; }
     table.inventory-vm-table thead th {
       position: sticky;
       top: 0;
       z-index: 2;
-      background: #2D3436;
-      color: #FFFFFF !important;
-      font-weight: 600;
-      text-align: left;
-      padding: 12px;
-      border-bottom: 2px solid #333;
-      font-size: 0.875rem;
-    }
-    
-    table.inventory-vm-table tbody td {
-      padding: 12px;
-      border-bottom: 1px solid #333;
-      color: #FFFFFF !important;
-      text-align: left;
-      font-size: 0.82rem;
-    }
-    /* Zebra striping */
-    table.inventory-vm-table tbody tr:nth-child(even) {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    table.inventory-vm-table tbody tr:hover {
-      background: rgba(85, 166, 48, 0.1);
+      background: rgba(36, 39, 47, 0.98);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 1px 0 var(--table-divider);
     }
     /* IPs, vCPU, RAM: monospace + tabular alignment */
     table.inventory-vm-table tbody td:nth-child(4),
@@ -3174,22 +2924,6 @@
       font-family: var(--font-mono);
       font-variant-numeric: tabular-nums;
       font-size: 0.92em;
-      color: #FFFFFF;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    /* Status colors - Power column */
-    table.inventory-vm-table tbody td:nth-child(2) {
-      font-weight: 600;
-    }
-    table.inventory-vm-table tbody tr[data-power="on"] td:nth-child(2),
-    table.inventory-vm-table tbody td[data-power="on"] {
-      color: #55a630;
-    }
-    table.inventory-vm-table tbody tr[data-power="off"] td:nth-child(2),
-    table.inventory-vm-table tbody td[data-power="off"] {
-      color: #999999;
     }
     .disk-limit-slider-row {
       display: flex;
@@ -3402,50 +3136,6 @@
     .checkbox-help-row label {
       margin: 0;
     }
-    
-    /* Global Input Styling - White Background */
-    input[type="text"],
-    input[type="password"],
-    input[type="number"],
-    input[type="search"],
-    input[type="email"],
-    input[type="url"],
-    select,
-    textarea {
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
-      font-family: var(--font-sans);
-      font-size: 0.9375rem;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    input[type="text"]:focus,
-    input[type="password"]:focus,
-    input[type="number"]:focus,
-    input[type="search"]:focus,
-    input[type="email"]:focus,
-    input[type="url"]:focus,
-    select:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #007cba;
-      box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.15);
-    }
-    
-    input::placeholder,
-    textarea::placeholder {
-      color: rgba(0, 0, 0, 0.4);
-    }
-    
-    /* Ensure textareas have proper sizing */
-    textarea {
-      min-height: 60px;
-      resize: vertical;
-      line-height: 1.5;
-    }
  </style>
 </head>
 <body class="form-sheet-mode">
@@ -3460,7 +3150,7 @@
       </a>
       <div class="action-center-actions">
         <div class="action-center-primary">
-          <button type="button" class="action-center-btn-primary" onclick="handleRunFullPipeline()">
+          <button type="button" class="action-center-btn-primary" id="btn-run-full-pipeline-top" disabled>
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
               <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/>
@@ -3468,12 +3158,21 @@
             Run Full Pipeline
           </button>
         </div>
-        <button type="button" class="action-center-btn-secondary" onclick="handleStartDiskJob()">
+        <button type="button" class="action-center-btn-secondary" id="btn-start-disk-job-top" disabled>
           Start Disk Job
         </button>
         <button type="submit" class="action-center-btn-secondary" id="btn-start-snapshot-run-top">
           Start Snapshot Run
         </button>
+      </div>
+    </div>
+    <div class="action-center-status">
+      <div class="connection-status" id="connection-status">
+        <span class="connection-status-icon connecting" id="connection-status-icon"></span>
+        <div class="connection-status-text">
+          <span class="connection-status-label">Prism Central</span>
+          <span class="connection-status-value" id="connection-status-value">Checking...</span>
+        </div>
       </div>
     </div>
   </div>
@@ -3518,20 +3217,24 @@
       <div class="form-card">
         <!-- Keep all existing form content -->
 
-  <!-- Two-Column Layout Container -->
-  <div style="max-width: 100%; width: 100%; margin: 0 auto; padding: 1rem;">
-    <!-- Page Header -->
-    <div style="margin-bottom: 1.5rem; text-align: center;">
-      <h1 style="font-size: 2rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.5rem 0;">VM Snapshot Operations</h1>
-      <p class="muted" style="margin: 0; font-size: 0.9375rem;">Configure and execute bulk snapshot operations on Nutanix VMs</p>
-    </div>
-    
-    <!-- Two Column Grid -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;">
+  <!-- Form-Sheet Layout - Centered Single Column -->
+  <div class="form-sheet-container">
+    <form id="main-form" method="post" action="{{ url_for('start') }}">
+      <!-- Page Header -->
+      <div style="margin-bottom: 2rem; text-align: center;">
+        <h1 style="font-size: 2rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.5rem 0;">VM Snapshot Operations</h1>
+        <p class="muted" style="margin: 0; font-size: 0.9375rem;">Configure and execute bulk snapshot operations on Nutanix VMs</p>
+      </div>
       
-      <!-- LEFT COLUMN: Form Cards -->
-      <div>
-        <form id="main-form" method="post" action="{{ url_for('start') }}">
+      <!-- Actions Card - Dedicated Section -->
+      <div class="actions-card">
+        <div class="actions-card-title">Primary Actions</div>
+        <div class="actions-row">
+          <button type="button" class="btn-impact-cta" id="btn-start-disk-job-main" disabled>Start Disk Job</button>
+          <button type="button" class="btn-impact-cta" id="btn-run-full-pipeline-main" disabled>Run Full Pipeline</button>
+          <button type="submit" id="btn-start-snapshot-run-main">Start Snapshot Run</button>
+        </div>
+      </div>
       
       <!-- Connection Card -->
       <div class="form-sheet-card">
@@ -3549,11 +3252,13 @@
         
         <div class="form-grid-row">
           <label for="pc_password">Password</label>
-          <input id="pc_password" name="pc_password" type="text" autocomplete="current-password" value="Nutanix.123" />
+          <input id="pc_password" name="pc_password" type="password" autocomplete="current-password" value="Nutanix.123" />
         </div>
         
-        <!-- Hidden SSH Port (hardcoded to 22) -->
-        <input type="hidden" id="guest_ssh_port" name="guest_ssh_port" value="22" />
+        <div class="form-grid-row">
+          <label for="guest_ssh_port">SSH Port</label>
+          <input id="guest_ssh_port" name="guest_ssh_port" type="number" min="1" max="65535" value="22" />
+        </div>
       </div>
       
       <!-- Workload Card -->
@@ -3618,87 +3323,90 @@
           <input id="task_timeout_sec" name="task_timeout_sec" type="number" min="1" value="300" />
         </div>
       </div>
-        </form>
-      </div>
-      <!-- END LEFT COLUMN -->
-      
-      <!-- RIGHT COLUMN: VM Inventory -->
-      <div>
-        <section class="config-card" style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-dark);">📋 VM Inventory & Filters</h3>
-            <button type="button" id="btn-fetch-vms" class="btn-impact-cta" style="height: 40px; padding: 0 1.5rem;">
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
-                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
-                <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
-              </svg>
-              Fetch VMs
-            </button>
-          </div>
-          
-          <p class="muted" style="margin-top:0; margin-bottom: 1rem;">
-            Loads automatically when page opens. Click "Fetch VMs" to reload. Shows all non-CVM VMs from Prism Central.
-          </p>
-
-      <div id="vm-summary" style="display:none;">
-        <div class="stat-grid" id="vm-stat-cards"></div>
-        <h4 style="margin-top:1.5rem; margin-bottom: 0.75rem; font-size:1rem;">VM Inventory</h4>
-        <p class="muted" style="margin:0 0 0.75rem 0;">Search and browse VMs from Prism Central</p>
-        <div id="vm-inventory-table-wrap">
-          <div class="inventory-table-toolbar">
-            <input type="search" id="inventory-search" placeholder="Filter by name, cluster, IP, power…" autocomplete="off" />
-            <label class="muted" style="font-size:0.85rem;">Page size
-              <select id="inventory-page-size" style="margin-left:0.25rem;">
-                <option value="25" selected>25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-            </label>
-            <span id="inventory-page-info" class="muted" style="font-size:0.85rem;"></span>
-            <button type="button" class="secondary" id="inventory-prev">Previous</button>
-            <button type="button" class="secondary" id="inventory-next">Next</button>
-          </div>
-          <p id="inventory-table-err" class="err" style="display:none;"></p>
-          <div class="inventory-table-scroll">
-            <table class="mini inventory-vm-table" id="tbl-inventory-vms">
-              <thead>
-                <tr>
-                  <th>VM name</th>
-                  <th>Power</th>
-                  <th>Cluster</th>
-                  <th>PE CVM IP</th>
-                  <th>Guest IP</th>
-                  <th>vCPU</th>
-                  <th>RAM (MiB)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <p id="cluster-pe-ip-hint" class="muted" style="display:none; margin-top:0.5rem;"></p>
-      </div>
-      <div id="vm-fetch-err" class="err" style="display:none;"></div>
-      <p id="vm-fetch-status" class="muted"></p>
-      
-      <div style="margin-top: 1.5rem;">
-        <label for="skip_substrings">Skip VM names containing (one per line or comma-separated)</label>
-        <textarea id="skip_substrings" name="skip_substrings" rows="2" placeholder="auto_pc" style="margin-top: 0.5rem;"></textarea>
-        
-        <label for="skip_regexes" style="margin-top: 1rem; display: block;">Skip VM names matching regex (one per line)</label>
-        <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default" style="margin-top: 0.5rem;"></textarea>
-        <p id="skip-regex-validation" class="skip-regex-hint muted"></p>
-        </div>
-      </section>
-    </div>
-    <!-- END RIGHT COLUMN -->
-    
+    </form>
   </div>
-  <!-- END TWO COLUMN GRID -->
 
-  <!-- Job Console (full width below grid) -->
-  <div style="max-width: 100%; width: 100%; margin: 1rem auto; padding: 0 1rem;">
-    <section style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;" id="integrated-job-console-section"  class="config-card-hidden">
+  <!-- Dashboard Cards - Status Overview -->
+  <div class="form-sheet-container">
+    <section class="status-dashboard-single no-sidebar-flow" id="status-dashboard" aria-label="Status overview" style="margin: 2rem 0;">
+    <div class="dash-card">
+      <h3>Inventory</h3>
+      <div class="dash-body">
+        <div id="inventory-dash-skeleton" class="inv-dash-skel" hidden aria-hidden="true">
+          <div class="skel-bar skel-bar--wide"></div>
+          <div class="skel-bar skel-bar--narrow"></div>
+        </div>
+        <p id="vm-fetch-status" class="muted"></p>
+      </div>
+    </div>
+    <div class="dash-card">
+      <h3>Active schedules</h3>
+      <div class="dash-body">
+        {% if not active_schedules %}
+        <p class="muted" style="margin:0;">None.</p>
+        {% else %}
+        <p style="margin:0; font-size:0.92rem;"><strong>{{ active_schedules|length }}</strong> active · <a href="#schedules-full" style="color:#8ab4f8;">Manage &amp; cancel</a></p>
+        <ul class="dash-schedules-compact">
+          {% for row in active_schedules %}
+          <li>
+            <strong>{{ row.pc_ip }}</strong> · {{ row.kind }}
+            · <code style="font-size:0.76rem;">{{ row.next_run_utc }}</code>
+            {% if row.in_progress %}<span class="cell-badge cell-badge-progress" style="margin-left:0.35rem;"><span class="cell-badge-progress-dot" aria-hidden="true"></span>In progress</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+    <div class="dash-card">
+      <h3>Recent runs</h3>
+      <div class="dash-body">
+        {% if recent_runs %}
+        <div class="recent-runs-scroll-container">
+          <div class="recent-runs-horizontal">
+            {% for r in recent_runs %}
+            <div class="recent-run-card">
+              <div class="recent-run-header">
+                {% if r.run_id %}
+                <a href="{{ url_for('job_status', run_id=r.run_id) }}" class="recent-run-id">{{ r.run_id[:10] }}…</a>
+                {% else %}
+                <span class="recent-run-id">—</span>
+                {% endif %}
+                <span class="recent-run-type">{{ r.job_kind }}</span>
+              </div>
+              
+              <div class="recent-run-stats">
+                {% if r.succeeded is not none and r.succeeded > 0 %}
+                  <span class="status-badge status-badge-success">{{ r.succeeded }} OK</span>
+                {% endif %}
+                {% if r.failed is not none and r.failed > 0 %}
+                  <span class="status-badge status-badge-danger">{{ r.failed }} FAIL</span>
+                {% endif %}
+                {% if r.duration_sec is not none %}
+                  <span class="status-badge status-badge-neutral">{{ (r.duration_sec | float) | round | int }}s</span>
+                {% endif %}
+              </div>
+              
+              {% if r.timestamp %}
+              <div class="recent-run-timestamp">
+                {{ r.timestamp }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <p class="muted" style="margin:0;">No completed runs in local history.</p>
+        {% endif %}
+      </div>
+    </div>
+    </section>
+  </div>
+  
+  <!-- Job Console (centered flow, will show when active) -->
+  <div class="form-sheet-container">
+    <section class="config-card" id="integrated-job-console-section" style="display: none;">
         <div class="job-console-wrapper">
           <div class="job-console-header">
             <span class="job-console-title">Job Console</span>
@@ -3715,8 +3423,8 @@
     </section>
   </div>
 
-  <!-- Advanced Configuration (HIDDEN) -->
-  <div class="form-sheet-container" style="display: none;">
+  <!-- Advanced Configuration -->
+  <div class="form-sheet-container">
     <form id="main-form-advanced">
       <details class="advanced-disclosure" style="margin-top: 2rem;">
         <summary>
@@ -3850,22 +3558,130 @@
     <section class="config-card" id="section-connection">
     <div class="primary-actions-toolbar" id="primary-actions-toolbar" aria-label="Primary actions">
       <span class="toolbar-hint">Actions</span>
-      <button type="button" class="btn-impact-cta" onclick="handleStartDiskJob()" title="Start disk job on eligible VMs">Start Disk Job</button>
-      <button type="button" class="btn-impact-cta" onclick="handleRunFullPipeline()" title="Run full pipeline (disk + snapshots)">Run Full Pipeline</button>
-      <button type="submit" id="btn-start-snapshot-run" title="Start snapshot run">Start Snapshot Run</button>
+      <button type="button" class="btn-impact-cta" id="btn-start-disk-job" disabled>Start disk job</button>
+      <button type="button" class="btn-impact-cta" id="btn-run-full-pipeline" disabled>Run full pipeline</button>
+      <button type="submit" id="btn-start-snapshot-run">Start run</button>
     </div>
     <div id="pipeline-progress-dock" class="pipeline-progress-dock" aria-live="polite">
       <p id="active-disk-job-hint" class="active-disk-job-hint" style="display:none; margin:0 0 0.35rem 0;"></p>
       <span id="pipeline-global-status" class="muted"></span>
       <div id="pipeline-stages" style="display:none; margin-top:0.75rem;">
         <div class="pipeline-stage st-pending" data-stage="0"><span class="st-number">1</span><span class="st-label">Inventory &amp; PE CVM IPs</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
-        <div class="pipeline-stage st-pending" data-stage="1"><span class="st-number">2</span><span class="st-label">Disk job (guest SSH)</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Disk job progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link">Open disk job</a></span></div><span class="st-status">Pending</span></div>
-        <div class="pipeline-stage st-pending" data-stage="2"><span class="st-number">3</span><span class="st-label">Snapshot run</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Snapshot run progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link">Open snapshot job</a></span></div><span class="st-status">Pending</span></div>
+        <div class="pipeline-stage st-pending" data-stage="1"><span class="st-number">2</span><span class="st-label">Disk job (guest SSH)</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Disk job progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link" target="_blank" rel="noopener noreferrer">Open disk job</a></span></div><span class="st-status">Pending</span></div>
+        <div class="pipeline-stage st-pending" data-stage="2"><span class="st-number">3</span><span class="st-label">Snapshot run</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Snapshot run progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link" target="_blank" rel="noopener noreferrer">Open snapshot job</a></span></div><span class="st-status">Pending</span></div>
         <div class="pipeline-stage st-pending" data-stage="3"><span class="st-number">4</span><span class="st-label st-label-with-tip">Curator on PEs<button type="button" class="help-tip" aria-label="Curator stage explained" title="Runs curator_cli on each PE controller VM (same as the Curator section below). Advances Nutanix background storage maintenance but adds load on CVMs; use caution on busy clusters.">?</button></span><span class="st-status">Pending</span><span class="st-detail"></span></div>
       </div>
     </div>
     </div>
 
+    <section class="config-card">
+    <fieldset>
+      <legend>PE CVM IPs (from Prism Central)</legend>
+      <p class="muted" style="margin-top:0;">
+        Read-only list from <code>ncli multicluster get-cluster-state</code> when VM inventory loads (same SSH as Curator: <code>BULK_SNAP_CURATOR_PC_SSH_*</code> on the server). Disk jobs and Curator use these IPs automatically; the <strong>Cluster</strong> table maps names when order matches.
+      </p>
+      <pre id="pe-cvm-ips-display">(not loaded yet)</pre>
+      <p id="pe-cvm-ips-err" class="muted" style="display:none; margin:0.35rem 0 0 0;"></p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset id="unified-pipeline-fs">
+      <legend>Full pipeline (one button)</legend>
+      <p class="muted" style="margin-top:0;">
+        Runs in order: refresh <strong>VM inventory</strong> (Prism + PE CVM IPs via <code>ncli</code>) → force disk job to
+        <strong>Update</strong> + <strong>parallel clusters</strong> + <strong>PE stats throttle</strong> + <strong>adaptive SSH</strong> →
+        <strong>Disk job</strong> (guest SSH; pipeline waits) → <strong>Snapshot run</strong> (waits) →
+        <strong>Curator on PEs</strong>. While it runs, <strong>stage status and progress bars</strong> stay in the sticky strip under <strong>Actions</strong> above; each stage has an <strong>Open job</strong> link when a background job exists.
+        Only one disk job per Prism Central is allowed at a time (server blocks a second start while one is queued or running).
+        Individual buttons elsewhere still work as before.
+      </p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-header-icon icon-inventory">
+            📊
+          </div>
+          <div class="card-header-title">
+            <h2>Inventory & Health</h2>
+            <p class="card-header-subtitle">VM targeting and filter configuration</p>
+          </div>
+        </div>
+        <div class="card-header-badge" id="inventory-status-badge">
+          <span class="connection-status-icon connecting" style="width: 0.625rem; height: 0.625rem;"></span>
+          Loading...
+        </div>
+      </div>
+      <div class="card-body">
+      <fieldset>
+        <legend>Targeting &amp; filters</legend>
+        <p class="muted" style="margin-top:0;">
+          Loads automatically when this page opens: all non-CVM VMs from the groups API (same filter as snapshot runs). The response is cached on the server for guest disk preview/run until the cache expires or you reload after changing skip rules. Inventory status is summarized in the <a href="#status-dashboard" style="color:#8ab4f8;">status strip</a> above.
+        </p>
+
+      <div id="vm-summary" style="display:none;">
+        <div class="stat-grid" id="vm-stat-cards"></div>
+        <h2 style="margin-top:1rem; font-size:1rem;">VM inventory</h2>
+        <p class="muted" style="margin:0 0 0.25rem 0;">Search and page through VMs (non-CVM <code>mh_vm</code>). Data comes from the server cache after each inventory load.</p>
+        <div id="vm-inventory-table-wrap">
+          <div class="inventory-table-toolbar">
+            <input type="search" id="inventory-search" placeholder="Filter by name, cluster, IP, power…" autocomplete="off" />
+            <label class="muted" style="font-size:0.85rem;">Page size
+              <select id="inventory-page-size" style="margin-left:0.25rem;">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <span id="inventory-page-info" class="muted" style="font-size:0.85rem;"></span>
+            <button type="button" class="secondary" id="inventory-prev">Previous</button>
+            <button type="button" class="secondary" id="inventory-next">Next</button>
+          </div>
+          <p id="inventory-table-err" class="err" style="display:none;"></p>
+          <div class="inventory-table-scroll">
+            <table class="mini inventory-vm-table" id="tbl-inventory-vms">
+              <thead>
+                <tr>
+                  <th>VM name</th>
+                  <th>Power</th>
+                  <th>Cluster</th>
+                  <th>PE CVM IP</th>
+                  <th>Guest IP</th>
+                  <th>vCPU</th>
+                  <th>RAM (MiB)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <p id="cluster-pe-ip-hint" class="muted" style="display:none; margin-top:0.5rem;"></p>
+      </div>
+      <div id="vm-fetch-err" class="err" style="display:none;"></div>
+      <p class="muted">Reload after changing skips so disk-eligible counts stay in sync. PE CVM IP column uses <code>ncli multicluster get-cluster-state</code> on Prism Central (<code>BULK_SNAP_CURATOR_PC_SSH_*</code> on the app server).</p>
+
+      <label for="skip-substring-input">Skip VM names containing</label>
+      <p class="muted" style="margin: 0.25rem 0 0.5rem 0; font-size: 0.875rem;">Add substrings to filter VMs. Type and press Enter or comma to add.</p>
+      <div class="tag-input-container" id="skip-substrings-container">
+        <input 
+          type="text" 
+          class="tag-input" 
+          id="skip-substring-input"
+          placeholder="Type substring and press Enter..."
+          autocomplete="off"
+        />
+      </div>
+      <textarea id="skip_substrings" name="skip_substrings" style="display:none;"></textarea>
+      
+      <label for="skip_regexes" style="margin-top: 1.5rem;">Skip VM names matching regex (one per line)</label>
+      <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default"></textarea>
+      <p id="skip-regex-validation" class="skip-regex-hint muted"></p>
+    </fieldset>
+      </div>
+    </section>
 
     <section class="config-card">
       <div class="card-header">
@@ -3882,6 +3698,15 @@
       <div class="card-body">
     <fieldset>
       <legend>Workload simulation (guest SSH / disk churn)</legend>
+      <p class="muted">
+        Eligible guests: IP in Prism inventory, <strong>powered on</strong>, configured <strong>RAM</strong> above the minimum (MiB from Prism; default &gt;250), and not skipped by name rules. Guest SSH counts use the server inventory cache from when this page loaded (reload after changing skips). Limit how many get SSH with a number or percent (e.g. <code>100</code>, <code>50%</code>); leave blank for all eligible.
+        Each run uses <code>sshpass</code> + <code>ssh</code> to the guest and runs:
+        <strong>Delete</strong> — <code>rm -f …*.img</code> ·
+        <strong>Create</strong> — <code>openssl | dd</code> with your <strong>bs</strong> and <strong>count</strong> ·
+        <strong>Add</strong> — append ·
+        <strong>Update</strong> — overwrite ·
+        <strong>All mix</strong> — random per VM.
+      </p>
       <input type="hidden" id="disk_run_limit" name="disk_run_limit" value="" />
       <div class="row">
         <div style="flex: 1 1 100%; min-width: 16rem;">
@@ -3914,14 +3739,7 @@
           </div>
         </div>
       </div>
-      <!-- Disk Preview Status Display -->
-      <div style="margin: 1rem 0; padding: 12px; background: #f0f7ff; border-left: 4px solid #007cba; border-radius: 6px;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-          <strong style="color: #007cba;">📊 Disk Preview Status</strong>
-        </div>
-        <p id="disk-preview-line" class="muted" style="min-height:1.5em; margin: 0; font-size: 0.875rem;">Waiting for VM inventory...</p>
-      </div>
-      
+      <p id="disk-preview-line" class="muted" style="min-height:1.5em;"></p>
       <div id="disk-op-radios" style="margin:0.5rem 0;">
         <label><input type="radio" name="disk_op_mode" value="create" /> Create (new dummy file)</label>
         <label><input type="radio" name="disk_op_mode" value="add" /> Add (append to file)</label>
@@ -4144,6 +3962,8 @@
           <input id="disk_random_seed" type="text" placeholder="empty = non-deterministic" autocomplete="off" />
         </div>
       </div>
+      <p class="muted">Requires <code>sshpass</code> + <code>ssh</code> on this server. Disable with <code>BULK_SNAP_GUEST_NO_SSHPASS=1</code>. Guest reachability may still differ from Prism-reported IPs; trial with a small limit first.</p>
+      <p class="muted" style="margin:0.25rem 0 0 0; font-size:0.85rem;"><strong>Start disk job</strong> is in the sticky <strong>Actions</strong> bar above.</p>
       <span id="disk-job-status" class="muted"></span>
       <div id="disk-job-err" class="err" style="display:none;"></div>
     </fieldset>
@@ -4255,6 +4075,7 @@
 
       <p id="estimate-line" class="muted"></p>
 
+      <p class="muted" style="margin:0.35rem 0 0 0; font-size:0.85rem;"><strong>Start run</strong> (snapshot) is in the sticky <strong>Actions</strong> bar above.</p>
     </fieldset>
       </div>
     </section>
@@ -4275,433 +4096,32 @@
         </div>
       </div>
       <div class="card-body">
-        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-          
-          <!-- Enable Schedule Checkbox -->
-          <div style="display: flex; align-items: center; padding: 1rem; background: #F9FAFB; border-radius: 8px; border: 1px solid #E5E7EB;">
-            <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0; font-weight: 500; color: var(--text-dark);">
-              <input type="checkbox" name="schedule_enabled" value="1" id="schedule_enabled" style="width: 18px; height: 18px; cursor: pointer;" /> 
-              Enable schedule instead of starting now
-            </label>
-          </div>
-          
-          <!-- Schedule Type -->
-          <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: center;">
-            <label for="schedule_kind" style="font-weight: 500; color: var(--text-dark); text-align: right;">Schedule type</label>
-            <select id="schedule_kind" name="schedule_kind" style="padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem; background: white;">
-              <option value="one_time">One-time (UTC)</option>
-              <option value="recurring">Recurring</option>
-            </select>
-          </div>
-          
-          <!-- One-time Schedule Section -->
-          <div id="schedule-one-time-section" style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start;">
-            <label for="schedule_datetime_picker" style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Date & Time (UTC)</label>
-            <div>
-              <input id="schedule_datetime_picker" type="datetime-local" style="width: 100%; max-width: 320px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
-              <input id="schedule_one_time_utc" name="schedule_one_time_utc" type="hidden" />
-              <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                📅 Select date and time (automatically converted to UTC ISO-8601 format)
-              </p>
-            </div>
-          </div>
-          
-          <!-- Recurring Schedule Section -->
-          <div id="schedule-recurring-section" style="display: none;">
-            
-            <!-- Start Date/Time -->
-            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; margin-bottom: 1.5rem;">
-              <label for="recurring_start_datetime" style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Start from (UTC)</label>
-              <div>
-                <input id="recurring_start_datetime" name="recurring_start_datetime" type="datetime-local" style="width: 100%; max-width: 320px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                  📅 When to start the recurring schedule (leave empty to start immediately)
-                </p>
-              </div>
-            </div>
-            
-            <!-- Interval -->
-            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; margin-bottom: 1.5rem;">
-              <label style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Run every</label>
-              <div style="display: flex; flex-direction: column; gap: 1rem;">
-                
-                <!-- Quick Presets -->
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <button type="button" class="schedule-preset-btn" data-minutes="5" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">5 min</button>
-                  <button type="button" class="schedule-preset-btn" data-minutes="15" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">15 min</button>
-                  <button type="button" class="schedule-preset-btn" data-minutes="30" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">30 min</button>
-                  <button type="button" class="schedule-preset-btn" data-minutes="60" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">1 hour</button>
-                  <button type="button" class="schedule-preset-btn" data-minutes="360" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">6 hours</button>
-                  <button type="button" class="schedule-preset-btn" data-minutes="1440" style="padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;">Daily</button>
-                </div>
-                
-                <!-- Custom Interval -->
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="color: var(--text-muted); font-size: 0.9rem;">Or custom:</span>
-                  <input id="recurring_interval_minutes" name="recurring_interval_minutes" type="number" min="1" value="60" style="width: 120px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
-                  <span style="color: var(--text-muted); font-weight: 500;">minutes</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Days of Week -->
-            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; margin-bottom: 1.5rem;">
-              <label style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Run on days</label>
-              <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="1" checked style="width: 16px; height: 16px; cursor: pointer;" /> Mon
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="2" checked style="width: 16px; height: 16px; cursor: pointer;" /> Tue
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="3" checked style="width: 16px; height: 16px; cursor: pointer;" /> Wed
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="4" checked style="width: 16px; height: 16px; cursor: pointer;" /> Thu
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="5" checked style="width: 16px; height: 16px; cursor: pointer;" /> Fri
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="6" style="width: 16px; height: 16px; cursor: pointer;" /> Sat
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" class="day-checkbox-label">
-                    <input type="checkbox" name="recurring_days" value="0" style="width: 16px; height: 16px; cursor: pointer;" /> Sun
-                  </label>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button type="button" id="select-all-days" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">All</button>
-                  <button type="button" id="select-weekdays" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">Weekdays</button>
-                  <button type="button" id="select-weekends" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">Weekends</button>
-                </div>
-                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">
-                  📆 Select which days of the week to run the job
-                </p>
-              </div>
-            </div>
-            
-            <!-- Time Window -->
-            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; margin-bottom: 1.5rem;">
-              <label style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Time window (UTC)</label>
-              <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
-                  <input type="checkbox" id="enable_time_window" name="enable_time_window" value="1" style="width: 18px; height: 18px; cursor: pointer;" />
-                  <span style="font-weight: 500; color: var(--text-dark);">Only run during specific hours</span>
-                </label>
-                
-                <div id="time-window-inputs" style="display: none; padding: 1rem; background: #F9FAFB; border-radius: 8px; border: 1px solid #E5E7EB;">
-                  <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <label for="time_window_start" style="font-size: 0.9rem; color: var(--text-muted);">From</label>
-                      <input type="time" id="time_window_start" name="time_window_start" value="22:00" style="padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.9rem;" />
-                    </div>
-                    <span style="color: var(--text-muted);">to</span>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <label for="time_window_end" style="font-size: 0.9rem; color: var(--text-muted);">To</label>
-                      <input type="time" id="time_window_end" name="time_window_end" value="06:00" style="padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.9rem;" />
-                    </div>
-                  </div>
-                  <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button type="button" class="time-preset-btn" data-start="22:00" data-end="06:00" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">🌙 Night (10 PM - 6 AM)</button>
-                    <button type="button" class="time-preset-btn" data-start="00:00" data-end="08:00" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">🌃 Late Night (12 AM - 8 AM)</button>
-                    <button type="button" class="time-preset-btn" data-start="09:00" data-end="17:00" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">☀️ Business (9 AM - 5 PM)</button>
-                    <button type="button" class="time-preset-btn" data-start="18:00" data-end="23:59" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">🌆 Evening (6 PM - 12 AM)</button>
-                  </div>
-                  <p style="margin: 0.75rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                    🕐 Job will only run within this time window. Times are in UTC.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div style="padding: 1rem 1.25rem; background: #F0FDF4; border-left: 4px solid #22c55e; border-radius: 6px;">
-              <p style="margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.6;">
-                <strong>✅ Summary:</strong> <span id="schedule-summary">Job will run every 60 minutes</span>
-              </p>
-            </div>
-            
-          </div>
-          
-          <!-- Info Box -->
-          <div style="padding: 1rem 1.25rem; background: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 6px;">
-            <p style="margin: 0; font-size: 0.9rem; color: #1E40AF; line-height: 1.6;">
-              <strong>💡 Note:</strong> When schedule is enabled, use <strong>Start run</strong> in the sticky <strong>Actions</strong> bar to save the schedule. No job starts until the chosen time. Prism Central address must be unique per active schedule.
-            </p>
-          </div>
-          
-        </div>
+    <fieldset>
+      <legend>Scheduling (optional)</legend>
+      <label><input type="checkbox" name="schedule_enabled" value="1" id="schedule_enabled" /> Enable schedule instead of starting now</label>
+      <label for="schedule_kind">Schedule type</label>
+      <select id="schedule_kind" name="schedule_kind">
+        <option value="one_time">One-time (UTC)</option>
+        <option value="recurring">Recurring</option>
+      </select>
+      <label for="schedule_one_time_utc">One-time run at (ISO-8601 UTC, e.g. <code>2026-04-03T14:30:00+00:00</code>)</label>
+      <input id="schedule_one_time_utc" name="schedule_one_time_utc" type="text" autocomplete="off" />
+      <label for="recurring_interval_minutes">Recurring interval</label>
+      <div class="input-with-suffix">
+        <input id="recurring_interval_minutes" name="recurring_interval_minutes" type="number" min="1" value="60" />
+        <span class="input-suffix">min</span>
+      </div>
+      <p class="muted">When schedule is enabled, use <strong>Start run</strong> in the sticky <strong>Actions</strong> bar to save the schedule (no job starts until the chosen time). Prism Central address must be unique per active schedule.</p>
+    </fieldset>
       </div>
     </section>
-    
-    <script>
-      // Schedule Section JavaScript
-      (function() {
-        const scheduleKind = document.getElementById('schedule_kind');
-        const oneTimeSection = document.getElementById('schedule-one-time-section');
-        const recurringSection = document.getElementById('schedule-recurring-section');
-        const datetimePicker = document.getElementById('schedule_datetime_picker');
-        const hiddenUtcField = document.getElementById('schedule_one_time_utc');
-        const recurringInput = document.getElementById('recurring_interval_minutes');
-        const presetButtons = document.querySelectorAll('.schedule-preset-btn');
-        
-        // Function to show/hide sections based on schedule type
-        function updateScheduleSections() {
-          const kind = scheduleKind.value;
-          if (kind === 'one_time') {
-            oneTimeSection.style.display = 'grid';
-            recurringSection.style.display = 'none';
-          } else {
-            oneTimeSection.style.display = 'none';
-            recurringSection.style.display = 'block';
-          }
-        }
-        
-        // Function to convert datetime-local to ISO-8601 UTC format
-        function updateUtcField() {
-          if (datetimePicker.value) {
-            const localDate = new Date(datetimePicker.value);
-            // Convert to ISO string and ensure it ends with +00:00
-            const isoString = localDate.toISOString().replace('Z', '+00:00');
-            hiddenUtcField.value = isoString;
-            console.log('Scheduled time (UTC):', isoString);
-          } else {
-            hiddenUtcField.value = '';
-          }
-        }
-        
-        // Initialize on page load
-        updateScheduleSections();
-        
-        // Set default datetime to current time + 1 hour
-        const now = new Date();
-        now.setHours(now.getHours() + 1);
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        datetimePicker.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-        updateUtcField();
-        
-        // Listen for schedule type changes
-        scheduleKind.addEventListener('change', updateScheduleSections);
-        
-        // Listen for datetime picker changes
-        datetimePicker.addEventListener('change', updateUtcField);
-        datetimePicker.addEventListener('input', updateUtcField);
-        
-        // Handle preset buttons for recurring schedules
-        presetButtons.forEach(btn => {
-          btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const minutes = this.getAttribute('data-minutes');
-            recurringInput.value = minutes;
-            
-            // Visual feedback
-            presetButtons.forEach(b => {
-              b.style.background = '#F3F4F6';
-              b.style.borderColor = '#E5E7EB';
-              b.style.color = 'var(--text-dark)';
-            });
-            this.style.background = '#007cba';
-            this.style.borderColor = '#007cba';
-            this.style.color = '#FFFFFF';
-          });
-          
-          // Hover effects
-          btn.addEventListener('mouseenter', function() {
-            if (this.style.background !== 'rgb(0, 124, 186)') {
-              this.style.background = '#E5E7EB';
-            }
-          });
-          btn.addEventListener('mouseleave', function() {
-            if (this.style.background !== 'rgb(0, 124, 186)') {
-              this.style.background = '#F3F4F6';
-            }
-          });
-        });
-        
-        // Update preset button highlight when custom value changes
-        recurringInput.addEventListener('input', function() {
-          const currentValue = this.value;
-          let matchFound = false;
-          presetButtons.forEach(b => {
-            if (b.getAttribute('data-minutes') === currentValue) {
-              b.style.background = '#007cba';
-              b.style.borderColor = '#007cba';
-              b.style.color = '#FFFFFF';
-              matchFound = true;
-            } else {
-              b.style.background = '#F3F4F6';
-              b.style.borderColor = '#E5E7EB';
-              b.style.color = 'var(--text-dark)';
-            }
-          });
-          updateScheduleSummary();
-        });
-        
-        // Set default recurring start to next week Monday
-        const recurringStartPicker = document.getElementById('recurring_start_datetime');
-        if (recurringStartPicker) {
-          const nextWeek = new Date();
-          nextWeek.setDate(nextWeek.getDate() + 7);
-          // Set to Monday of next week
-          const dayOfWeek = nextWeek.getDay();
-          const daysUntilMonday = (1 - dayOfWeek + 7) % 7;
-          nextWeek.setDate(nextWeek.getDate() + daysUntilMonday);
-          nextWeek.setHours(22, 0, 0, 0); // 10 PM
-          const rYear = nextWeek.getFullYear();
-          const rMonth = String(nextWeek.getMonth() + 1).padStart(2, '0');
-          const rDay = String(nextWeek.getDate()).padStart(2, '0');
-          const rHours = String(nextWeek.getHours()).padStart(2, '0');
-          const rMinutes = String(nextWeek.getMinutes()).padStart(2, '0');
-          recurringStartPicker.value = `${rYear}-${rMonth}-${rDay}T${rHours}:${rMinutes}`;
-        }
-        
-        // Days of week selection helpers
-        const selectAllDays = document.getElementById('select-all-days');
-        const selectWeekdays = document.getElementById('select-weekdays');
-        const selectWeekends = document.getElementById('select-weekends');
-        const dayCheckboxes = document.querySelectorAll('input[name="recurring_days"]');
-        const dayLabels = document.querySelectorAll('.day-checkbox-label');
-        
-        if (selectAllDays) {
-          selectAllDays.addEventListener('click', function(e) {
-            e.preventDefault();
-            dayCheckboxes.forEach(cb => cb.checked = true);
-            updateDayCheckboxStyles();
-            updateScheduleSummary();
-          });
-        }
-        
-        if (selectWeekdays) {
-          selectWeekdays.addEventListener('click', function(e) {
-            e.preventDefault();
-            dayCheckboxes.forEach(cb => {
-              const day = parseInt(cb.value);
-              cb.checked = (day >= 1 && day <= 5); // Mon-Fri
-            });
-            updateDayCheckboxStyles();
-            updateScheduleSummary();
-          });
-        }
-        
-        if (selectWeekends) {
-          selectWeekends.addEventListener('click', function(e) {
-            e.preventDefault();
-            dayCheckboxes.forEach(cb => {
-              const day = parseInt(cb.value);
-              cb.checked = (day === 0 || day === 6); // Sat-Sun
-            });
-            updateDayCheckboxStyles();
-            updateScheduleSummary();
-          });
-        }
-        
-        // Update checkbox label styles
-        function updateDayCheckboxStyles() {
-          dayLabels.forEach(label => {
-            const checkbox = label.querySelector('input[type="checkbox"]');
-            if (checkbox.checked) {
-              label.style.background = '#007cba';
-              label.style.borderColor = '#007cba';
-              label.style.color = '#FFFFFF';
-            } else {
-              label.style.background = '#F3F4F6';
-              label.style.borderColor = '#E5E7EB';
-              label.style.color = 'var(--text-dark)';
-            }
-          });
-        }
-        
-        dayCheckboxes.forEach(cb => {
-          cb.addEventListener('change', function() {
-            updateDayCheckboxStyles();
-            updateScheduleSummary();
-          });
-        });
-        
-        updateDayCheckboxStyles();
-        
-        // Time window toggle
-        const enableTimeWindow = document.getElementById('enable_time_window');
-        const timeWindowInputs = document.getElementById('time-window-inputs');
-        const timeWindowStart = document.getElementById('time_window_start');
-        const timeWindowEnd = document.getElementById('time_window_end');
-        const timePresetButtons = document.querySelectorAll('.time-preset-btn');
-        
-        if (enableTimeWindow && timeWindowInputs) {
-          enableTimeWindow.addEventListener('change', function() {
-            timeWindowInputs.style.display = this.checked ? 'block' : 'none';
-            updateScheduleSummary();
-          });
-        }
-        
-        // Time window presets
-        timePresetButtons.forEach(btn => {
-          btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const start = this.getAttribute('data-start');
-            const end = this.getAttribute('data-end');
-            timeWindowStart.value = start;
-            timeWindowEnd.value = end;
-            updateScheduleSummary();
-          });
-        });
-        
-        if (timeWindowStart) {
-          timeWindowStart.addEventListener('change', updateScheduleSummary);
-        }
-        if (timeWindowEnd) {
-          timeWindowEnd.addEventListener('change', updateScheduleSummary);
-        }
-        
-        // Update schedule summary
-        function updateScheduleSummary() {
-          const summary = document.getElementById('schedule-summary');
-          if (!summary) return;
-          
-          const interval = recurringInput.value;
-          const intervalText = interval == 1440 ? 'daily' : 
-                               interval == 720 ? 'every 12 hours' :
-                               interval == 360 ? 'every 6 hours' :
-                               interval == 60 ? 'hourly' :
-                               `every ${interval} minutes`;
-          
-          const selectedDays = Array.from(dayCheckboxes)
-            .filter(cb => cb.checked)
-            .map(cb => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseInt(cb.value)])
-            .join(', ');
-          
-          const daysText = selectedDays ? ` on ${selectedDays}` : '';
-          
-          let timeText = '';
-          if (enableTimeWindow && enableTimeWindow.checked) {
-            timeText = ` between ${timeWindowStart.value} - ${timeWindowEnd.value} UTC`;
-          }
-          
-          let startText = '';
-          if (recurringStartPicker && recurringStartPicker.value) {
-            const startDate = new Date(recurringStartPicker.value);
-            startText = `, starting ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}`;
-          }
-          
-          summary.textContent = `Job will run ${intervalText}${daysText}${timeText}${startText}`;
-        }
-        
-        updateScheduleSummary();
-        
-      })();
-    </script>
     
       </div>
       </details>
     </form>
   </div>
 
-  <div class="form-sheet-container" style="display: none;">
+  <div class="form-sheet-container">
     <section class="config-card" id="schedules-full">
   <h2 class="config-card-title" style="border:none; padding:0; margin:0 0 0.65rem 0;">Schedules — manage &amp; cancel</h2>
   {% if not active_schedules %}
@@ -4732,7 +4152,7 @@
     </section>
   </div>
 
-  <div class="form-sheet-container" style="display: none;">
+  <div class="form-sheet-container">
     <section class="config-card">
       <fieldset>
     <legend class="legend-with-help">
@@ -4766,14 +4186,6 @@
     </div>
   </div>
 
-  <!-- Loading Overlay -->
-  <div id="loading-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.7); align-items: center; justify-content: center;">
-    <div style="background: #FFFFFF; border-radius: 12px; padding: 2rem 3rem; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
-      <div class="loading-spinner"></div>
-      <p id="loading-message" style="margin-top: 1.5rem; font-size: 1rem; font-weight: 600; color: #1F2937;">Processing...</p>
-    </div>
-  </div>
-
 
       </div>
     </div>
@@ -4781,132 +4193,7 @@
   </div> <!-- Close body-content -->
   
   <script>
-    console.log("🟢 SCRIPT STARTED - Top of main script block");
     const $ = (id) => document.getElementById(id);
-    console.log("🟢 $ function defined");
-    
-    // Loading overlay functions
-    window.showLoading = function(message = "Processing...") {
-      const overlay = $("loading-overlay");
-      const messageEl = $("loading-message");
-      if (overlay) {
-        overlay.classList.add("active");
-        overlay.style.display = "flex";
-      }
-      if (messageEl) {
-        messageEl.textContent = message;
-      }
-    };
-    
-    window.hideLoading = function() {
-      const overlay = $("loading-overlay");
-      if (overlay) {
-        overlay.classList.remove("active");
-        overlay.style.display = "none";
-      }
-    };
-    
-    // DEFINE BUTTON HANDLERS EARLY - These need to be available for onclick attributes in HTML
-    window.handleStartDiskJob = async function() {
-      console.log("🔵 handleStartDiskJob called!");
-      const c = readConn();
-      const diskJobErr = $("disk-job-err");
-      if (diskJobErr) diskJobErr.style.display = "none";
-      if (!c.pc_ip || !c.pc_user) {
-        if (diskJobErr) {
-          diskJobErr.textContent = "Enter Prism Central address and username first.";
-          diskJobErr.style.display = "block";
-        }
-        alert("Enter Prism Central address and username first.");
-        return;
-      }
-      openDiskConfirmModal(
-        "Start disk job?",
-        formatStartDiskConfirmHtml(),
-        "Start disk job",
-        true,
-        async () => {
-          showLoading("Starting disk job...");
-          const body = buildDiskJobBody();
-          const diskJobStatus = $("disk-job-status");
-          if (diskJobStatus) diskJobStatus.textContent = "Starting…";
-          try {
-            const r = await fetch("{{ url_for('api_start_disk_ops') }}", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify(body),
-            });
-            const j = await r.json();
-            hideLoading();
-            if (!j.ok) {
-              if (diskJobErr) {
-                diskJobErr.textContent = j.message || "Failed.";
-                diskJobErr.style.display = "block";
-              }
-              if (diskJobStatus) diskJobStatus.textContent = "";
-              scheduleActiveDiskJobRefresh();
-              return;
-            }
-            window.location.href = j.job_url;
-          } catch (e) {
-            hideLoading();
-            if (diskJobErr) {
-              diskJobErr.textContent = String(e);
-              diskJobErr.style.display = "block";
-            }
-            if (diskJobStatus) diskJobStatus.textContent = "";
-          }
-        }
-      );
-    };
-    console.log("✅ handleStartDiskJob defined");
-    
-    window.handleRunFullPipeline = async function() {
-      console.log("🔵 handleRunFullPipeline called!");
-      const gs = $("pipeline-global-status");
-      const stagesEl = $("pipeline-stages");
-      const dock = $("pipeline-progress-dock");
-      const c = readConn();
-      
-      if (!c.pc_ip || !c.pc_user) {
-        if (gs) gs.textContent = "Enter Prism Central connection first.";
-        alert("Enter Prism Central connection first.");
-        return;
-      }
-      const guestPw = $("guest_ssh_password");
-      if (!(guestPw ? guestPw.value : "").trim()) {
-        if (gs) gs.textContent = "Guest SSH password is required for the disk job stage.";
-        alert("Guest SSH password is required for the disk job stage.");
-        return;
-      }
-      if (gs) gs.textContent = "";
-      
-      openDiskConfirmModal(
-        "Run full pipeline?",
-        formatPipelineConfirmHtml(),
-        "Run full pipeline",
-        true,
-        async () => {
-          showLoading("Starting full pipeline...");
-          if (stagesEl) stagesEl.style.display = "block";
-          if (dock) {
-            try {
-              dock.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            } catch (e) {}
-          }
-          resetPipelineStages();
-          try {
-            await runFullPipelineAfterConfirm(gs, null);
-            hideLoading();
-          } catch (e) {
-            hideLoading();
-            if (gs) gs.textContent = "Pipeline error: " + String(e);
-          }
-        }
-      );
-    };
-    console.log("✅ handleRunFullPipeline defined");
-    
     /** Set when VM inventory loads (page load); sent with disk preview/start to skip a second Prism inventory fetch. */
     let inventoryCacheId = null;
     let lastDiskPreviewNorm = null;
@@ -5366,17 +4653,13 @@
         const powerBadgeHtml = (raw) => {
           const low = String(raw || "").toLowerCase();
           if (low === "on")
-            return '<span class="cell-badge cell-badge-ok" data-power="on">' + esc(raw) + "</span>";
+            return '<span class="cell-badge cell-badge-ok">' + esc(raw) + "</span>";
           if (low === "off")
-            return '<span class="cell-badge cell-badge-fail" data-power="off">' + esc(raw) + "</span>";
+            return '<span class="cell-badge cell-badge-fail">' + esc(raw) + "</span>";
           return '<span class="cell-badge cell-badge-neutral">' + esc(raw) + "</span>";
         };
         for (const row of j.rows || []) {
           const tr = document.createElement("tr");
-          const powerState = String(row.power_state || "").toLowerCase();
-          if (powerState === "on" || powerState === "off") {
-            tr.setAttribute("data-power", powerState);
-          }
           tr.innerHTML =
             "<td>" +
             esc(row.name) +
@@ -5442,31 +4725,62 @@
     }
 
     function syncImpactActionButtons() {
-      // Buttons are always enabled - API will validate on submit
+      syncDiskRunLimitToHidden();
+      const c = readConn();
       const btnDisk = $("btn-start-disk-job");
       const btnPipe = $("btn-run-full-pipeline");
       if (!btnDisk || !btnPipe) return;
-      
-      // Always enable buttons
-      btnDisk.disabled = false;
-      btnPipe.disabled = false;
-      
-      // Set helpful tooltips
-      btnDisk.title = "Start disk job on eligible VMs (API will validate requirements)";
-      btnPipe.title = "Run full pipeline - disk job + snapshots (API will validate requirements)";
-      
-      btnDisk.style.cursor = "pointer";
-      btnDisk.style.opacity = "1";
-      btnPipe.style.cursor = "pointer";
-      btnPipe.style.opacity = "1";
-      
-      syncTopBarButtons();
+      const pcTrim = (c.pc_ip || "").trim();
+      const diskBusy =
+        serverActiveDiskJob &&
+        serverActiveDiskJob.busy &&
+        serverActiveDiskJob.for_pc_ip === pcTrim &&
+        !!pcTrim;
+      const fpN = diskTargetsPreviewFingerprint(false);
+      const fpP = diskTargetsPreviewFingerprint(true);
+      const guestPw = ($("guest_ssh_password").value || "").trim();
+      const needConn = "Enter Prism Central address and username.";
+      const needInv = "Wait for inventory to finish loading.";
+      const needCounts =
+        "Guest SSH target counts are updating to match the form (see line below), or fix any error shown there.";
+      const needGuestPw = "Guest SSH password is required for the pipeline disk stage.";
+      const needDiskBusy =
+        "A disk job is already running or queued for this Prism Central. Finish it before starting another disk job or pipeline.";
+      const baseDisk =
+        !c.pc_ip ||
+        !c.pc_user ||
+        !inventoryCacheId ||
+        !lastDiskPreviewNorm ||
+        fpN !== lastStoredNormFp;
+      const basePipe =
+        !c.pc_ip ||
+        !c.pc_user ||
+        !inventoryCacheId ||
+        !lastDiskPreviewPipe ||
+        fpP !== lastStoredPipeFp ||
+        !guestPw;
+      btnDisk.disabled = baseDisk || diskBusy;
+      btnPipe.disabled = basePipe || diskBusy;
+      if (!c.pc_ip || !c.pc_user) {
+        btnDisk.title = needConn;
+        btnPipe.title = needConn;
+      } else if (diskBusy) {
+        btnDisk.title = needDiskBusy;
+        btnPipe.title = needDiskBusy;
+      } else if (!inventoryCacheId) {
+        btnDisk.title = needInv;
+        btnPipe.title = needInv;
+      } else {
+        if (btnDisk.disabled) btnDisk.title = needCounts;
+        if (btnPipe.disabled) {
+          btnPipe.title =
+            !guestPw && fpP === lastStoredPipeFp && lastDiskPreviewPipe ? needGuestPw : needCounts;
+        }
+      }
       updateActiveDiskJobHint();
     }
 
     function clearDiskPreviewState() {
-      console.warn("🗑️ clearDiskPreviewState() called! Stack trace:");
-      console.trace();
       lastDiskPreviewNorm = null;
       lastStoredNormFp = "";
       lastDiskPreviewPipe = null;
@@ -5484,35 +4798,17 @@
       const myId = ++diskPreviewRequestId;
       const el = $("disk-preview-line");
       const c = readConn();
-      console.log("runDiskTargetsPreviewFromForm - checking requirements", { 
-        pc_ip: c.pc_ip, 
-        pc_user: c.pc_user, 
-        inventoryCacheId: inventoryCacheId 
-      });
       if (!c.pc_ip || !c.pc_user || !inventoryCacheId) {
-        console.warn("Disk preview SKIPPED - missing: ", {
-          hasPcIp: !!c.pc_ip,
-          hasPcUser: !!c.pc_user,
-          hasInventoryCache: !!inventoryCacheId
-        });
-        // DON'T clear if disk preview already succeeded - keeps buttons enabled
-        if (!lastDiskPreviewNorm && !lastDiskPreviewPipe) {
-          clearDiskPreviewState();
-        } else {
-          console.log("⚠️ Requirements missing but disk preview already succeeded - keeping buttons enabled");
-        }
+        clearDiskPreviewState();
         if (myId !== diskPreviewRequestId) return false;
         return false;
       }
-      console.log("Starting disk preview fetch...");
-      if (el) el.innerHTML = '<span style="color: #007cba;">⏳ Calculating...</span> Updating guest SSH target counts and eligible VMs...';
-      // DON'T clear the variables here - keep buttons enabled until new preview succeeds or fails
-      // Only clear on actual failure, not at the start of every preview attempt
-      // lastDiskPreviewNorm = null;
-      // lastDiskPreviewPipe = null;
-      // lastStoredNormFp = "";
-      // lastStoredPipeFp = "";
-      // syncImpactActionButtons(); // Don't disable buttons during fetch
+      if (el) el.textContent = "Updating guest SSH target counts…";
+      lastDiskPreviewNorm = null;
+      lastDiskPreviewPipe = null;
+      lastStoredNormFp = "";
+      lastStoredPipeFp = "";
+      syncImpactActionButtons();
       try {
         const bodyNorm = buildDiskTargetsPreviewBody(false);
         const r1 = await fetch(diskTargetsPreviewUrl, {
@@ -5523,14 +4819,12 @@
         const j1 = await r1.json();
         if (myId !== diskPreviewRequestId) return false;
         if (!j1.ok) {
-          console.error("❌ Disk preview FAILED (normal mode):", j1.message);
-          if (el) el.innerHTML = `<span style="color: #ef4444; font-weight: 600;">❌ Failed:</span> ${j1.message || "Guest SSH count preview failed."}`;
+          if (el) el.textContent = j1.message || "Guest SSH count preview failed.";
           syncImpactActionButtons();
           return false;
         }
         lastDiskPreviewNorm = j1;
         lastStoredNormFp = JSON.stringify(bodyNorm);
-        console.log("✅ Set lastDiskPreviewNorm:", !!lastDiskPreviewNorm);
         if (el) el.textContent = formatDiskPreviewDetailText(j1) + " — pipeline preset…";
         const bodyPipe = buildDiskTargetsPreviewBody(true);
         const r2 = await fetch(diskTargetsPreviewUrl, {
@@ -5541,11 +4835,9 @@
         const j2 = await r2.json();
         if (myId !== diskPreviewRequestId) return false;
         if (!j2.ok) {
-          console.error("❌ Disk preview FAILED (pipeline mode):", j2.message);
           if (el)
-            el.innerHTML = `<span style="color: #f59e0b; font-weight: 600;">⚠️ Partial:</span> ` +
-              formatDiskPreviewDetailText(j1) + 
-              ` <span style="color: #ef4444;">Pipeline preset failed: ${j2.message || "error"}</span>`;
+            el.textContent =
+              formatDiskPreviewDetailText(j1) + " Pipeline preset failed: " + (j2.message || "error");
           lastDiskPreviewPipe = null;
           lastStoredPipeFp = "";
           syncImpactActionButtons();
@@ -5553,33 +4845,14 @@
         }
         lastDiskPreviewPipe = j2;
         lastStoredPipeFp = JSON.stringify(bodyPipe);
-        console.log("✅ Disk preview SUCCESS - Variables SET", { 
-          eligible: j1.eligible_for_guest_ssh,
-          planned_runs: j2.planned_guest_ssh_runs,
-          clusters: j2.clusters_in_inventory,
-          lastDiskPreviewNorm: !!lastDiskPreviewNorm,
-          lastDiskPreviewPipe: !!lastDiskPreviewPipe
-        });
-        if (el) {
-          const eligibleCount = j1.eligible_for_guest_ssh != null ? j1.eligible_for_guest_ssh : "—";
-          const plannedRuns = j2.planned_guest_ssh_runs != null ? j2.planned_guest_ssh_runs : "—";
-          const clusterCount = j2.clusters_in_inventory != null ? j2.clusters_in_inventory : "—";
-          
-          el.innerHTML = `<span style="color: #22c55e; font-weight: 600;">✅ Ready!</span> ` +
-            `<strong>${eligibleCount}</strong> eligible VMs, ` +
-            `<strong>${plannedRuns}</strong> planned SSH runs, ` +
-            `<strong>${clusterCount}</strong> cluster(s). ` +
-            `<span style="font-size: 0.85em;">${formatDiskPreviewDetailText(j1)}</span>`;
-        }
-        // Call syncImpactActionButtons after a tiny delay to ensure variables are set
-        setTimeout(() => {
-          console.log("⏰ Delayed button sync - checking variables:", {
-            lastDiskPreviewNorm: !!lastDiskPreviewNorm,
-            lastDiskPreviewPipe: !!lastDiskPreviewPipe
-          });
-          syncImpactActionButtons();
-          console.log("✅ Buttons should now be enabled!");
-        }, 50);
+        if (el)
+          el.textContent =
+            formatDiskPreviewDetailText(j1) +
+            " — Pipeline disk stage: " +
+            (j2.planned_guest_ssh_runs != null ? j2.planned_guest_ssh_runs : "—") +
+            " planned SSH run(s), " +
+            (j2.clusters_in_inventory != null ? j2.clusters_in_inventory + " cluster(s)." : "clusters —.");
+        syncImpactActionButtons();
         return true;
       } catch (e) {
         if (myId !== diskPreviewRequestId) return false;
@@ -5704,20 +4977,20 @@
       return (
         "<p><strong>Guest SSH disk work will run</strong> against the current Prism Central connection and limits.</p>" +
         "<ul>" +
-        "<li><strong>Operation</strong><span>" +
+        "<li><strong>Operation:</strong> " +
         escHtml(op) +
-        "</span></li>" +
-        "<li><strong>Planned SSH runs</strong><span>" +
+        "</li>" +
+        "<li><strong>Planned SSH runs:</strong> " +
         escHtml(runs) +
-        "</span></li>" +
-        "<li><strong>Clusters</strong><span>" +
+        "</li>" +
+        "<li><strong>Clusters in inventory:</strong> " +
         escHtml(clusters) +
-        "</span></li>" +
-        "<li><strong>Distinct VMs</strong><span>" +
+        "</li>" +
+        "<li><strong>Distinct VMs (non-CVM) in inventory:</strong> " +
         escHtml(distinct) +
-        "</span></li>" +
+        "</li>" +
         "</ul>" +
-        "<p style=\"margin:1rem 0 0 0;font-size:0.88rem;color:#aaa;\">Figures reflect the current form and inventory cache (refreshed automatically after load and when you change disk settings).</p>"
+        "<p class=\"muted\" style=\"margin:0;font-size:0.88rem;\">Figures reflect the current form and inventory cache (refreshed automatically after load and when you change disk settings).</p>"
       );
     }
 
@@ -5728,14 +5001,14 @@
       return (
         "<p><strong>Full pipeline</strong> refreshes inventory, runs a disk job (forced to <strong>Update</strong>, parallel clusters, adaptive SSH), waits for it, runs a snapshot job, waits, then runs Curator on PEs.</p>" +
         "<ul>" +
-        "<li><strong>Planned SSH runs</strong><span>" +
+        "<li><strong>Disk stage — planned SSH runs (pipeline preset):</strong> " +
         escHtml(runs) +
-        "</span></li>" +
-        "<li><strong>Clusters</strong><span>" +
+        "</li>" +
+        "<li><strong>Clusters in inventory:</strong> " +
         escHtml(clusters) +
-        "</span></li>" +
+        "</li>" +
         "</ul>" +
-        "<p style=\"margin:1rem 0 0 0;font-size:0.88rem;color:#aaa;\">This is high load on Prism Central, guests, and PEs. Confirm only if the numbers match what you intend.</p>"
+        "<p class=\"muted\" style=\"margin:0;font-size:0.88rem;\">This is high load on Prism Central, guests, and PEs. Confirm only if the numbers match what you intend.</p>"
       );
     }
 
@@ -5885,11 +5158,11 @@
       }
     }
 
-    function navigateToJob(url) {
+    function tryOpenJobInNewTab(url) {
       const u = (url || "").trim();
       if (!u) return;
       try {
-        window.location.href = absAppUrl(u);
+        window.open(absAppUrl(u), "_blank", "noopener,noreferrer");
       } catch (e) {}
     }
 
@@ -6010,15 +5283,10 @@
 
     async function fetchVmInventoryAndRender() {
       const c = readConn();
-      const vmFetchErr = $("vm-fetch-err");
-      const vmSummary = $("vm-summary");
-      const vmFetchStatus = $("vm-fetch-status");
-      
-      if (vmFetchErr) vmFetchErr.style.display = "none";
-      if (vmSummary) vmSummary.style.display = "none";
-      
+      $("vm-fetch-err").style.display = "none";
+      $("vm-summary").style.display = "none";
       if (!c.pc_ip || !c.pc_user) {
-        if (vmFetchStatus) vmFetchStatus.textContent = "Enter Prism Central address and username to load inventory.";
+        $("vm-fetch-status").textContent = "Enter Prism Central address and username to load inventory.";
         renderPeCvmIpsFromInventory({ ok: false, message: "Enter Prism Central address and username to resolve PE CVM IPs." });
         clearDiskPreviewState();
         return { ok: false, message: "Enter Prism Central address and username first." };
@@ -6026,11 +5294,8 @@
       setInventoryDashSkeleton(true);
       const prePe = $("pe-cvm-ips-display");
       if (prePe) prePe.textContent = "Loading inventory and resolving PE CVM IPs…";
-      const peCvmIpsErr = $("pe-cvm-ips-err");
-      if (peCvmIpsErr) {
-        peCvmIpsErr.style.display = "none";
-        peCvmIpsErr.textContent = "";
-      }
+      $("pe-cvm-ips-err").style.display = "none";
+      $("pe-cvm-ips-err").textContent = "";
       try {
         const r = await fetch("{{ url_for('api_vm_inventory') }}", {
           method: "POST",
@@ -6048,11 +5313,9 @@
           clearDiskPreviewState();
           setInventoryDashSkeleton(false);
           const errMsg = data.message || "Request failed.";
-          if (vmFetchErr) {
-            vmFetchErr.textContent = errMsg;
-            vmFetchErr.style.display = "block";
-          }
-          if (vmFetchStatus) vmFetchStatus.textContent = "";
+          $("vm-fetch-err").textContent = errMsg;
+          $("vm-fetch-err").style.display = "none";
+          $("vm-fetch-status").textContent = "";
           showToast("error", "Connection Failed", errMsg, 8000);
           renderPeCvmIpsFromInventory({ ok: false, message: errMsg });
           return { ok: false, message: errMsg };
@@ -6061,33 +5324,31 @@
         const dplInv = $("disk-preview-line");
         if (dplInv) dplInv.textContent = "Inventory loaded — updating guest SSH target counts…";
         setInventoryDashSkeleton(false);
-        if (vmFetchStatus) vmFetchStatus.textContent = "Done (" + data.total_vms + " VMs).";
+        $("vm-fetch-status").textContent = "Done (" + data.total_vms + " VMs).";
         const cards = $("vm-stat-cards");
-        if (cards) {
-          cards.innerHTML = "";
-          const addCard = (label, val) => {
-            const d = document.createElement("div");
-            d.className = "stat-card";
-            d.innerHTML = "<strong>" + val + "</strong>" + label;
-            cards.appendChild(d);
-          };
-          addCard("Total VMs (non-CVM)", data.total_vms);
-          addCard("With IP", data.with_ip);
-          addCard("Without IP", data.without_ip);
-          if (typeof data.guest_disk_eligible === "number") {
-            const m = data.guest_disk_min_memory_mib;
-            const slab = (typeof m === "number" && m > 0)
-              ? "Disk churn eligible (IP + on + skips + RAM>" + m + " MiB)"
-              : "Disk churn eligible (IP + on + skips, no RAM floor)";
-            addCard(slab, data.guest_disk_eligible);
-          }
-          if (typeof data.guest_disk_skipped_power_off === "number")
-            addCard("…skipped (powered off)", data.guest_disk_skipped_power_off);
-          if (typeof data.guest_disk_skipped_below_min_memory === "number" && (data.guest_disk_min_memory_mib || 0) > 0)
-            addCard("…skipped (RAM ≤ min or unknown)", data.guest_disk_skipped_below_min_memory);
-          if (data.duplicate_rows_skipped)
-            addCard("Duplicate rows skipped", data.duplicate_rows_skipped);
+        cards.innerHTML = "";
+        const addCard = (label, val) => {
+          const d = document.createElement("div");
+          d.className = "stat-card";
+          d.innerHTML = "<strong>" + val + "</strong>" + label;
+          cards.appendChild(d);
+        };
+        addCard("Total VMs (non-CVM)", data.total_vms);
+        addCard("With IP", data.with_ip);
+        addCard("Without IP", data.without_ip);
+        if (typeof data.guest_disk_eligible === "number") {
+          const m = data.guest_disk_min_memory_mib;
+          const slab = (typeof m === "number" && m > 0)
+            ? "Disk churn eligible (IP + on + skips + RAM>" + m + " MiB)"
+            : "Disk churn eligible (IP + on + skips, no RAM floor)";
+          addCard(slab, data.guest_disk_eligible);
         }
+        if (typeof data.guest_disk_skipped_power_off === "number")
+          addCard("…skipped (powered off)", data.guest_disk_skipped_power_off);
+        if (typeof data.guest_disk_skipped_below_min_memory === "number" && (data.guest_disk_min_memory_mib || 0) > 0)
+          addCard("…skipped (RAM ≤ min or unknown)", data.guest_disk_skipped_below_min_memory);
+        if (data.duplicate_rows_skipped)
+          addCard("Duplicate rows skipped", data.duplicate_rows_skipped);
 
         inventoryTablePage = 1;
         if ($("inventory-search")) $("inventory-search").value = "";
@@ -6101,7 +5362,7 @@
             cpe.textContent = "";
           }
         }
-        if (vmSummary) vmSummary.style.display = "block";
+        $("vm-summary").style.display = "block";
         renderPeCvmIpsFromInventory(data);
         loadInventoryTablePage(1);
         await runDiskTargetsPreviewFromForm();
@@ -6112,11 +5373,9 @@
         clearDiskPreviewState();
         setInventoryDashSkeleton(false);
         const errMsg = String(e);
-        if (vmFetchErr) {
-          vmFetchErr.textContent = errMsg;
-          vmFetchErr.style.display = "block";
-        }
-        if (vmFetchStatus) vmFetchStatus.textContent = "";
+        $("vm-fetch-err").textContent = errMsg;
+        $("vm-fetch-err").style.display = "none";
+        $("vm-fetch-status").textContent = "";
         showToast("error", "Inventory Load Error", errMsg, 8000);
         renderPeCvmIpsFromInventory({ ok: false, message: errMsg });
         return { ok: false, message: errMsg };
@@ -6241,7 +5500,7 @@
       $("cluster_adaptive_overload_pause_sec").disabled = !adaptOn;
       $("cluster_adaptive_cooldown_sec").disabled = !adaptOn;
       syncImpactActionButtons();
-      // scheduleDiskTargetsPreviewRefresh(); // Disabled - buttons should stay enabled
+      scheduleDiskTargetsPreviewRefresh();
     }
 
     $("parallel_clusters").addEventListener("change", syncPeTopThrottleUi);
@@ -6268,15 +5527,13 @@
     });
     const mainFormEl = $("main-form");
     if (mainFormEl) {
-      // Only sync button states, don't constantly re-run disk preview
-      // Users can manually refresh by clicking "Fetch VMs" if needed
       mainFormEl.addEventListener("input", () => {
         syncImpactActionButtons();
-        // scheduleDiskTargetsPreviewRefresh(); // Disabled - too aggressive
+        scheduleDiskTargetsPreviewRefresh();
       });
       mainFormEl.addEventListener("change", () => {
         syncImpactActionButtons();
-        // scheduleDiskTargetsPreviewRefresh(); // Disabled - too aggressive
+        scheduleDiskTargetsPreviewRefresh();
       });
     }
 
@@ -6389,7 +5646,6 @@
     scheduleActiveDiskJobRefresh();
     setInterval(refreshActiveDiskJobState, 6000);
 
-    // Auto-fetch VM inventory on page load
     (function bootAutoFetchVmInventory() {
       function go() {
         fetchVmInventoryAndRender().then((r) => {
@@ -6402,55 +5658,6 @@
         document.addEventListener("DOMContentLoaded", go);
       } else {
         go();
-      }
-    })();
-
-    // Wire up manual Fetch VMs button
-    (function setupFetchVMsButton() {
-      function wireButton() {
-        const btnFetchVms = $("btn-fetch-vms");
-        if (btnFetchVms) {
-          console.log("Fetch VMs button found, attaching event listener");
-          btnFetchVms.addEventListener("click", async (e) => {
-            e.preventDefault();
-            console.log("Fetch VMs button clicked");
-            showLoading("Fetching VM inventory...");
-            btnFetchVms.disabled = true;
-            btnFetchVms.textContent = "Fetching...";
-            try {
-              console.log("Calling fetchVmInventoryAndRender...");
-              const result = await fetchVmInventoryAndRender();
-              console.log("Fetch result:", result);
-              hideLoading();
-              if (result.ok) {
-                showToast("success", "VM Inventory", "Successfully fetched VM inventory", 3000);
-              } else {
-                showToast("error", "VM Inventory", result.message || "Failed to fetch VMs", 5000);
-              }
-            } catch (error) {
-              console.error("Error in Fetch VMs:", error);
-              hideLoading();
-              showToast("error", "VM Inventory", "Error: " + String(error), 5000);
-            } finally {
-              btnFetchVms.disabled = false;
-              btnFetchVms.innerHTML = `
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
-                  <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
-                  <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
-                </svg>
-                Fetch VMs
-              `;
-            }
-          });
-        } else {
-          console.warn("Fetch VMs button not found (btn-fetch-vms)");
-        }
-      }
-      
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", wireButton);
-      } else {
-        wireButton();
       }
     })();
 
@@ -6750,7 +5957,7 @@
           return;
         }
         const diskJobHref = absAppUrl(j2.job_url);
-        // Don't navigate away - user wants to watch pipeline progress on main page
+        tryOpenJobInNewTab(j2.job_url);
         scheduleActiveDiskJobRefresh();
         startJobConsolePoll(j2.run_id);
         setPipelineStage(1, "run", "Waiting for job…", "", diskJobHref);
@@ -6782,7 +5989,7 @@
           return;
         }
         const snapJobHref = absAppUrl(j3.job_url);
-        navigateToJob(j3.job_url);
+        tryOpenJobInNewTab(j3.job_url);
         startJobConsolePoll(j3.run_id);
         setPipelineStage(2, "run", "Waiting for job…", "", snapJobHref);
         const snapWait = await waitForBulkJob(j3.run_id, 2000, (jj) => {
@@ -6820,7 +6027,47 @@
       }
     }
 
-  ["guest_dd_bs", "create_count_mib", "churn_count_mib"].forEach((id) => {
+    $("btn-start-disk-job").addEventListener("click", async () => {
+      const c = readConn();
+      $("disk-job-err").style.display = "none";
+      if (!c.pc_ip || !c.pc_user) {
+        $("disk-job-err").textContent = "Enter Prism Central address and username first.";
+        $("disk-job-err").style.display = "block";
+        return;
+      }
+      openDiskConfirmModal(
+        "Start disk job?",
+        formatStartDiskConfirmHtml(),
+        "Start disk job",
+        true,
+        async () => {
+          const body = buildDiskJobBody();
+          $("disk-job-status").textContent = "Starting…";
+          try {
+            const r = await fetch("{{ url_for('api_start_disk_ops') }}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify(body),
+            });
+            const j = await r.json();
+            if (!j.ok) {
+              $("disk-job-err").textContent = j.message || "Failed.";
+              $("disk-job-err").style.display = "block";
+              $("disk-job-status").textContent = "";
+              scheduleActiveDiskJobRefresh();
+              return;
+            }
+            window.location.href = j.job_url;
+          } catch (e) {
+            $("disk-job-err").textContent = String(e);
+            $("disk-job-err").style.display = "block";
+            $("disk-job-status").textContent = "";
+          }
+        },
+      );
+    });
+
+    ["guest_dd_bs", "create_count_mib", "churn_count_mib"].forEach((id) => {
       const n = $(id);
       if (n) n.addEventListener("input", updateDiskDdSizePreview);
     });
@@ -6842,32 +6089,66 @@
       }
     });
 
+    $("btn-run-full-pipeline").addEventListener("click", async () => {
+      const btn = $("btn-run-full-pipeline");
+      const gs = $("pipeline-global-status");
+      const stagesEl = $("pipeline-stages");
+      const dock = $("pipeline-progress-dock");
+      if (btn.disabled) return;
+      const c = readConn();
+      if (!c.pc_ip || !c.pc_user) {
+        gs.textContent = "Enter Prism Central connection first.";
+        return;
+      }
+      if (!(($("guest_ssh_password").value || "").trim())) {
+        gs.textContent = "Guest SSH password is required for the disk job stage.";
+        return;
+      }
+      gs.textContent = "";
+      openDiskConfirmModal(
+        "Run full pipeline?",
+        formatPipelineConfirmHtml(),
+        "Run full pipeline",
+        true,
+        async () => {
+          btn.disabled = true;
+          if (stagesEl) stagesEl.style.display = "block";
+          if (dock) {
+            try {
+              dock.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            } catch (e) {}
+          }
+          resetPipelineStages();
+          try {
+            await runFullPipelineAfterConfirm(gs, btn);
+          } catch (e) {
+            gs.textContent = "Pipeline error: " + String(e);
+          }
+        },
+      );
+    });
+
     // Action Center - Top Bar Integration
     function syncTopBarButtons() {
       const btnDiskTop = $("btn-start-disk-job-top");
       const btnPipeTop = $("btn-run-full-pipeline-top");
       const btnSnapTop = $("btn-start-snapshot-run-top");
       
+      const btnDiskMain = $("btn-start-disk-job-main");
+      const btnPipeMain = $("btn-run-full-pipeline-main");
+      const btnSnapMain = $("btn-start-snapshot-run-main");
+      
       const btnDisk = $("btn-start-disk-job");
       const btnPipe = $("btn-run-full-pipeline");
       const btnSnap = $("btn-start-snapshot-run");
       
-      if (btnDisk && btnDiskTop) {
-        btnDiskTop.disabled = btnDisk.disabled;
-        btnDiskTop.title = btnDisk.title;
-        btnDiskTop.style.cursor = btnDisk.style.cursor;
-        btnDiskTop.style.opacity = btnDisk.style.opacity;
-      }
-      if (btnPipe && btnPipeTop) {
-        btnPipeTop.disabled = btnPipe.disabled;
-        btnPipeTop.title = btnPipe.title;
-        btnPipeTop.style.cursor = btnPipe.style.cursor;
-        btnPipeTop.style.opacity = btnPipe.style.opacity;
-      }
-      if (btnSnap && btnSnapTop) {
-        btnSnapTop.disabled = btnSnap.disabled;
-        btnSnapTop.title = btnSnap.title;
-      }
+      if (btnDisk && btnDiskTop) btnDiskTop.disabled = btnDisk.disabled;
+      if (btnPipe && btnPipeTop) btnPipeTop.disabled = btnPipe.disabled;
+      if (btnSnap && btnSnapTop) btnSnapTop.disabled = btnSnap.disabled;
+      
+      if (btnDisk && btnDiskMain) btnDiskMain.disabled = btnDisk.disabled;
+      if (btnPipe && btnPipeMain) btnPipeMain.disabled = btnPipe.disabled;
+      if (btnSnap && btnSnapMain) btnSnapMain.disabled = btnSnap.disabled;
     }
     
     // Call sync on load and whenever button states change
@@ -6981,40 +6262,6 @@
     setInterval(updateInventoryStatusBadge, 2000);
     window.addEventListener('load', updateInventoryStatusBadge);
     
-    // FORCE ENABLE BUTTONS ON PAGE LOAD
-    console.log("🟢 About to add DOMContentLoaded listener");
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log("🚀 DOMContentLoaded - Force enabling buttons");
-      const btnDisk = $("btn-start-disk-job");
-      const btnPipe = $("btn-run-full-pipeline");
-      
-      if (btnDisk) {
-        btnDisk.disabled = false;
-        btnDisk.style.opacity = "1";
-        btnDisk.style.cursor = "pointer";
-        console.log("✅ btn-start-disk-job force enabled", {
-          disabled: btnDisk.disabled,
-          hasClickListener: btnDisk.onclick !== null,
-          innerHTML: btnDisk.innerHTML
-        });
-      } else {
-        console.error("❌ btn-start-disk-job NOT FOUND on DOMContentLoaded");
-      }
-      
-      if (btnPipe) {
-        btnPipe.disabled = false;
-        btnPipe.style.opacity = "1";
-        btnPipe.style.cursor = "pointer";
-        console.log("✅ btn-run-full-pipeline force enabled", {
-          disabled: btnPipe.disabled,
-          hasClickListener: btnPipe.onclick !== null,
-          innerHTML: btnPipe.innerHTML
-        });
-      } else {
-        console.error("❌ btn-run-full-pipeline NOT FOUND on DOMContentLoaded");
-      }
-    });
-    
   </script>
   
   <!-- Sticky Footer Control Strip -->
@@ -7028,10 +6275,10 @@
       </button>
     </div>
     <div class="footer-controls-right">
-      <button type="button" class="footer-btn-secondary" onclick="handleStartDiskJob()">
+      <button type="button" class="footer-btn-secondary" id="btn-start-disk-job-footer" disabled>
         Start Disk Job
       </button>
-      <button type="button" class="footer-btn-primary" onclick="handleRunFullPipeline()">
+      <button type="button" class="footer-btn-primary" id="btn-run-full-pipeline-footer" disabled>
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="flex-shrink: 0;">
           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
           <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/>
@@ -7078,6 +6325,32 @@
       btnPipeFooter.addEventListener("click", () => {
         const btnPipe = $("btn-run-full-pipeline");
         if (btnPipe) btnPipe.click();
+      });
+    }
+    
+    // Wire up main form buttons (in Execution section) to trigger the actual buttons
+    const btnDiskMain = $("btn-start-disk-job-main");
+    const btnPipeMain = $("btn-run-full-pipeline-main");
+    const btnSnapMain = $("btn-start-snapshot-run-main");
+    
+    if (btnDiskMain) {
+      btnDiskMain.addEventListener("click", () => {
+        const btnDisk = $("btn-start-disk-job");
+        if (btnDisk) btnDisk.click();
+      });
+    }
+    
+    if (btnPipeMain) {
+      btnPipeMain.addEventListener("click", () => {
+        const btnPipe = $("btn-run-full-pipeline");
+        if (btnPipe) btnPipe.click();
+      });
+    }
+    
+    if (btnSnapMain) {
+      btnSnapMain.addEventListener("click", () => {
+        const btnSnap = $("btn-start-snapshot-run");
+        if (btnSnap) btnSnap.click();
       });
     }
   </script>

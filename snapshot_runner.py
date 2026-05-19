@@ -13,7 +13,7 @@ import threading
 import time
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 
@@ -274,6 +274,8 @@ def run_snapshots(
     cfg: SnapshotConfig,
     log: logging.Logger,
     cancel_event: Optional[threading.Event] = None,
+    *,
+    progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     t_wall0 = time.perf_counter()
     try:
@@ -316,11 +318,24 @@ def run_snapshots(
     if len(vms) > 15:
         log.info("  … +%d more", len(vms) - 15)
 
+    n_vms = len(vms)
+
+    def _emit_sp() -> None:
+        if progress_callback is None:
+            return
+        done = int(tally["succeeded"]) + int(tally["failed"]) + int(tally["other"])
+        done = max(0, min(done, n_vms))
+        try:
+            progress_callback(
+                {"overall_done": done, "overall_total": int(n_vms)}
+            )
+        except Exception:
+            pass
+
     exp = (
         dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=cfg.expiration_days)
     ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S.00Z")
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-    n_vms = len(vms)
     mode = (cfg.snapshot_trigger_mode or "series").lower()
     log.info("Snapshot API trigger mode: %s", mode)
     random_rp: Dict[str, int] = {"crash": 0, "app": 0}
@@ -341,6 +356,9 @@ def run_snapshots(
         except TimeoutError as e:
             log.error("  %s", e)
         batch.clear()
+        _emit_sp()
+
+    _emit_sp()
 
     if mode == "parallel":
 
@@ -404,6 +422,7 @@ def run_snapshots(
             _abort_if_needed()
             if batch:
                 _wait_and_clear(batch, "wave")
+            _emit_sp()
             wave_start = wave_end
     else:
         batch: List[Dict[str, Any]] = []
@@ -426,6 +445,7 @@ def run_snapshots(
             except Exception as e:
                 tally["failed"] += 1
                 log.error("  FAILED: %s", e)
+                _emit_sp()
                 continue
 
             batch.append(
@@ -490,4 +510,5 @@ def run_snapshots(
     else:
         result["rp_random_crash"] = 0
         result["rp_random_app"] = 0
+    _emit_sp()
     return result

@@ -1,0 +1,403 @@
+2026-05-12 10:37:19,458 DEBUG Using cached VM inventory (1342 rows, no Prism refetch); guest disk churn mode=create.
+2026-05-12 10:37:19,460 DEBUG Eligible for guest disk ops (IP + powered on + name rules + configured RAM > 1024 MiB): 52 (VMs in inventory: 1342, name-skip: 0, no IP: 582, powered off: 0, RAM≤1024 MiB/unknown: 708, dup rows: 0).
+2026-05-12 10:37:19,461 DEBUG Will run guest SSH on all 52 eligible VMs (no limit).
+2026-05-12 10:37:19,461 INFO Disk job: 52 guest VM(s) to process (parallel-by-cluster=False, concurrent SSH per shard=10).
+2026-05-12 10:37:19,461 WARNING PE CVM map: no IP for cluster(s) ['auto_cluster_prod_anusha_kl_36889b5261a2'] — PE CPU throttle / adaptive skipped there (add lines: one IP per cluster in sort order, or Name=ip).
+2026-05-12 10:37:19,461 DEBUG Guest SSH parallelism (single pool): up to 10 worker thread(s).
+2026-05-12 10:37:19,462 DEBUG [1/52] VM 19168e10… (auto_pc_69fb0ab4360236889b5261a30) via 10.122.27.228 op=create
+2026-05-12 10:37:19,463 DEBUG [2/52] VM 7c22b4ad… (nc-333b35-default-0) via 10.122.27.74 op=create
+2026-05-12 10:37:19,463 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,463 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,463 DEBUG [3/52] VM a9d73cbe… (nc-333b35-default-1) via 10.122.27.152 op=create
+2026-05-12 10:37:19,464 DEBUG [4/52] VM 18394b8f… (nc-333b35-default-2) via 10.122.27.73 op=create
+2026-05-12 10:37:19,465 DEBUG [5/52] VM b742fb67… (nc-333b35-env--1446403350-1) via 10.122.27.70 op=create
+2026-05-12 10:37:19,465 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,466 DEBUG [6/52] VM 55d5f9d5… (nc-333b35-env--1446403350-2) via 10.122.27.69 op=create
+2026-05-12 10:37:19,466 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,470 DEBUG [7/52] VM 2c785922… (ST_36889b5261a2_locust-selenium-jmeter_cntr-comp_new_perf_vm_scsi_0001) via 10.122.25.25 op=create
+2026-05-12 10:37:19,471 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,471 DEBUG [8/52] VM 0f6325d6… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0002) via 10.122.24.20 op=create
+2026-05-12 10:37:19,471 DEBUG [9/52] VM 4437c397… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0005) via 10.122.26.58 op=create
+2026-05-12 10:37:19,472 DEBUG [10/52] VM 07416e58… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0006) via 10.122.24.151 op=create
+2026-05-12 10:37:19,472 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,475 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,476 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,476 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,478 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,724 DEBUG   root@10.122.27.74: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,724 ERROR Guest disk op failed ec=255 vm=nc-333b35-default-0 ip=10.122.27.74 — root@10.122.27.74: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,725 DEBUG [11/52] VM 5a8e787f… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0007) via 10.122.26.109 op=create
+2026-05-12 10:37:19,725 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,730 DEBUG   root@10.122.27.152: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,730 DEBUG   root@10.122.27.73: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,731 ERROR Guest disk op failed ec=255 vm=nc-333b35-default-1 ip=10.122.27.152 — root@10.122.27.152: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,731 ERROR Guest disk op failed ec=255 vm=nc-333b35-default-2 ip=10.122.27.73 — root@10.122.27.73: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,731 DEBUG [12/52] VM 66f3c216… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0008) via 10.122.25.38 op=create
+2026-05-12 10:37:19,732 DEBUG [13/52] VM 71421c07… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0011) via 10.122.24.243 op=create
+2026-05-12 10:37:19,732 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,732 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,736 DEBUG   root@10.122.27.70: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,737 ERROR Guest disk op failed ec=255 vm=nc-333b35-env--1446403350-1 ip=10.122.27.70 — root@10.122.27.70: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,737 DEBUG [14/52] VM 6a8253d8… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0014) via 10.122.26.237 op=create
+2026-05-12 10:37:19,737 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,740 DEBUG   BULK_SNAP_T guest_start 1778582238.464422553
+2026-05-12 10:37:19,740 DEBUG   BULK_SNAP_T pipeline_start 1778582238.465336303
+2026-05-12 10:37:19,740 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:19,740 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:19,740 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0006 ip=10.122.24.151 — Try `dd --help' for more information.
+2026-05-12 10:37:19,740 DEBUG [15/52] VM 9906d22f… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0019) via 10.122.24.110 op=create
+2026-05-12 10:37:19,740 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,743 DEBUG   root@10.122.27.69: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,743 ERROR Guest disk op failed ec=255 vm=nc-333b35-env--1446403350-2 ip=10.122.27.69 — root@10.122.27.69: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:19,744 DEBUG [16/52] VM 0210f0ef… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0026) via 10.122.25.250 op=create
+2026-05-12 10:37:19,744 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,986 DEBUG   BULK_SNAP_T guest_start 1778582238.592004687
+2026-05-12 10:37:19,986 DEBUG   BULK_SNAP_T pipeline_start 1778582238.592973485
+2026-05-12 10:37:19,986 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:19,986 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:19,986 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0008 ip=10.122.25.38 — Try `dd --help' for more information.
+2026-05-12 10:37:19,986 DEBUG [17/52] VM 3a66aa16… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0027) via 10.122.24.182 op=create
+2026-05-12 10:37:19,987 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,989 DEBUG   BULK_SNAP_T guest_start 1778582238.575630712
+2026-05-12 10:37:19,989 DEBUG   BULK_SNAP_T pipeline_start 1778582238.576691422
+2026-05-12 10:37:19,989 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:19,989 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:19,989 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0005 ip=10.122.26.58 — Try `dd --help' for more information.
+2026-05-12 10:37:19,990 DEBUG [18/52] VM 1e223070… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0030) via 10.122.24.219 op=create
+2026-05-12 10:37:19,990 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:19,992 DEBUG   BULK_SNAP_T guest_start 1778582239.154847456
+2026-05-12 10:37:19,992 DEBUG   BULK_SNAP_T pipeline_start 1778582239.155786024
+2026-05-12 10:37:19,992 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:19,992 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:19,992 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0011 ip=10.122.24.243 — Try `dd --help' for more information.
+2026-05-12 10:37:19,993 DEBUG [19/52] VM 8eb9c7ba… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0032) via 10.122.24.16 op=create
+2026-05-12 10:37:19,993 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,012 DEBUG   BULK_SNAP_T guest_start 1778582238.487501514
+2026-05-12 10:37:20,012 DEBUG   BULK_SNAP_T pipeline_start 1778582238.488567392
+2026-05-12 10:37:20,012 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,012 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,014 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0002 ip=10.122.24.20 — Try `dd --help' for more information.
+2026-05-12 10:37:20,015 DEBUG [20/52] VM a335f36c… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0034) via 10.122.25.133 op=create
+2026-05-12 10:37:20,016 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,015 DEBUG   BULK_SNAP_T guest_start 1778582238.979120552
+2026-05-12 10:37:20,015 DEBUG   BULK_SNAP_T guest_start 1778582239.025999164
+2026-05-12 10:37:20,016 DEBUG   BULK_SNAP_T pipeline_start 1778582238.980144372
+2026-05-12 10:37:20,017 DEBUG   BULK_SNAP_T pipeline_start 1778582239.026949618
+2026-05-12 10:37:20,017 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,017 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,017 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,017 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,017 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0026 ip=10.122.25.250 — Try `dd --help' for more information.
+2026-05-12 10:37:20,019 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0014 ip=10.122.26.237 — Try `dd --help' for more information.
+2026-05-12 10:37:20,020 DEBUG [21/52] VM 713ddec5… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0036) via 10.122.25.20 op=create
+2026-05-12 10:37:20,020 DEBUG [22/52] VM a8fa8047… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0037) via 10.122.26.148 op=create
+2026-05-12 10:37:20,020 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,020 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,229 DEBUG   BULK_SNAP_T guest_start 1778582239.042276882
+2026-05-12 10:37:20,229 DEBUG   BULK_SNAP_T pipeline_start 1778582239.043571245
+2026-05-12 10:37:20,229 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,229 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,229 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0007 ip=10.122.26.109 — Try `dd --help' for more information.
+2026-05-12 10:37:20,230 DEBUG [23/52] VM 1ada1f33… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0038) via 10.122.24.153 op=create
+2026-05-12 10:37:20,230 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,242 DEBUG   BULK_SNAP_T guest_start 1778582239.122741253
+2026-05-12 10:37:20,242 DEBUG   BULK_SNAP_T pipeline_start 1778582239.123703033
+2026-05-12 10:37:20,242 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,242 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,242 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0027 ip=10.122.24.182 — Try `dd --help' for more information.
+2026-05-12 10:37:20,243 DEBUG [24/52] VM 36eae4c3… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0041) via 10.122.25.167 op=create
+2026-05-12 10:37:20,243 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,262 DEBUG   BULK_SNAP_T guest_start 1778582238.856839857
+2026-05-12 10:37:20,262 DEBUG   BULK_SNAP_T pipeline_start 1778582238.857660758
+2026-05-12 10:37:20,262 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,262 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,263 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0019 ip=10.122.24.110 — Try `dd --help' for more information.
+2026-05-12 10:37:20,263 DEBUG [25/52] VM 6f111e5b… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0042) via 10.122.25.174 op=create
+2026-05-12 10:37:20,263 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,267 DEBUG   BULK_SNAP_T guest_start 1778582239.035665128
+2026-05-12 10:37:20,268 DEBUG   BULK_SNAP_T pipeline_start 1778582239.036461641
+2026-05-12 10:37:20,268 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,268 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,268 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0032 ip=10.122.24.16 — Try `dd --help' for more information.
+2026-05-12 10:37:20,268 DEBUG [26/52] VM 68ca69cc… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0046) via 10.122.26.130 op=create
+2026-05-12 10:37:20,268 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,271 DEBUG   BULK_SNAP_T guest_start 1778582239.230828332
+2026-05-12 10:37:20,271 DEBUG   BULK_SNAP_T pipeline_start 1778582239.231716129
+2026-05-12 10:37:20,271 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,271 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,271 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0034 ip=10.122.25.133 — Try `dd --help' for more information.
+2026-05-12 10:37:20,272 DEBUG [27/52] VM 22c2dd46… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0047) via 10.122.26.153 op=create
+2026-05-12 10:37:20,272 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,496 DEBUG   BULK_SNAP_T guest_start 1778582238.877827726
+2026-05-12 10:37:20,497 DEBUG   BULK_SNAP_T pipeline_start 1778582238.878609969
+2026-05-12 10:37:20,497 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,497 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,497 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0041 ip=10.122.25.167 — Try `dd --help' for more information.
+2026-05-12 10:37:20,497 DEBUG [28/52] VM 3ed6a76f… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0048) via 10.122.25.226 op=create
+2026-05-12 10:37:20,497 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,512 DEBUG   BULK_SNAP_T guest_start 1778582239.072469123
+2026-05-12 10:37:20,513 DEBUG   BULK_SNAP_T pipeline_start 1778582239.073328793
+2026-05-12 10:37:20,513 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,513 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,513 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0030 ip=10.122.24.219 — Try `dd --help' for more information.
+2026-05-12 10:37:20,513 DEBUG [29/52] VM 4dcddb3c… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0051) via 10.122.26.16 op=create
+2026-05-12 10:37:20,513 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,517 DEBUG   BULK_SNAP_T guest_start 1778582239.641218835
+2026-05-12 10:37:20,517 DEBUG   BULK_SNAP_T pipeline_start 1778582239.642190979
+2026-05-12 10:37:20,517 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,517 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,517 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0042 ip=10.122.25.174 — Try `dd --help' for more information.
+2026-05-12 10:37:20,517 DEBUG [30/52] VM 0c64fa89… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0053) via 10.122.24.60 op=create
+2026-05-12 10:37:20,518 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,522 DEBUG   BULK_SNAP_T guest_start 1778582239.290113730
+2026-05-12 10:37:20,522 DEBUG   BULK_SNAP_T pipeline_start 1778582239.290864419
+2026-05-12 10:37:20,522 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,522 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,522 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0046 ip=10.122.26.130 — Try `dd --help' for more information.
+2026-05-12 10:37:20,522 DEBUG [31/52] VM 1d3505d6… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0055) via 10.122.26.156 op=create
+2026-05-12 10:37:20,522 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,526 DEBUG   BULK_SNAP_T guest_start 1778582238.773633535
+2026-05-12 10:37:20,526 DEBUG   BULK_SNAP_T pipeline_start 1778582238.774886380
+2026-05-12 10:37:20,526 DEBUG   BULK_SNAP_T guest_start 1778582238.962896068
+2026-05-12 10:37:20,526 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,526 DEBUG   BULK_SNAP_T pipeline_start 1778582238.963997478
+2026-05-12 10:37:20,527 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,527 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0047 ip=10.122.26.153 — Try `dd --help' for more information.
+2026-05-12 10:37:20,527 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,527 DEBUG [32/52] VM 5d0d86c2… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0056) via 10.122.26.170 op=create
+2026-05-12 10:37:20,527 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,527 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,528 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0037 ip=10.122.26.148 — Try `dd --help' for more information.
+2026-05-12 10:37:20,528 DEBUG [33/52] VM 20a5fb54… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0057) via 10.122.25.232 op=create
+2026-05-12 10:37:20,528 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,529 DEBUG   BULK_SNAP_T guest_start 1778582239.572110460
+2026-05-12 10:37:20,530 DEBUG   BULK_SNAP_T pipeline_start 1778582239.573023294
+2026-05-12 10:37:20,530 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,531 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,531 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0036 ip=10.122.25.20 — Try `dd --help' for more information.
+2026-05-12 10:37:20,531 DEBUG [34/52] VM 4a522e0c… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0058) via 10.122.24.224 op=create
+2026-05-12 10:37:20,531 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,734 DEBUG   BULK_SNAP_T guest_start 1778582239.623239241
+2026-05-12 10:37:20,734 DEBUG   BULK_SNAP_T pipeline_start 1778582239.624132634
+2026-05-12 10:37:20,734 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,734 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,734 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0038 ip=10.122.24.153 — Try `dd --help' for more information.
+2026-05-12 10:37:20,735 DEBUG [35/52] VM 7c561b26… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0062) via 10.122.24.172 op=create
+2026-05-12 10:37:20,735 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,767 DEBUG   BULK_SNAP_T guest_start 1778582239.450116276
+2026-05-12 10:37:20,767 DEBUG   BULK_SNAP_T pipeline_start 1778582239.451008771
+2026-05-12 10:37:20,767 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,767 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,767 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0051 ip=10.122.26.16 — Try `dd --help' for more information.
+2026-05-12 10:37:20,768 DEBUG [36/52] VM 544d88b0… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0066) via 10.122.24.130 op=create
+2026-05-12 10:37:20,768 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,771 DEBUG   BULK_SNAP_T guest_start 1778582239.320122768
+2026-05-12 10:37:20,771 DEBUG   BULK_SNAP_T pipeline_start 1778582239.321984034
+2026-05-12 10:37:20,771 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,771 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,771 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0053 ip=10.122.24.60 — Try `dd --help' for more information.
+2026-05-12 10:37:20,772 DEBUG [37/52] VM 8cd7c839… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0067) via 10.122.26.115 op=create
+2026-05-12 10:37:20,772 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,776 DEBUG   BULK_SNAP_T guest_start 1778582239.423453094
+2026-05-12 10:37:20,776 DEBUG   BULK_SNAP_T pipeline_start 1778582239.424380397
+2026-05-12 10:37:20,776 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,776 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,776 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0055 ip=10.122.26.156 — Try `dd --help' for more information.
+2026-05-12 10:37:20,776 DEBUG [38/52] VM 57897e10… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0069) via 10.122.25.94 op=create
+2026-05-12 10:37:20,776 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,784 DEBUG   BULK_SNAP_T guest_start 1778582239.859227877
+2026-05-12 10:37:20,784 DEBUG   BULK_SNAP_T pipeline_start 1778582239.860260316
+2026-05-12 10:37:20,784 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,784 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,784 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0056 ip=10.122.26.170 — Try `dd --help' for more information.
+2026-05-12 10:37:20,784 DEBUG [39/52] VM 09ce3dad… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0071) via 10.122.26.19 op=create
+2026-05-12 10:37:20,784 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,787 DEBUG   BULK_SNAP_T guest_start 1778582239.871575359
+2026-05-12 10:37:20,787 DEBUG   BULK_SNAP_T pipeline_start 1778582239.872909965
+2026-05-12 10:37:20,787 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,787 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,787 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0057 ip=10.122.25.232 — Try `dd --help' for more information.
+2026-05-12 10:37:20,787 DEBUG [40/52] VM 163cfb8c… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0072) via 10.122.26.188 op=create
+2026-05-12 10:37:20,788 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,790 DEBUG   BULK_SNAP_T guest_start 1778582239.451255359
+2026-05-12 10:37:20,790 DEBUG   BULK_SNAP_T pipeline_start 1778582239.452184869
+2026-05-12 10:37:20,790 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,790 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,790 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0058 ip=10.122.24.224 — Try `dd --help' for more information.
+2026-05-12 10:37:20,791 DEBUG [41/52] VM 02b024a9… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0074) via 10.122.26.75 op=create
+2026-05-12 10:37:20,791 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:20,989 DEBUG   BULK_SNAP_T guest_start 1778582239.959297771
+2026-05-12 10:37:20,989 DEBUG   BULK_SNAP_T pipeline_start 1778582239.960232660
+2026-05-12 10:37:20,989 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:20,989 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:20,989 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0062 ip=10.122.24.172 — Try `dd --help' for more information.
+2026-05-12 10:37:20,989 DEBUG [42/52] VM 8963af6e… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0075) via 10.122.26.151 op=create
+2026-05-12 10:37:20,989 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,001 DEBUG   BULK_SNAP_T guest_start 1778582239.453207310
+2026-05-12 10:37:21,001 DEBUG   BULK_SNAP_T pipeline_start 1778582239.454310232
+2026-05-12 10:37:21,001 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,001 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,001 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0048 ip=10.122.25.226 — Try `dd --help' for more information.
+2026-05-12 10:37:21,001 DEBUG [43/52] VM 22401c0e… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0076) via 10.122.26.193 op=create
+2026-05-12 10:37:21,002 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,021 DEBUG   BULK_SNAP_T guest_start 1778582239.521110228
+2026-05-12 10:37:21,021 DEBUG   BULK_SNAP_T pipeline_start 1778582239.522062775
+2026-05-12 10:37:21,021 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,022 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,022 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0066 ip=10.122.24.130 — Try `dd --help' for more information.
+2026-05-12 10:37:21,022 DEBUG [44/52] VM 7f06b705… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0080) via 10.122.25.49 op=create
+2026-05-12 10:37:21,022 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,026 DEBUG   BULK_SNAP_T guest_start 1778582239.454003653
+2026-05-12 10:37:21,026 DEBUG   BULK_SNAP_T pipeline_start 1778582239.455093700
+2026-05-12 10:37:21,026 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,026 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,026 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0067 ip=10.122.26.115 — Try `dd --help' for more information.
+2026-05-12 10:37:21,026 DEBUG [45/52] VM 2962f729… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0081) via 10.122.25.192 op=create
+2026-05-12 10:37:21,026 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,030 DEBUG   BULK_SNAP_T guest_start 1778582239.834166158
+2026-05-12 10:37:21,030 DEBUG   BULK_SNAP_T pipeline_start 1778582239.835011583
+2026-05-12 10:37:21,030 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,030 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,030 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0069 ip=10.122.25.94 — Try `dd --help' for more information.
+2026-05-12 10:37:21,030 DEBUG [46/52] VM 664c70cd… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0087) via 10.122.24.193 op=create
+2026-05-12 10:37:21,030 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,038 DEBUG   BULK_SNAP_T guest_start 1778582239.423733459
+2026-05-12 10:37:21,039 DEBUG   BULK_SNAP_T pipeline_start 1778582239.424879853
+2026-05-12 10:37:21,039 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,039 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,039 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0071 ip=10.122.26.19 — Try `dd --help' for more information.
+2026-05-12 10:37:21,039 DEBUG [47/52] VM 2dd35151… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0091) via 10.122.25.163 op=create
+2026-05-12 10:37:21,039 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,043 DEBUG   BULK_SNAP_T guest_start 1778582239.928902503
+2026-05-12 10:37:21,043 DEBUG   BULK_SNAP_T pipeline_start 1778582239.929750691
+2026-05-12 10:37:21,043 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,043 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,043 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0072 ip=10.122.26.188 — Try `dd --help' for more information.
+2026-05-12 10:37:21,043 DEBUG [48/52] VM b10bd4fb… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0092) via 10.122.25.254 op=create
+2026-05-12 10:37:21,044 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,045 DEBUG   BULK_SNAP_T guest_start 1778582239.988597284
+2026-05-12 10:37:21,046 DEBUG   BULK_SNAP_T pipeline_start 1778582239.989509567
+2026-05-12 10:37:21,046 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,046 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,046 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0074 ip=10.122.26.75 — Try `dd --help' for more information.
+2026-05-12 10:37:21,046 DEBUG [49/52] VM aaacfe6d… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0094) via 10.122.27.5 op=create
+2026-05-12 10:37:21,047 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,243 DEBUG   BULK_SNAP_T guest_start 1778582239.996055708
+2026-05-12 10:37:21,243 DEBUG   BULK_SNAP_T pipeline_start 1778582239.997067531
+2026-05-12 10:37:21,243 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,243 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,243 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0075 ip=10.122.26.151 — Try `dd --help' for more information.
+2026-05-12 10:37:21,244 DEBUG [50/52] VM 20548752… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0097) via 10.122.26.82 op=create
+2026-05-12 10:37:21,244 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,255 DEBUG   BULK_SNAP_T guest_start 1778582239.751597978
+2026-05-12 10:37:21,255 DEBUG   BULK_SNAP_T pipeline_start 1778582239.752975817
+2026-05-12 10:37:21,256 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,256 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,256 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0076 ip=10.122.26.193 — Try `dd --help' for more information.
+2026-05-12 10:37:21,256 DEBUG [51/52] VM 5c265d6a… (ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0099) via 10.122.26.248 op=create
+2026-05-12 10:37:21,256 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,276 DEBUG   BULK_SNAP_T guest_start 1778582240.048281375
+2026-05-12 10:37:21,276 DEBUG   BULK_SNAP_T pipeline_start 1778582240.049145006
+2026-05-12 10:37:21,276 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,276 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,276 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0080 ip=10.122.25.49 — Try `dd --help' for more information.
+2026-05-12 10:37:21,276 DEBUG [52/52] VM 0c86eda2… (ST_36889b5261a2_sql_vm_cntr-comp_mysql_vm_scsi_0001) via 10.122.26.209 op=create
+2026-05-12 10:37:21,276 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-12 10:37:21,281 DEBUG   BULK_SNAP_T guest_start 1778582240.365328229
+2026-05-12 10:37:21,281 DEBUG   BULK_SNAP_T pipeline_start 1778582240.366435806
+2026-05-12 10:37:21,281 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,281 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,281 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0081 ip=10.122.25.192 — Try `dd --help' for more information.
+2026-05-12 10:37:21,284 DEBUG   BULK_SNAP_T guest_start 1778582240.106068410
+2026-05-12 10:37:21,284 DEBUG   BULK_SNAP_T pipeline_start 1778582240.107092865
+2026-05-12 10:37:21,284 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,284 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,284 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0087 ip=10.122.24.193 — Try `dd --help' for more information.
+2026-05-12 10:37:21,293 DEBUG   BULK_SNAP_T guest_start 1778582240.219149618
+2026-05-12 10:37:21,293 DEBUG   BULK_SNAP_T pipeline_start 1778582240.220042049
+2026-05-12 10:37:21,293 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,293 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,293 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0091 ip=10.122.25.163 — Try `dd --help' for more information.
+2026-05-12 10:37:21,297 DEBUG   BULK_SNAP_T guest_start 1778582239.675339391
+2026-05-12 10:37:21,297 DEBUG   BULK_SNAP_T pipeline_start 1778582239.676258644
+2026-05-12 10:37:21,297 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,297 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,297 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0092 ip=10.122.25.254 — Try `dd --help' for more information.
+2026-05-12 10:37:21,300 DEBUG   BULK_SNAP_T guest_start 1778582239.659939105
+2026-05-12 10:37:21,300 DEBUG   BULK_SNAP_T pipeline_start 1778582239.660909840
+2026-05-12 10:37:21,300 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,300 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,300 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0094 ip=10.122.27.5 — Try `dd --help' for more information.
+2026-05-12 10:37:21,510 DEBUG   BULK_SNAP_T guest_start 1778582240.173652432
+2026-05-12 10:37:21,510 DEBUG   BULK_SNAP_T pipeline_start 1778582240.174562192
+2026-05-12 10:37:21,510 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,510 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,510 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0099 ip=10.122.26.248 — Try `dd --help' for more information.
+2026-05-12 10:37:21,529 DEBUG   ssh: connect to host 10.122.26.209 port 22: Connection refused
+2026-05-12 10:37:21,530 ERROR Guest disk op failed ec=255 vm=ST_36889b5261a2_sql_vm_cntr-comp_mysql_vm_scsi_0001 ip=10.122.26.209 — ssh: connect to host 10.122.26.209 port 22: Connection refused
+2026-05-12 10:37:21,738 DEBUG   Permission denied, please try again.
+2026-05-12 10:37:21,738 ERROR Guest disk op failed ec=5 vm=ST_36889b5261a2_locust-selenium-jmeter_cntr-comp_new_perf_vm_scsi_0001 ip=10.122.25.25 — Permission denied, please try again.
+2026-05-12 10:37:21,748 DEBUG   BULK_SNAP_T guest_start 1778582240.325296579
+2026-05-12 10:37:21,748 DEBUG   BULK_SNAP_T pipeline_start 1778582240.326284565
+2026-05-12 10:37:21,748 DEBUG   dd: invalid status flag: `progress'
+2026-05-12 10:37:21,748 DEBUG   Try `dd --help' for more information.
+2026-05-12 10:37:21,748 ERROR Guest disk op failed ec=1 vm=ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0097 ip=10.122.26.82 — Try `dd --help' for more information.
+2026-05-12 10:37:22,973 DEBUG   Permission denied, please try again.
+2026-05-12 10:37:22,973 ERROR Guest disk op failed ec=5 vm=auto_pc_69fb0ab4360236889b5261a30 ip=10.122.27.228 — Permission denied, please try again.
+2026-05-12 10:37:22,974 INFO Guest churn done in 3.5s: ok=0 failed=52
+2026-05-12 10:37:22,974 INFO === Guest SSH / disk churn failure summary: 52 failing VM(s) ===
+2026-05-12 10:37:22,974 INFO -- Authentication / permission denied — 7 host(s) --
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.74  vm='nc-333b35-default-0'  uuid=7c22b4ad…  root@10.122.27.74: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.152  vm='nc-333b35-default-1'  uuid=a9d73cbe…  root@10.122.27.152: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.73  vm='nc-333b35-default-2'  uuid=18394b8f…  root@10.122.27.73: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.70  vm='nc-333b35-env--1446403350-1'  uuid=b742fb67…  root@10.122.27.70: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.69  vm='nc-333b35-env--1446403350-2'  uuid=55d5f9d5…  root@10.122.27.69: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-12 10:37:22,974 INFO   ip=10.122.25.25  vm='ST_36889b5261a2_locust-selenium-jmeter_cntr-comp_new_perf_vm_scsi_0001'  uuid=2c785922…  Permission denied, please try again.
+2026-05-12 10:37:22,974 INFO   ip=10.122.27.228  vm='auto_pc_69fb0ab4360236889b5261a30'  uuid=19168e10…  Permission denied, please try again.
+2026-05-12 10:37:22,974 INFO -- Connection refused — 1 host(s) --
+2026-05-12 10:37:22,974 INFO   ip=10.122.26.209  vm='ST_36889b5261a2_sql_vm_cntr-comp_mysql_vm_scsi_0001'  uuid=0c86eda2…  ssh: connect to host 10.122.26.209 port 22: Connection refused
+2026-05-12 10:37:22,975 INFO -- Other — 44 host(s) --
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.151  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0006'  uuid=07416e58…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.38  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0008'  uuid=66f3c216…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.58  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0005'  uuid=4437c397…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.243  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0011'  uuid=71421c07…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.20  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0002'  uuid=0f6325d6…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.250  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0026'  uuid=0210f0ef…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.237  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0014'  uuid=6a8253d8…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.109  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0007'  uuid=5a8e787f…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.182  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0027'  uuid=3a66aa16…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.110  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0019'  uuid=9906d22f…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.16  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0032'  uuid=8eb9c7ba…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.133  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0034'  uuid=a335f36c…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.167  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0041'  uuid=36eae4c3…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.219  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0030'  uuid=1e223070…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.174  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0042'  uuid=6f111e5b…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.130  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0046'  uuid=68ca69cc…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.153  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0047'  uuid=22c2dd46…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.148  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0037'  uuid=a8fa8047…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.20  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0036'  uuid=713ddec5…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.153  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0038'  uuid=1ada1f33…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.16  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0051'  uuid=4dcddb3c…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.60  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0053'  uuid=0c64fa89…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.156  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0055'  uuid=1d3505d6…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.170  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0056'  uuid=5d0d86c2…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.232  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0057'  uuid=20a5fb54…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.224  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0058'  uuid=4a522e0c…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.172  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0062'  uuid=7c561b26…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.226  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0048'  uuid=3ed6a76f…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.24.130  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0066'  uuid=544d88b0…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.115  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0067'  uuid=8cd7c839…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.94  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0069'  uuid=57897e10…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.19  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0071'  uuid=09ce3dad…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.188  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0072'  uuid=163cfb8c…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.75  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0074'  uuid=02b024a9…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.151  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0075'  uuid=8963af6e…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.26.193  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0076'  uuid=22401c0e…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.49  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0080'  uuid=7f06b705…  Try `dd --help' for more information.
+2026-05-12 10:37:22,975 INFO   ip=10.122.25.192  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0081'  uuid=2962f729…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.24.193  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0087'  uuid=664c70cd…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.25.163  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0091'  uuid=2dd35151…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.25.254  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0092'  uuid=b10bd4fb…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.27.5  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0094'  uuid=aaacfe6d…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.26.248  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0099'  uuid=5c265d6a…  Try `dd --help' for more information.
+2026-05-12 10:37:22,976 INFO   ip=10.122.26.82  vm='ST_36889b5261a2_pc_fio_cntr-comp_centosfio_scsi_0097'  uuid=20548752…  Try `dd --help' for more information.

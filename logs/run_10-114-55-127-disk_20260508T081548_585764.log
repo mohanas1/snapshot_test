@@ -1,0 +1,96 @@
+2026-05-08 08:15:48,587 DEBUG Using cached VM inventory (152 rows, no Prism refetch); guest disk churn mode=create.
+2026-05-08 08:15:48,587 DEBUG Eligible for guest disk ops (IP + powered on + name rules + configured RAM > 1024 MiB): 10 (VMs in inventory: 152, name-skip: 0, no IP: 142, powered off: 0, RAM≤1024 MiB/unknown: 0, dup rows: 0).
+2026-05-08 08:15:48,587 DEBUG Will run guest SSH on all 10 eligible VMs (no limit).
+2026-05-08 08:15:48,587 INFO Disk job: 10 guest VM(s) to process (parallel-by-cluster=False, concurrent SSH per shard=10).
+2026-05-08 08:15:48,588 WARNING PE CVM map: no IP for cluster(s) ['SSCG_NCM_2_1_Small_HomePE', 'SSCG_NCM_2_1_Small_PE1'] — PE CPU throttle / adaptive skipped there (add lines: one IP per cluster in sort order, or Name=ip).
+2026-05-08 08:15:48,588 DEBUG Guest SSH parallelism (single pool): up to 10 worker thread(s).
+2026-05-08 08:15:48,589 DEBUG [1/10] VM 422668c5… (auto_pc_69eb2d1a360236802bb644a50) via 10.114.55.127 op=create
+2026-05-08 08:15:48,589 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,589 DEBUG [2/10] VM c338588a… (nc-2056cb-default-0) via 10.114.55.185 op=create
+2026-05-08 08:15:48,590 DEBUG [3/10] VM 0452ad0f… (nc-2056cb-default-1) via 10.114.55.187 op=create
+2026-05-08 08:15:48,590 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,590 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,590 DEBUG [4/10] VM 3c0fd91f… (nc-2056cb-default-2) via 10.114.55.186 op=create
+2026-05-08 08:15:48,591 DEBUG [5/10] VM c31fe370… (nc-2056cb-env--1446403350-1) via 10.114.55.188 op=create
+2026-05-08 08:15:48,592 DEBUG [6/10] VM aae5a081… (nc-2056cb-env--1446403350-2) via 10.114.55.190 op=create
+2026-05-08 08:15:48,595 DEBUG [7/10] VM 60058907… (smart-vm-1-5253) via 10.114.55.189 op=create
+2026-05-08 08:15:48,596 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,596 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,597 DEBUG [8/10] VM dfc2fb97… (smart-vm-1-5828) via 10.114.185.3 op=create
+2026-05-08 08:15:48,597 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,597 DEBUG [9/10] VM 71801a3b… (smart-vm-1-8392) via 10.114.177.157 op=create
+2026-05-08 08:15:48,597 DEBUG [10/10] VM 008e72ff… (smart-vm-1-8765) via 10.114.183.149 op=create
+2026-05-08 08:15:48,598 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,602 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,602 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,604 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-05-08 08:15:48,850 DEBUG   root@10.114.55.185: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,850 ERROR Guest disk op failed ec=255 vm=nc-2056cb-default-0 ip=10.114.55.185 — root@10.114.55.185: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,851 DEBUG   root@10.114.55.187: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,852 ERROR Guest disk op failed ec=255 vm=nc-2056cb-default-1 ip=10.114.55.187 — root@10.114.55.187: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,852 DEBUG   root@10.114.55.186: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,852 ERROR Guest disk op failed ec=255 vm=nc-2056cb-default-2 ip=10.114.55.186 — root@10.114.55.186: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,856 DEBUG   root@10.114.55.190: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,856 ERROR Guest disk op failed ec=255 vm=nc-2056cb-env--1446403350-2 ip=10.114.55.190 — root@10.114.55.190: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,857 DEBUG   root@10.114.55.188: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:48,858 ERROR Guest disk op failed ec=255 vm=nc-2056cb-env--1446403350-1 ip=10.114.55.188 — root@10.114.55.188: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:51,111 DEBUG   BULK_SNAP_T guest_start 1778195747.245267145
+2026-05-08 08:15:51,111 DEBUG   BULK_SNAP_T pipeline_start 1778195747.246477979
+2026-05-08 08:15:51,111 DEBUG   BULK_SNAP_T pipeline_done 1778195749.353923541
+2026-05-08 08:15:51,111 DEBUG   BULK_SNAP_T guest_end 1778195749.354989352
+2026-05-08 08:15:51,111 DEBUG   
+2026-05-08 08:15:51,111 DEBUG   796917760 bytes (797 MB) copied, 1.000698 s, 796 MB/s
+2026-05-08 08:15:51,111 DEBUG   1047527424 bytes (1.0 GB) copied, 2.002015 s, 523 MB/s
+2026-05-08 08:15:51,111 DEBUG   1024+0 records in
+2026-05-08 08:15:51,111 DEBUG   1024+0 records out
+2026-05-08 08:15:51,111 DEBUG   1073741824 bytes (1.1 GB) copied, 2.04747 s, 524 MB/s
+2026-05-08 08:15:51,112 DEBUG   OK (disk op exit 0)
+2026-05-08 08:15:51,848 DEBUG   Permission denied, please try again.
+2026-05-08 08:15:51,848 ERROR Guest disk op failed ec=5 vm=auto_pc_69eb2d1a360236802bb644a50 ip=10.114.55.127 — Permission denied, please try again.
+2026-05-08 08:15:52,613 DEBUG   BULK_SNAP_T guest_start 1778195747.293087815
+2026-05-08 08:15:52,613 DEBUG   BULK_SNAP_T pipeline_start 1778195747.294185199
+2026-05-08 08:15:52,613 DEBUG   BULK_SNAP_T pipeline_done 1778195750.924878070
+2026-05-08 08:15:52,613 DEBUG   BULK_SNAP_T guest_end 1778195750.925914230
+2026-05-08 08:15:52,613 DEBUG   
+2026-05-08 08:15:52,613 DEBUG   719323136 bytes (719 MB) copied, 1.004329 s, 716 MB/s
+2026-05-08 08:15:52,613 DEBUG   872415232 bytes (872 MB) copied, 2.010151 s, 434 MB/s
+2026-05-08 08:15:52,614 DEBUG   1004535808 bytes (1.0 GB) copied, 3.015174 s, 333 MB/s
+2026-05-08 08:15:52,614 DEBUG   1024+0 records in
+2026-05-08 08:15:52,614 DEBUG   1024+0 records out
+2026-05-08 08:15:52,614 DEBUG   1073741824 bytes (1.1 GB) copied, 3.57541 s, 300 MB/s
+2026-05-08 08:15:52,614 DEBUG   OK (disk op exit 0)
+2026-05-08 08:15:53,115 DEBUG   BULK_SNAP_T guest_start 1778195747.421170424
+2026-05-08 08:15:53,115 DEBUG   BULK_SNAP_T pipeline_start 1778195747.422202654
+2026-05-08 08:15:53,115 DEBUG   BULK_SNAP_T pipeline_done 1778195751.623015922
+2026-05-08 08:15:53,115 DEBUG   BULK_SNAP_T guest_end 1778195751.624247725
+2026-05-08 08:15:53,115 DEBUG   
+2026-05-08 08:15:53,115 DEBUG   649068544 bytes (649 MB) copied, 1.006012 s, 645 MB/s
+2026-05-08 08:15:53,115 DEBUG   780140544 bytes (780 MB) copied, 2.007173 s, 389 MB/s
+2026-05-08 08:15:53,115 DEBUG   913309696 bytes (913 MB) copied, 3.017196 s, 303 MB/s
+2026-05-08 08:15:53,115 DEBUG   1054867456 bytes (1.1 GB) copied, 4.019839 s, 262 MB/s
+2026-05-08 08:15:53,115 DEBUG   1024+0 records in
+2026-05-08 08:15:53,115 DEBUG   1024+0 records out
+2026-05-08 08:15:53,115 DEBUG   1073741824 bytes (1.1 GB) copied, 4.14612 s, 259 MB/s
+2026-05-08 08:15:53,115 DEBUG   OK (disk op exit 0)
+2026-05-08 08:15:53,116 DEBUG   BULK_SNAP_T guest_start 1778195747.545354897
+2026-05-08 08:15:53,116 DEBUG   BULK_SNAP_T pipeline_start 1778195747.546388890
+2026-05-08 08:15:53,116 DEBUG   BULK_SNAP_T pipeline_done 1778195751.674638539
+2026-05-08 08:15:53,116 DEBUG   BULK_SNAP_T guest_end 1778195751.675821831
+2026-05-08 08:15:53,116 DEBUG   
+2026-05-08 08:15:53,116 DEBUG   710934528 bytes (711 MB) copied, 1.000171 s, 711 MB/s
+2026-05-08 08:15:53,116 DEBUG   847249408 bytes (847 MB) copied, 2.005056 s, 423 MB/s
+2026-05-08 08:15:53,116 DEBUG   954204160 bytes (954 MB) copied, 3.006899 s, 317 MB/s
+2026-05-08 08:15:53,116 DEBUG   1066401792 bytes (1.1 GB) copied, 4.008900 s, 266 MB/s
+2026-05-08 08:15:53,116 DEBUG   1024+0 records in
+2026-05-08 08:15:53,116 DEBUG   1024+0 records out
+2026-05-08 08:15:53,116 DEBUG   1073741824 bytes (1.1 GB) copied, 4.07201 s, 264 MB/s
+2026-05-08 08:15:53,116 DEBUG   OK (disk op exit 0)
+2026-05-08 08:15:53,117 INFO Guest churn done in 4.5s: ok=4 failed=6
+2026-05-08 08:15:53,117 INFO === Guest SSH / disk churn failure summary: 6 failing VM(s) ===
+2026-05-08 08:15:53,117 INFO -- Authentication / permission denied — 6 host(s) --
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.185  vm='nc-2056cb-default-0'  uuid=c338588a…  root@10.114.55.185: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.187  vm='nc-2056cb-default-1'  uuid=0452ad0f…  root@10.114.55.187: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.186  vm='nc-2056cb-default-2'  uuid=3c0fd91f…  root@10.114.55.186: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.190  vm='nc-2056cb-env--1446403350-2'  uuid=aae5a081…  root@10.114.55.190: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.188  vm='nc-2056cb-env--1446403350-1'  uuid=c31fe370…  root@10.114.55.188: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,hostbased).
+2026-05-08 08:15:53,117 INFO   ip=10.114.55.127  vm='auto_pc_69eb2d1a360236802bb644a50'  uuid=422668c5…  Permission denied, please try again.

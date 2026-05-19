@@ -24,6 +24,7 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, sen
 from snapshot_runner import RANDOM_CRASH_OR_APP, RunCancelled, SnapshotConfig, run_snapshots
 from vm_disk_runner import (
     DiskOpConfig,
+    _build_cluster_pe_ip_map,
     build_guest_disk_worklist,
     normalize_guest_dd_bs,
     preview_guest_disk_targets,
@@ -64,11 +65,26 @@ def _pop_disk_progress_hot(run_id: str) -> None:
     with _disk_progress_hot_lock:
         _disk_progress_hot.pop(run_id, None)
 
+
+_snapshot_progress_hot: dict[str, dict] = {}
+_snapshot_progress_hot_lock = threading.Lock()
+
+
+def _set_snapshot_progress_hot(run_id: str, snap: dict) -> None:
+    with _snapshot_progress_hot_lock:
+        _snapshot_progress_hot[run_id] = dict(snap)
+
+
+def _pop_snapshot_progress_hot(run_id: str) -> None:
+    with _snapshot_progress_hot_lock:
+        _snapshot_progress_hot.pop(run_id, None)
+
+
 schedules_lock = threading.Lock()
 # normalized_pc_host_key -> schedule record (see _persist_schedules)
 schedules: dict[str, dict] = {}
 
-# Rows from **Fetch VMs**, reused for guest disk preview/run (no second Prism pass when possible).
+# Rows from index **VM inventory** (page load), reused for guest disk preview/run (no second Prism pass when possible).
 INVENTORY_CACHE_TTL_SEC = int(os.environ.get("BULK_SNAP_INVENTORY_CACHE_TTL", str(4 * 3600)))
 inventory_cache_lock = threading.Lock()
 # cache_id -> { rows, pc_host_key, deadline_epoch }
@@ -468,12 +484,12 @@ def _inventory_cache_get(cache_id: str, pc_host_key: str) -> tuple[list | None, 
         _inventory_cache_prune_unlocked()
         ent = inventory_cache.get(cid)
         if not ent:
-            return None, 0, "inventory_cache_id expired or unknown — click Fetch VMs again."
+            return None, 0, "inventory_cache_id expired or unknown — reload the index page."
         if ent["pc_host_key"] != pc_host_key:
-            return None, 0, "inventory cache is for a different Prism Central host — Fetch VMs again."
+            return None, 0, "inventory cache is for a different Prism Central host — reload the index page."
         if time.time() > float(ent["deadline"]):
             inventory_cache.pop(cid, None)
-            return None, 0, "inventory cache expired — click Fetch VMs again."
+            return None, 0, "inventory cache expired — reload the index page."
         return ent["rows"], int(ent.get("duplicate_rows_skipped") or 0), None
 
 
@@ -538,7 +554,10 @@ def _int_nonneg_payload(payload: dict, key: str, default: int) -> int:
 
 def _disk_cluster_fields_from_payload(payload: dict) -> dict[str, Any]:
     """Parallel clusters, PE Prism stats, adaptive SSH — guest disk jobs only."""
-    pe_port = int(payload.get("pe_cvm_ssh_port") or 22)
+    try:
+        pe_port = int(payload.get("pe_cvm_ssh_port") or CURATOR_PE_SSH_PORT)
+    except (TypeError, ValueError):
+        pe_port = CURATOR_PE_SSH_PORT
     try:
         raw_pp = payload.get("pe_prism_rest_port")
         if raw_pp is None or raw_pp == "":
@@ -547,12 +566,14 @@ def _disk_cluster_fields_from_payload(payload: dict) -> dict[str, Any]:
             pe_prism_rest_port = int(raw_pp)
     except (TypeError, ValueError):
         pe_prism_rest_port = 9440
+    parallel = _truthy_payload(payload.get("parallel_clusters"))
+    # PE CPU throttle is always enabled for disk jobs; payload flag is ignored. Memory is not used.
     return {
-        "parallel_clusters": _truthy_payload(payload.get("parallel_clusters")),
+        "parallel_clusters": parallel,
         "vm_per_cluster": _int_nonneg_payload(payload, "vm_per_cluster", 0),
-        "cluster_pe_top_monitor": _truthy_payload(payload.get("cluster_pe_top_monitor")),
+        "cluster_pe_top_monitor": True,
         "cluster_cpu_max_pct": _float_payload(payload, "cluster_cpu_max_pct", 85.0),
-        "cluster_mem_max_pct": _float_payload(payload, "cluster_mem_max_pct", 85.0),
+        "cluster_mem_max_pct": 0.0,
         "cluster_adaptive_ssh_parallel": _truthy_payload(payload.get("cluster_adaptive_ssh_parallel")),
         "cluster_adaptive_cpu_threshold_pct": _float_payload(
             payload, "cluster_adaptive_cpu_threshold_pct", 90.0
@@ -580,11 +601,57 @@ def _disk_cluster_fields_from_payload(payload: dict) -> dict[str, Any]:
             1.0, _float_payload(payload, "cluster_util_max_retry_sec", 1800.0)
         ),
         "pe_cvm_ips_multiline": str(payload.get("pe_cvm_ips_multiline") or ""),
-        "pe_cvm_ssh_user": str(payload.get("pe_cvm_ssh_user") or "").strip(),
-        "pe_cvm_ssh_password": str(payload.get("pe_cvm_ssh_password") or ""),
+        "pe_cvm_ssh_user": (
+            str(payload.get("pe_cvm_ssh_user") or "").strip() or CURATOR_PE_SSH_USER
+        ),
+        "pe_cvm_ssh_password": (
+            str(payload.get("pe_cvm_ssh_password") or "").strip() or CURATOR_PE_SSH_PASSWORD
+        ),
         "pe_cvm_ssh_port": max(1, min(pe_port, 65535)),
         "pe_prism_rest_port": max(1, min(pe_prism_rest_port, 65535)),
     }
+
+
+def _resolve_pe_cvm_ips_multiline_for_pc(
+    pc_ip: str, payload_multiline: str
+) -> tuple[str, str | None]:
+    """
+    Use non-empty ``pe_cvm_ips_multiline`` from the client as-is; otherwise SSH to Prism Central
+    CVM and run ``ncli multicluster get-cluster-state`` (same as ``/api/curator_pe_ips``).
+    """
+    if (payload_multiline or "").strip():
+        return (payload_multiline or "").strip(), None
+    host = (pc_ip or "").strip()
+    if not host:
+        return "", "pc_ip is required to discover PE CVM IPs (ncli on Prism Central)."
+    raw, err = _ncli_multicluster_state_via_ssh(
+        host,
+        CURATOR_PC_SSH_USER,
+        CURATOR_PC_SSH_PASSWORD,
+        port=CURATOR_PC_SSH_PORT,
+    )
+    if err:
+        return "", err
+    ips = _extract_controller_vm_ips_from_ncli_output(raw or "")
+    if not ips:
+        return (
+            "",
+            "SSH and ncli on Prism Central succeeded but no Controller VM IP lines were found.",
+        )
+    return "\n".join(ips), None
+
+
+def _merge_disk_cluster_with_resolved_pe(
+    dclus: dict[str, Any], pc_ip: str
+) -> tuple[dict[str, Any], str | None]:
+    line, err = _resolve_pe_cvm_ips_multiline_for_pc(
+        pc_ip, str(dclus.get("pe_cvm_ips_multiline") or "")
+    )
+    if err:
+        return dclus, err
+    out = dict(dclus)
+    out["pe_cvm_ips_multiline"] = line
+    return out, None
 
 
 def _disk_run_limit_from_payload(payload: dict) -> str:
@@ -711,6 +778,36 @@ def _in_progress_runs_for_pc(host_key: str) -> list[dict]:
                 job_url = f"/job/{rid}"
             rows.append({"run_id": rid, "status": st, "job_url": job_url})
     return rows
+
+
+def _active_disk_job_for_pc_key(pc_host_key: str) -> dict | None:
+    """If a guest disk job is queued or running for this Prism host, return its run row."""
+    key = (pc_host_key or "").strip().lower()
+    if not key:
+        return None
+    with runs_lock:
+        for rid, info in runs.items():
+            if info.get("job_kind") != "disk":
+                continue
+            ik = str(info.get("pc_host_key") or "").strip().lower()
+            if not ik:
+                ik = _pc_host_key(str(info.get("pc_host") or ""))
+            if ik != key:
+                continue
+            st = str(info.get("status") or "").lower()
+            if st not in ("queued", "running"):
+                continue
+            try:
+                ju = url_for("job_status", run_id=rid)
+            except RuntimeError:
+                ju = f"/job/{rid}"
+            return {
+                "run_id": rid,
+                "status": st,
+                "job_url": ju,
+                "pc_host": str(info.get("pc_host") or ""),
+            }
+    return None
 
 
 def _schedule_summaries() -> list[dict]:
@@ -878,8 +975,13 @@ def _job(run_id: str, cfg: SnapshotConfig, log_path: Path) -> None:
                 dt.timezone.utc
             ).isoformat()
 
+        def _on_snapshot_progress(snap: dict) -> None:
+            _set_snapshot_progress_hot(run_id, snap)
+
         try:
-            result = run_snapshots(cfg, logger, cancel_ev)
+            result = run_snapshots(
+                cfg, logger, cancel_ev, progress_callback=_on_snapshot_progress
+            )
         except RunCancelled:
             finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
             logger.info("Run cancelled by user.")
@@ -932,6 +1034,10 @@ def _job(run_id: str, cfg: SnapshotConfig, log_path: Path) -> None:
                 "n_vms": result["n_vms"],
             }
             runs[run_id]["summary"] = summary
+            runs[run_id]["snapshot_progress"] = {
+                "overall_done": int(result["n_vms"]),
+                "overall_total": int(result["n_vms"]),
+            }
     except Exception as e:
         logger.exception("Run failed")
         with runs_lock:
@@ -939,6 +1045,7 @@ def _job(run_id: str, cfg: SnapshotConfig, log_path: Path) -> None:
             runs[run_id]["error"] = str(e)
             runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
     finally:
+        _pop_snapshot_progress_hot(run_id)
         with runs_lock:
             if run_id in runs:
                 runs[run_id].pop("cancel_event", None)
@@ -973,6 +1080,7 @@ def _enqueue_disk_run(
             "queued_at": queued_at,
             "cancel_event": cancel_ev,
             "job_kind": "disk",
+            "disk_op_mode": str(getattr(dcfg, "mode", "") or ""),
             "disk_progress": None,
         }
     t = threading.Thread(
@@ -1069,6 +1177,29 @@ def _disk_job(
             "cluster_pe_top_monitor": bool(result.get("cluster_pe_top_monitor")),
             "cluster_adaptive_ssh_parallel": bool(result.get("cluster_adaptive_ssh_parallel")),
         }
+        dp_final = result.get("disk_progress") or {}
+        vmc = (dp_final.get("vm_activity") or {}).get("completed") or []
+        with runs_lock:
+            rrow = runs.get(run_id, {})
+            pc_h_rec = str(rrow.get("pc_host", "") or "")
+            pc_k_rec = str(rrow.get("pc_host_key", "") or "") or _pc_host_key(pc_h_rec)
+        hist_rec = {
+            "job_kind": "disk",
+            "run_id": run_id,
+            "pc_host": pc_h_rec,
+            "pc_host_key": pc_k_rec,
+            "at": finished_at,
+            "duration_sec": float(result["duration_sec"]),
+            "n_vms": int(result["n_vms"]),
+            "succeeded": int(result["succeeded"]),
+            "failed": int(result["failed"]),
+            "disk_op_mode": str(result.get("mode") or ""),
+            "parallel_clusters": bool(result.get("parallel_clusters")),
+            "guest_ssh_parallel": int(result.get("guest_ssh_parallel") or 0),
+            "median_wall_sec_per_vm": _median_disk_vm_wall_sec(vmc),
+            "metrics_timeline": dp_final.get("metrics_timeline"),
+        }
+        append_record(HISTORY_FILE, hist_rec)
         with runs_lock:
             runs[run_id]["status"] = "complete"
             runs[run_id]["finished_at"] = finished_at
@@ -1104,6 +1235,10 @@ def _get_run_info(run_id: str):
             hot = _disk_progress_hot.get(run_id)
         if hot is not None:
             out["disk_progress"] = hot
+        with _snapshot_progress_hot_lock:
+            shot = _snapshot_progress_hot.get(run_id)
+        if shot is not None:
+            out["snapshot_progress"] = shot
         return out
     path = LOG_DIR / f"run_{run_id}.log"
     if path.is_file():
@@ -1121,7 +1256,38 @@ def _get_run_info(run_id: str):
     return None
 
 
+def _median_disk_vm_wall_sec(completed: list) -> float | None:
+    vals: list[float] = []
+    for r in completed or []:
+        if not isinstance(r, dict):
+            continue
+        try:
+            vals.append(float(r.get("seconds")))
+        except (TypeError, ValueError):
+            continue
+    if not vals:
+        return None
+    s = sorted(vals)
+    n = len(s)
+    m = n // 2
+    if n % 2:
+        return float(s[m])
+    return float(s[m - 1] + s[m]) / 2.0
+
+
 def _summary_from_history_rec(rec: dict) -> dict:
+    if str(rec.get("job_kind") or "") == "disk":
+        return {
+            "job_kind": "disk",
+            "n_vms": int(rec.get("n_vms", 0)),
+            "duration_sec": float(rec.get("duration_sec", 0)),
+            "succeeded": int(rec.get("succeeded", 0)),
+            "failed": int(rec.get("failed", 0)),
+            "disk_op_mode": str(rec.get("disk_op_mode") or ""),
+            "parallel_clusters": bool(rec.get("parallel_clusters")),
+            "guest_ssh_parallel": int(rec.get("guest_ssh_parallel") or 0),
+            "median_wall_sec_per_vm": rec.get("median_wall_sec_per_vm"),
+        }
     return {
         "n_vms": int(rec.get("n_vms", 0)),
         "duration_sec": float(rec.get("duration_sec", 0)),
@@ -1137,20 +1303,48 @@ def _summary_from_history_rec(rec: dict) -> dict:
     }
 
 
+def _index_recent_runs(limit: int = 5) -> list[dict[str, Any]]:
+    """Newest-first rows for the index status dashboard (no secrets)."""
+    rows = load_records(HISTORY_FILE, max_lines=400)
+    if not rows:
+        return []
+    tail = rows[-limit:]
+    tail.reverse()
+    out: list[dict[str, Any]] = []
+    for r in tail:
+        jk = str(r.get("job_kind") or "").strip() or "snapshot"
+        out.append(
+            {
+                "run_id": str(r.get("run_id") or ""),
+                "job_kind": jk,
+                "at": str(r.get("at") or ""),
+                "pc_host": str(r.get("pc_host") or ""),
+                "succeeded": r.get("succeeded"),
+                "failed": r.get("failed"),
+                "duration_sec": r.get("duration_sec"),
+            }
+        )
+    return out
+
+
 @app.context_processor
 def _inject_active_schedules():
-    return {
+    out = {
         "active_schedules": _schedule_summaries(),
         "RANDOM_CRASH_OR_APP": RANDOM_CRASH_OR_APP,
     }
+    # History tail only for pages that render index.html (skip on /job/… etc.)
+    ep = getattr(request, "endpoint", None)
+    if ep in ("index", "start"):
+        out["recent_runs"] = _index_recent_runs(5)
+    else:
+        out["recent_runs"] = []
+    return out
 
 
 @app.route("/")
 def index():
-    return render_template(
-        "index.html",
-        success=request.args.get("success"),
-    )
+    return render_template("index.html", success=request.args.get("success"))
 
 
 @app.route("/cancel_schedule", methods=["POST"])
@@ -1417,12 +1611,18 @@ _JOB_API_LOG_MAX_RUNNING = 180_000
 _JOB_API_LOG_MAX_RUNNING_DISK = 96_000
 
 
-def _read_log_text_for_job_api(path: Path, *, status: str, job_kind: str = "") -> tuple[str, bool]:
+def _read_log_text_for_job_api(
+    path: Path,
+    *,
+    status: str,
+    job_kind: str = "",
+    disk_log_for_console: bool = False,
+) -> tuple[str, bool]:
     """
     Body of ``log`` for ``/api/job``. While status is *running*, return only a tail so polls
     stay small (less I/O) and overlap less on the console when ``threaded=True``.
     """
-    if job_kind == "disk":
+    if job_kind == "disk" and not disk_log_for_console:
         # Disk jobs surface per-VM lines via ``disk_progress.vm_activity`` only; full log is download.
         return "", False
     running = status == "running"
@@ -1500,7 +1700,18 @@ def api_job(run_id: str):
     st = info.get("status", "")
     path = Path(info["log_path"])
     jk = str(info.get("job_kind") or "")
-    text, log_truncated = _read_log_text_for_job_api(path, status=st, job_kind=jk)
+    console_q = request.args.get("console") == "1"
+    disk_log_for_console = bool(console_q and jk == "disk")
+    text, log_truncated = _read_log_text_for_job_api(
+        path,
+        status=st,
+        job_kind=jk,
+        disk_log_for_console=disk_log_for_console,
+    )
+    summ = info.get("summary")
+    disk_mode = str(info.get("disk_op_mode") or "")
+    if not disk_mode and isinstance(summ, dict):
+        disk_mode = str(summ.get("disk_op_mode") or "")
     return jsonify(
         {
             "status": st,
@@ -1509,9 +1720,12 @@ def api_job(run_id: str):
             "log_truncated": log_truncated,
             "elapsed_running_sec": _elapsed_running_seconds(info),
             "queued_at": info.get("queued_at", ""),
+            "running_started_at": info.get("running_started_at") or "",
             "job_kind": jk,
-            "summary": info.get("summary"),
+            "disk_op_mode": disk_mode,
+            "summary": summ,
             "disk_progress": info.get("disk_progress"),
+            "snapshot_progress": info.get("snapshot_progress"),
         }
     )
 
@@ -1651,7 +1865,11 @@ def api_estimate():
     ):
         rpt = "CRASH_CONSISTENT"
 
-    records = load_records(HISTORY_FILE, max_lines=2000)
+    records = [
+        r
+        for r in load_records(HISTORY_FILE, max_lines=2000)
+        if str(r.get("job_kind") or "") != "disk"
+    ]
     if not records:
         return jsonify(
             {
@@ -1744,6 +1962,136 @@ def api_estimate():
     )
 
 
+@app.route("/api/pc_reachable", methods=["POST"])
+def api_pc_reachable():
+    """Quick HTTPS probe to Prism Central for inline connection validation in the UI."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    pc_user = str(payload.get("pc_user") or "").strip()
+    pc_password = str(payload.get("pc_password") or "")
+    base = _pc_base_url(pc_ip)
+    if not base:
+        return jsonify(
+            {"ok": True, "reachable": False, "message": "Enter a Prism Central address."}
+        )
+    urls = (
+        f"{base}/api/nutanix/v3/cluster",
+        f"{base}/PrismGateway/services/rest/v1/cluster",
+    )
+    last_detail = ""
+    for url in urls:
+        try:
+            kw: dict[str, Any] = {"verify": False, "timeout": 8}
+            if pc_user:
+                kw["auth"] = (pc_user, pc_password)
+            r = requests.get(url, **kw)
+            if r.status_code < 500:
+                return jsonify(
+                    {
+                        "ok": True,
+                        "reachable": True,
+                        "http_status": r.status_code,
+                    }
+                )
+            last_detail = f"HTTP {r.status_code}"
+        except requests.exceptions.RequestException as e:
+            last_detail = str(e)[:220]
+            continue
+    return jsonify(
+        {
+            "ok": True,
+            "reachable": False,
+            "message": last_detail or "No response from Prism Central.",
+        }
+    )
+
+
+@app.route("/api/vm_inventory_table", methods=["POST"])
+def api_vm_inventory_table():
+    """Paginated, searchable VM rows from a cached inventory (see ``api_vm_inventory``)."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    cache_id = str(payload.get("inventory_cache_id") or "").strip()
+    q = str(payload.get("q") or "").strip().lower()
+    try:
+        page = int(payload.get("page") or 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(payload.get("page_size") or 25)
+    except (TypeError, ValueError):
+        page_size = 25
+    page = max(1, page)
+    page_size = max(5, min(100, page_size))
+
+    if not cache_id:
+        return jsonify({"ok": False, "message": "inventory_cache_id is required."}), 400
+
+    rows, _dups, err = _inventory_cache_get(cache_id, _pc_host_key(pc_ip))
+    if err:
+        return jsonify({"ok": False, "message": err}), 400
+    if not rows:
+        return jsonify({"ok": False, "message": "No inventory rows in cache."}), 400
+
+    cluster_names_pe = sorted(
+        {str(r.get("cluster_name") or "—") for r in rows},
+        key=lambda x: (str(x) == "—", str(x)),
+    )
+    line_pe, pe_disc_err = _resolve_pe_cvm_ips_multiline_for_pc(pc_ip, "")
+    pe_map: dict[str, str] = {}
+    if not pe_disc_err and (line_pe or "").strip():
+        pe_map = _build_cluster_pe_ip_map(cluster_names_pe, line_pe)
+
+    def row_to_table(r: dict) -> dict:
+        ips = r.get("ips") or []
+        cn = str(r.get("cluster_name") or "—")
+        return {
+            "name": r.get("name") or "—",
+            "power_state": r.get("power_state") or "unknown",
+            "cluster_name": cn,
+            "pe_cvm_ip": pe_map.get(cn) or "",
+            "ip": ips[0] if ips else "",
+            "num_vcpus": r.get("num_vcpus"),
+            "memory_mib": r.get("memory_mib"),
+            "uuid": str(r.get("uuid") or ""),
+        }
+
+    out_rows = [row_to_table(r) for r in rows]
+
+    if q:
+
+        def _match(row: dict) -> bool:
+            parts = [
+                str(row.get("name") or ""),
+                str(row.get("cluster_name") or ""),
+                str(row.get("ip") or ""),
+                str(row.get("power_state") or ""),
+                str(row.get("pe_cvm_ip") or ""),
+            ]
+            return q in " ".join(parts).lower()
+
+        out_rows = [r for r in out_rows if _match(r)]
+
+    out_rows.sort(key=lambda r: str(r.get("name") or "").lower())
+    total = len(out_rows)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(page, total_pages)
+    start = (page - 1) * page_size
+    slice_rows = out_rows[start : start + page_size]
+
+    return jsonify(
+        {
+            "ok": True,
+            "rows": slice_rows,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "pe_cvm_ip_discovery_error": pe_disc_err,
+        }
+    )
+
+
 @app.route("/api/vm_inventory", methods=["POST"])
 def api_vm_inventory():
     """List non-CVM mh_vm VMs from Prism Central groups API and return aggregate stats."""
@@ -1789,6 +2137,23 @@ def api_vm_inventory():
     try:
         rows, dups = fetch_vm_inventory_rows(sess, base_url, page_size=group_member_page)
         summary = summarize_inventory_rows(rows)
+        cluster_names_pe = sorted(
+            (r.get("cluster") for r in summary.get("by_cluster") or []),
+            key=lambda x: (str(x) == "—", str(x)),
+        )
+        line_pe, pe_disc_err = _resolve_pe_cvm_ips_multiline_for_pc(pc_ip, "")
+        pe_map: dict[str, str] = {}
+        if not pe_disc_err and (line_pe or "").strip():
+            pe_map = _build_cluster_pe_ip_map(cluster_names_pe, line_pe)
+        for row in summary.get("by_cluster") or []:
+            if isinstance(row, dict):
+                cn = str(row.get("cluster") or "")
+                row["pe_cvm_ip"] = pe_map.get(cn) or ""
+        summary["pe_cvm_ips_ordered"] = [
+            ln.strip() for ln in (line_pe or "").splitlines() if ln.strip()
+        ]
+        if pe_disc_err:
+            summary["pe_cvm_ip_discovery_error"] = pe_disc_err
         summary["ok"] = True
         summary["duplicate_rows_skipped"] = dups
         summary["base_url"] = base_url
@@ -1827,7 +2192,7 @@ def api_vm_inventory():
 def api_disk_targets_preview():
     """
     Count VMs eligible for guest disk ops (name rules, IP in PC inventory, powered on).
-    With ``inventory_cache_id`` from **Fetch VMs**, reuses cached rows (no second Prism groups fetch).
+    With ``inventory_cache_id`` from index VM inventory, reuses cached rows (no second Prism groups fetch).
     ``disk_run_limit`` may be an integer or percent (e.g. ``50%``); legacy ``disk_max_vms`` is still accepted.
     """
     payload = request.get_json(silent=True) or {}
@@ -1855,6 +2220,9 @@ def api_disk_targets_preview():
     guest_mm = _parse_guest_min_memory_mib(payload)
     guest_ssh_parallel = _guest_ssh_parallel_from_payload(payload)
     dclus = _disk_cluster_fields_from_payload(payload)
+    dclus, pe_err = _merge_disk_cluster_with_resolved_pe(dclus, pc_ip)
+    if pe_err:
+        return jsonify({"ok": False, "message": pe_err}), 400
     cache_id = str(payload.get("inventory_cache_id") or "").strip()
     rows: list | None = None
     dup_rows = 0
@@ -1965,6 +2333,9 @@ def api_start_disk_ops():
     guest_mm = _parse_guest_min_memory_mib(payload)
     guest_ssh_parallel = _guest_ssh_parallel_from_payload(payload)
     dclus = _disk_cluster_fields_from_payload(payload)
+    dclus, pe_err = _merge_disk_cluster_with_resolved_pe(dclus, pc_ip)
+    if pe_err:
+        return jsonify({"ok": False, "message": pe_err}), 400
     cache_id = str(payload.get("inventory_cache_id") or "").strip()
     inventory_rows: list | None = None
     dup_rows = 0
@@ -2013,6 +2384,27 @@ def api_start_disk_ops():
         **dclus,
     )
 
+    pc_key = _pc_host_key(pc_ip)
+    active_disk = _active_disk_job_for_pc_key(pc_key)
+    if active_disk:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "message": (
+                        "A disk job is already "
+                        + active_disk["status"]
+                        + " for this Prism Central (run "
+                        + active_disk["run_id"]
+                        + "). Open that job or wait for it to finish before starting another."
+                    ),
+                    "blocked_by_run_id": active_disk["run_id"],
+                    "job_url": active_disk["job_url"],
+                }
+            ),
+            409,
+        )
+
     run_id = _enqueue_disk_run(
         dcfg,
         pc_ip,
@@ -2025,6 +2417,27 @@ def api_start_disk_ops():
             "ok": True,
             "run_id": run_id,
             "job_url": url_for("job_status", run_id=run_id),
+        }
+    )
+
+
+@app.route("/api/active_disk_job", methods=["POST"])
+def api_active_disk_job():
+    """Return whether a disk job is queued or running for the given Prism Central host (in-memory session)."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    if not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip is required."}), 400
+    row = _active_disk_job_for_pc_key(_pc_host_key(pc_ip))
+    if not row:
+        return jsonify({"ok": True, "busy": False})
+    return jsonify(
+        {
+            "ok": True,
+            "busy": True,
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "job_url": row["job_url"],
         }
     )
 
@@ -2221,7 +2634,24 @@ def api_curator_run_scans():
         pe_ips = []
     pe_ips = [str(x).strip() for x in pe_ips if str(x).strip()]
     if not pe_ips:
-        return jsonify({"ok": False, "message": "Send a JSON body: {\"pe_ips\": [\"10.0.0.1\", ...]}."}), 400
+        pc_for_pe = str(payload.get("pc_ip") or "").strip()
+        line, cerr = _resolve_pe_cvm_ips_multiline_for_pc(pc_for_pe, "")
+        if cerr:
+            return jsonify(
+                {
+                    "ok": False,
+                    "message": cerr
+                    + ' Or pass {"pe_ips": ["10.0.0.1", ...]} with an explicit list.',
+                }
+            ), 400
+        pe_ips = [x.strip() for x in line.splitlines() if x.strip()]
+    if not pe_ips:
+        return jsonify(
+            {
+                "ok": False,
+                "message": "No PE CVM IPs after ncli discovery. Send pc_ip or pe_ips in JSON.",
+            }
+        ), 400
 
     use_async = not want_sync
 
