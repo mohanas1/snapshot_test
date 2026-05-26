@@ -175,33 +175,65 @@
       max-height: min(52vh, 36rem); font-size: 0.82rem; line-height: 1.35;
     }
     .disk-progress {
-      background: #FFFFFF; 
-      border: 1px solid var(--border-gray); 
-      border-radius: 8px;
-      padding: 0.75rem; 
-      margin-bottom: 0.75rem; 
-      font-size: 0.9rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); 
+      border: 2px solid #3b82f6; 
+      border-radius: 12px;
+      padding: 1.25rem; 
+      margin-bottom: 1rem; 
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
     }
-    .disk-table-scroll { overflow-x: auto; margin-top: 0.3rem; -webkit-overflow-scrolling: touch; }
+    .disk-progress > strong {
+      font-size: 1.15rem;
+      color: #1e40af;
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+    .disk-table-scroll { overflow-x: auto; margin-top: 0.75rem; -webkit-overflow-scrolling: touch; }
     .disk-progress table { width: 100%; border-collapse: collapse; min-width: 70rem; font-family: var(--font-sans); }
     .disk-progress th, .disk-progress td {
       text-align: left;
-      padding: 0.28rem 0.45rem;
+      padding: 0.65rem 0.75rem;
       border: none;
       border-bottom: 1px solid var(--table-divider);
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       color: var(--text-dark);
     }
     .disk-progress thead th {
       font-family: var(--font-sans);
-      color: var(--text-muted);
-      font-weight: 600;
-      font-size: 0.7rem;
+      color: #1e40af;
+      font-weight: 700;
+      font-size: 0.85rem;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      background: #F3F4F6;
-      padding: 0.5rem 0.65rem !important;
+      background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+      padding: 0.85rem 0.75rem !important;
+      border-bottom: 2px solid #3b82f6;
+    }
+    /* Color coding for metric columns */
+    .disk-progress td.metric-cpu {
+      background: rgba(239, 246, 255, 0.5);
+      font-weight: 600;
+      color: #1e40af;
+    }
+    .disk-progress td.metric-cpu-high {
+      background: rgba(254, 226, 226, 0.7);
+      color: #991b1b;
+      font-weight: 700;
+    }
+    .disk-progress td.metric-cpu-warning {
+      background: rgba(254, 243, 199, 0.7);
+      color: #92400e;
+      font-weight: 600;
+    }
+    .disk-progress td.metric-cvm {
+      background: rgba(243, 232, 255, 0.5);
+      font-weight: 500;
+    }
+    .disk-progress td.metric-stg {
+      background: rgba(254, 243, 199, 0.3);
+      font-weight: 500;
     }
     .disk-table-scroll table tbody tr,
     .disk-vm-section-scroll table tbody tr {
@@ -801,7 +833,8 @@
 
   {% if info.get('job_kind') == 'disk' %}
    <div id="disk-progress-wrap" class="disk-progress" style="display:none;">
-    <strong>Disk job progress</strong> — per cluster: PE Prism <code>cluster/stats</code> CPU%, <strong>ΔCPU</strong> vs last poll (~2s); PE CVM <code>top -bn1</code> (header-mapped columns) for CVM us/wa and stargate %CPU/%MEM/RES (RSS from <code>top</code> RES or <code>ps rss</code>; cached ~5s per PE). Optional <code>BULK_SNAP_PE_TOP_BATCH_ARGS</code> for extra <code>top</code> flags on the CVM. Pause reason, guest SSH slots, counts, wall time, avg s/VM.
+    <strong>⚡ Cluster Performance Metrics</strong>
+    <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">Real-time PE cluster metrics: CPU usage from <code>cluster/stats</code> API, CVM metrics from <code>top -bn1</code>, and Stargate process stats. Updates every ~2 seconds. <strong>Note:</strong> Metrics require PE IP configuration (via PE CVM map file or parallel clusters setup).</p>
     <div id="disk-summary-cards" class="disk-summary-cards" style="display:none;">
       <div class="disk-summary-card">
         <div class="disk-summary-card-label">Overall completion</div>
@@ -820,13 +853,13 @@
       <thead>
         <tr>
           <th>Cluster</th>
-          <th title="Last PE cluster/stats sample (hypervisor_cpu_usage_ppm): CPU %%">CPU %</th>
-          <th title="Change since last UI poll (~2s); helps spot sudden spikes">ΔCPU</th>
-          <th class="num" title="PE CVM top: user %% (us)">CVM us</th>
-          <th class="num" title="PE CVM top: I/O wait %% (wa)">CVM wa</th>
-          <th class="num" title="PE CVM top: stargate %%CPU (Irix-style; can exceed 100%% on multi-core). Falls back to ps if stargate is off the first top screen.">Stg CPU</th>
-          <th class="num" title="PE CVM top: stargate process %%MEM">Stg MEM</th>
-          <th class="num" title="Stargate resident size (RSS): top RES column or ps rss (KiB → compact)">Stg RES</th>
+          <th style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af;" title="Last PE cluster/stats sample (hypervisor_cpu_usage_ppm): CPU %%">CPU %</th>
+          <th style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af;" title="Change since last UI poll (~2s); helps spot sudden spikes">ΔCPU</th>
+          <th class="num" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); color: #6b21a8;" title="PE CVM top: user %% (us)">CVM us</th>
+          <th class="num" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); color: #6b21a8;" title="PE CVM top: I/O wait %% (wa)">CVM wa</th>
+          <th class="num" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;" title="PE CVM top: stargate %%CPU (Irix-style; can exceed 100%% on multi-core). Falls back to ps if stargate is off the first top screen.">Stg CPU</th>
+          <th class="num" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;" title="PE CVM top: stargate process %%MEM">Stg MEM</th>
+          <th class="num" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;" title="Stargate resident size (RSS): top RES column or ps rss (KiB → compact)">Stg RES</th>
           <th title="Cluster is sleeping on PE CPU throttle or adaptive overload pause; hover for detail">Pause</th>
           <th title="Current max concurrent guest SSH sessions for this cluster (adaptive may change this)">SSH</th>
           <th>Processed</th>
@@ -1324,6 +1357,15 @@
         }
         const cpu = c.pe_cpu_pct != null ? String(c.pe_cpu_pct) : '—';
         const cpuNum = c.pe_cpu_pct != null ? Number(c.pe_cpu_pct) : null;
+        
+        // CPU color class based on value
+        let cpuClass = '';
+        if (cpuNum != null) {
+          if (cpuNum >= 80) cpuClass = ' class="metric-cpu-high"';
+          else if (cpuNum >= 60) cpuClass = ' class="metric-cpu-warning"';
+          else cpuClass = ' class="metric-cpu"';
+        }
+        
         const prev = diskPePrevByCluster[k];
         const prevCpu = prev && prev.cpu != null ? prev.cpu : null;
         const dCpu = fmtPeDeltaHtml(cpuNum, prevCpu);
@@ -1351,10 +1393,10 @@
           }
         }
         rows.push(
-          '<tr><td>' + escHtml(fmtClusterName(k)) + '</td><td>' + cpu + '</td><td>' + dCpu +
-          '</td><td class="num"' + cvmTitle + '>' + cvmUs + '</td><td class="num"' + cvmTitle + '>' + cvmWa +
-          '</td><td class="num"' + cvmTitle + '>' + stgCpu + '</td><td class="num"' + cvmTitle + '>' + stgMem +
-          '</td><td class="num"' + cvmTitle + '>' + stgRes + '</td><td>' + pauseCell +
+          '<tr><td>' + escHtml(fmtClusterName(k)) + '</td><td' + cpuClass + '>' + cpu + '</td><td>' + dCpu +
+          '</td><td class="num metric-cvm"' + cvmTitle + '>' + cvmUs + '</td><td class="num metric-cvm"' + cvmTitle + '>' + cvmWa +
+          '</td><td class="num metric-stg"' + cvmTitle + '>' + stgCpu + '</td><td class="num metric-stg"' + cvmTitle + '>' + stgMem +
+          '</td><td class="num metric-stg"' + cvmTitle + '>' + stgRes + '</td><td>' + pauseCell +
           '</td><td>' + ssh +
           '</td><td>' + Number(c.done) + '</td><td>' + Number(c.pending) +
           '</td><td>' + Number(c.ok) + '</td><td>' + Number(c.fail) + '</td><td>' + wall + '</td><td>' + avg + '</td></tr>'

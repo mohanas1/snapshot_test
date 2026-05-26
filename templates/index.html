@@ -3562,7 +3562,7 @@
         
         <div class="form-grid-row">
           <label for="guest_min_memory_mib">Min VM RAM (MiB)</label>
-          <input id="guest_min_memory_mib" name="guest_min_memory_mib" type="number" min="0" value="1024" />
+          <input id="guest_min_memory_mib" name="guest_min_memory_mib" type="number" min="0" value="250" />
         </div>
         
         <div class="form-grid-row">
@@ -3683,10 +3683,10 @@
       
       <div style="margin-top: 1.5rem;">
         <label for="skip_substrings">Skip VM names containing (one per line or comma-separated)</label>
-        <textarea id="skip_substrings" name="skip_substrings" rows="2" placeholder="auto_pc" style="margin-top: 0.5rem;"></textarea>
+        <textarea id="skip_substrings" name="skip_substrings" rows="2" placeholder="auto_pc" style="margin-top: 0.5rem;">auto_pc</textarea>
         
         <label for="skip_regexes" style="margin-top: 1rem; display: block;">Skip VM names matching regex (one per line)</label>
-        <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default" style="margin-top: 0.5rem;"></textarea>
+        <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default" style="margin-top: 0.5rem;">nc-.+-default</textarea>
         <p id="skip-regex-validation" class="skip-regex-hint muted"></p>
         </div>
       </section>
@@ -3774,7 +3774,7 @@
         <div class="card-body">
           <div>
             <label for="guest_min_memory_mib">Min VM RAM (MiB)</label>
-            <input id="guest_min_memory_mib" name="guest_min_memory_mib" type="number" min="0" value="1024" />
+            <input id="guest_min_memory_mib" name="guest_min_memory_mib" type="number" min="0" value="250" />
           </div>
           <div style="margin-top: 1.5rem;">
             <label for="disk_op_type">Disk Op Type</label>
@@ -4909,6 +4909,9 @@
     
     /** Set when VM inventory loads (page load); sent with disk preview/start to skip a second Prism inventory fetch. */
     let inventoryCacheId = null;
+    
+    /** PE CVM IPs discovered during inventory fetch (newline-separated). Sent with disk job to enable metrics collection. */
+    let peCvmIpsMultiline = "";
     let lastDiskPreviewNorm = null;
     let lastStoredNormFp = "";
     let lastDiskPreviewPipe = null;
@@ -5187,7 +5190,7 @@
     function syncGuestSshParallelPresetSelect() {
       // Updated for segmented controls
       const customInput = $("guest_ssh_parallel_custom_input");
-      const radios = document.querySelectorAll('input[name="guest_ssh_parallel_preset"]');
+      const radios = document.querySelectorAll('input[name="guest_ssh_parallel_preset"], input[name="ssh_preset"]');
       
       radios.forEach(radio => {
         radio.addEventListener('change', function() {
@@ -5701,11 +5704,29 @@
       const clusters = j && j.clusters_in_inventory != null ? String(j.clusters_in_inventory) : "—";
       const distinct = j && j.inventory_distinct_vms != null ? String(j.inventory_distinct_vms) : "—";
       const op = diskOpModeLabel();
+      
+      // Get concurrent SSH value
+      const sshPresetRadio = document.querySelector('input[name="ssh_preset"]:checked');
+      let concurrentSSH = "—";
+      if (sshPresetRadio) {
+        if (sshPresetRadio.value === 'custom') {
+          // Get the visible custom input inside the custom input container
+          const customContainer = $("guest_ssh_parallel_custom_input");
+          const customInput = customContainer ? customContainer.querySelector('input[type="number"]') : null;
+          concurrentSSH = customInput && customInput.value ? String(customInput.value) : "—";
+        } else {
+          concurrentSSH = sshPresetRadio.value;
+        }
+      }
+      
       return (
         "<p><strong>Guest SSH disk work will run</strong> against the current Prism Central connection and limits.</p>" +
         "<ul>" +
         "<li><strong>Operation</strong><span>" +
         escHtml(op) +
+        "</span></li>" +
+        "<li><strong>Concurrent SSH</strong><span>" +
+        escHtml(concurrentSSH) +
         "</span></li>" +
         "<li><strong>Planned SSH runs</strong><span>" +
         escHtml(runs) +
@@ -5725,9 +5746,27 @@
       const j = lastDiskPreviewPipe;
       const runs = j && j.planned_guest_ssh_runs != null ? String(j.planned_guest_ssh_runs) : "—";
       const clusters = j && j.clusters_in_inventory != null ? String(j.clusters_in_inventory) : "—";
+      
+      // Get concurrent SSH value
+      const sshPresetRadio = document.querySelector('input[name="ssh_preset"]:checked');
+      let concurrentSSH = "—";
+      if (sshPresetRadio) {
+        if (sshPresetRadio.value === 'custom') {
+          // Get the visible custom input inside the custom input container
+          const customContainer = $("guest_ssh_parallel_custom_input");
+          const customInput = customContainer ? customContainer.querySelector('input[type="number"]') : null;
+          concurrentSSH = customInput && customInput.value ? String(customInput.value) : "—";
+        } else {
+          concurrentSSH = sshPresetRadio.value;
+        }
+      }
+      
       return (
         "<p><strong>Full pipeline</strong> refreshes inventory, runs a disk job (forced to <strong>Update</strong>, parallel clusters, adaptive SSH), waits for it, runs a snapshot job, waits, then runs Curator on PEs.</p>" +
         "<ul>" +
+        "<li><strong>Concurrent SSH</strong><span>" +
+        escHtml(concurrentSSH) +
+        "</span></li>" +
         "<li><strong>Planned SSH runs</strong><span>" +
         escHtml(runs) +
         "</span></li>" +
@@ -5836,6 +5875,7 @@
         pe_cvm_ssh_user: $("pe_cvm_ssh_user").value.trim(),
         pe_cvm_ssh_port: parseInt($("pe_cvm_ssh_port").value, 10) || 22,
         pe_cvm_ssh_password: $("pe_cvm_ssh_password").value,
+        pe_cvm_ips_multiline: peCvmIpsMultiline,
         guest_ssh_user: $("guest_ssh_user").value.trim(),
         guest_ssh_password: $("guest_ssh_password").value,
         guest_ssh_port: parseInt($("guest_ssh_port").value, 10),
@@ -5855,6 +5895,7 @@
         const s = parseInt(rs, 10);
         if (!Number.isNaN(s)) body.random_seed = s;
       }
+      console.log("Building disk job body with PE CVM IPs:", body.pe_cvm_ips_multiline ? "YES (" + body.pe_cvm_ips_multiline.split('\n').length + " IPs)" : "NO (empty)");
       return body;
     }
 
@@ -5994,6 +6035,8 @@
         pre.textContent = "—";
         errP.style.display = data && data.message ? "block" : "none";
         errP.textContent = data && data.message ? String(data.message) : "";
+        peCvmIpsMultiline = "";
+        console.log("PE CVM IPs: none (no data or not ok)");
         return;
       }
       errP.style.display = data.pe_cvm_ip_discovery_error ? "block" : "none";
@@ -6001,10 +6044,16 @@
       const ips = data.pe_cvm_ips_ordered;
       if (Array.isArray(ips) && ips.length) {
         pre.textContent = ips.join("\n");
+        peCvmIpsMultiline = ips.join("\n");
+        console.log("PE CVM IPs discovered:", ips.length, "cluster(s):", peCvmIpsMultiline);
       } else if (data.pe_cvm_ip_discovery_error) {
         pre.textContent = "—";
+        peCvmIpsMultiline = "";
+        console.log("PE CVM IP discovery error:", data.pe_cvm_ip_discovery_error);
       } else {
         pre.textContent = "— (no controller VM IPs in ncli output)";
+        peCvmIpsMultiline = "";
+        console.log("PE CVM IPs: none (no IPs in ncli output)");
       }
     }
 
