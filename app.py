@@ -3385,9 +3385,18 @@ def api_fetch_fluentd_logs():
     log_queue = queue.Queue()
     
     def send_log(message, level="INFO"):
-        """Helper to send log messages to the queue."""
+        """Helper to send log messages to the queue and project log."""
         timestamp = dt.datetime.now().strftime("%H:%M:%S")
         log_queue.put({"timestamp": timestamp, "level": level, "message": message})
+        
+        # Also write to project log file
+        log_prefix = f"[fetch_fluentd_logs|{pc_ip}]"
+        if level == "ERROR":
+            app.logger.error(f"{log_prefix} {message}")
+        elif level == "WARNING":
+            app.logger.warning(f"{log_prefix} {message}")
+        else:
+            app.logger.info(f"{log_prefix} {message}")
     
     def run_fetch_script():
         """Run the fetch_and_upload_fluentd_logs.sh script."""

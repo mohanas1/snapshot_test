@@ -1510,6 +1510,13 @@
     .pipeline-stage.st-err .st-status {
       background: #FEE2E2;
       color: #991B1B;
+      font-weight: 600;
+    }
+    
+    .pipeline-stage.st-err .st-detail {
+      color: #DC2626;
+      font-weight: 500;
+      margin-top: 0.25rem;
     }
     
     .pipeline-stage .st-col {
@@ -7845,8 +7852,10 @@
         setPipelineStage(0, "run", "Running…", "");
         const vm = await fetchVmInventoryAndRender();
         if (!vm.ok) {
-          setPipelineStage(0, "err", "Failed", vm.message || "");
-          gs.textContent = "Stopped at stage 1.";
+          const errDetail = vm.message || "VM inventory fetch failed";
+          setPipelineStage(0, "err", "Failed", `❌ ${errDetail}`);
+          if (gs) gs.textContent = "❌ Pipeline stopped at Stage 1 (VM Inventory): " + errDetail;
+          showToast("error", "Pipeline Failed at Stage 1", errDetail, 10000);
           return;
         }
         setPipelineStage(0, "done", "Done", vm.message || "");
@@ -7866,8 +7875,10 @@
         });
         const j2 = await r2.json();
         if (!j2.ok) {
-          setPipelineStage(1, "err", "Failed", j2.message || "");
-          gs.textContent = "Stopped at stage 2.";
+          const errDetail = j2.message || "Failed to start disk job";
+          setPipelineStage(1, "err", "Failed", `❌ ${errDetail}`);
+          if (gs) gs.textContent = "❌ Pipeline stopped at Stage 2 (Disk Job): " + errDetail;
+          showToast("error", "Pipeline Failed at Stage 2", errDetail, 10000);
           return;
         }
         const diskJobHref = absAppUrl(j2.job_url);
@@ -7883,8 +7894,10 @@
         });
         stopJobConsolePoll();
         if (!diskWait.ok) {
-          setPipelineStage(1, "err", "Failed", diskWait.error || diskWait.status || "", diskJobHref);
-          gs.textContent = "Stopped at stage 2 (disk job did not complete).";
+          const errDetail = diskWait.error || diskWait.status || "Disk job did not complete successfully";
+          setPipelineStage(1, "err", "Failed", `❌ ${errDetail}`, diskJobHref);
+          if (gs) gs.textContent = "❌ Pipeline stopped at Stage 2 (Disk Job): " + errDetail;
+          showToast("error", "Pipeline Failed at Stage 2", errDetail, 10000);
           return;
         }
         setPipelineStage(1, "done", "Done", "Disk job finished.", diskJobHref);
@@ -7898,12 +7911,14 @@
         });
         const j3 = await r3.json();
         if (!j3.ok) {
-          setPipelineStage(2, "err", "Failed", j3.message || "");
-          gs.textContent = "Stopped at stage 3.";
+          const errDetail = j3.message || "Failed to start snapshot run";
+          setPipelineStage(2, "err", "Failed", `❌ ${errDetail}`);
+          if (gs) gs.textContent = "❌ Pipeline stopped at Stage 3 (Snapshot Run): " + errDetail;
+          showToast("error", "Pipeline Failed at Stage 3", errDetail, 10000);
           return;
         }
         const snapJobHref = absAppUrl(j3.job_url);
-        navigateToJob(j3.job_url);
+        // Don't navigate away - user wants to watch pipeline progress on main page
         startJobConsolePoll(j3.run_id);
         setPipelineStage(2, "run", "Waiting for job…", "", snapJobHref);
         const snapWait = await waitForBulkJob(j3.run_id, 2000, (jj) => {
@@ -7919,19 +7934,28 @@
         });
         stopJobConsolePoll();
         if (!snapWait.ok) {
-          setPipelineStage(2, "err", "Failed", snapWait.error || snapWait.status || "", snapJobHref);
-          gs.textContent = "Stopped at stage 3 (snapshot run did not complete).";
+          const errDetail = snapWait.error || snapWait.status || "Snapshot run did not complete successfully";
+          setPipelineStage(2, "err", "Failed", `❌ ${errDetail}`, snapJobHref);
+          if (gs) gs.textContent = "❌ Pipeline stopped at Stage 3 (Snapshot Run): " + errDetail;
+          showToast("error", "Pipeline Failed at Stage 3", errDetail, 10000);
           return;
         }
         setPipelineStage(2, "done", "Done", "Snapshot run finished.", snapJobHref);
 
         // Curator stage removed from automatic pipeline - now manual only
         setPipelineStage(3, "done", "Skipped", "Curator is now manual-only. Use Curator Operations section at bottom.");
-        gs.textContent = "Pipeline complete — snapshot finished. Run curator manually if needed.";
+        if (gs) gs.textContent = "✅ Pipeline complete — snapshot finished. Run curator manually if needed.";
+        showToast("success", "Pipeline Complete", "All stages completed successfully!", 8000);
+      } catch (pipelineError) {
+        // Ensure errors are logged and displayed
+        console.error("Pipeline error:", pipelineError);
+        if (gs) gs.textContent = "❌ Pipeline error: " + String(pipelineError);
+        showToast("error", "Pipeline Error", String(pipelineError), 10000);
       } finally {
         stopJobConsolePoll();
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
         scheduleActiveDiskJobRefresh();
+        hideLoading(); // Ensure loading overlay is hidden
       }
     }
 

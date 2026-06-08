@@ -440,6 +440,8 @@
       font-size: 0.9375rem;
       color: var(--text-dark);
       font-weight: 600;
+      white-space: pre-line;
+      line-height: 1.5;
     }
     
     .progress-percentage {
@@ -582,6 +584,133 @@
     .info-box-content li {
       margin: 0.25rem 0;
     }
+    
+    /* Custom Confirmation Modal */
+    .custom-confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.2s ease-out;
+    }
+    
+    .custom-confirm-overlay.active {
+      display: flex;
+    }
+    
+    .custom-confirm-modal {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .custom-confirm-header {
+      padding: 24px 24px 16px 24px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .custom-confirm-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #111827;
+    }
+    
+    .custom-confirm-icon {
+      font-size: 1.5rem;
+    }
+    
+    .custom-confirm-body {
+      padding: 24px;
+    }
+    
+    .custom-confirm-message {
+      color: #374151;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    
+    .custom-confirm-folder-name {
+      background: #f9fafb;
+      border: 1px solid #007cba;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      color: #007cba;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 12px;
+    }
+    
+    .custom-confirm-actions {
+      padding: 16px 24px;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      border-radius: 0 0 12px 12px;
+    }
+    
+    .custom-confirm-btn {
+      padding: 10px 24px;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .custom-confirm-btn-cancel {
+      background: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    
+    .custom-confirm-btn-cancel:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+    
+    .custom-confirm-btn-ok {
+      background: linear-gradient(135deg, #007cba 0%, #0063a6 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 124, 186, 0.3);
+    }
+    
+    .custom-confirm-btn-ok:hover {
+      background: linear-gradient(135deg, #0063a6 0%, #004f8a 100%);
+      box-shadow: 0 4px 12px rgba(0, 124, 186, 0.4);
+    }
   </style>
 </head>
 <body>
@@ -669,6 +798,9 @@
             <div class="form-help-text">
               📁 Select first level folder (e.g., MA, EMEA, APJ)
             </div>
+            <div id="level1CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
+              📦 Using cached folders from <strong id="level1CacheTime"></strong>
+            </div>
           </div>
           
           <div class="form-group" id="folderLevel2Group" style="display: none;">
@@ -684,14 +816,17 @@
             <div class="form-help-text">
               📁 Select second level folder (e.g., NCM2_1, NCM2_2)
             </div>
+            <div id="level2CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
+              📦 Using cached folders from <strong id="level2CacheTime"></strong>
+            </div>
           </div>
           
           <div class="form-group" id="bugFolderGroup" style="display: none;">
-            <label class="form-label" for="bugFolder">Final Folder Name *</label>
+            <label class="form-label" for="bugFolder">Final Folder Name (Optional)</label>
             <input type="text" id="bugFolder" name="bugFolder" class="form-input" 
-                   placeholder="ENG-123456 or custom-folder-name" required>
+                   placeholder="ENG-123456 or custom-folder-name">
             <div class="form-help-text">
-              📁 Enter the final folder name for organizing logs
+              📁 Enter the final folder name for organizing logs (leave empty to auto-generate: PCIP_timestamp)
             </div>
           </div>
           
@@ -744,7 +879,7 @@
             </button>
           </div>
           <div id="buttonHint" style="margin-top: 0.5rem; color: #DC2626; font-size: 0.875rem; display: none;">
-            ⚠️ Please complete all folder selections and enter final folder name
+            ⚠️ Please complete all folder selections
           </div>
         </form>
       </div>
@@ -795,8 +930,7 @@
       }
     };
     
-    // Cache management for folder lists
-    const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+    // Cache management for folder lists (NO EXPIRATION - cache forever)
     
     function getCacheKey(filerIp, path) {
       return `filer_cache_${filerIp}_${path}`;
@@ -810,13 +944,7 @@
       
       try {
         const data = JSON.parse(cached);
-        const age = Date.now() - data.timestamp;
-        
-        if (age > CACHE_DURATION_MS) {
-          localStorage.removeItem(cacheKey);
-          return null;
-        }
-        
+        // NO EXPIRATION CHECK - cache lasts forever until manually refreshed
         return data;
       } catch (e) {
         return null;
@@ -838,11 +966,179 @@
       
       if (minutes < 1) return 'just now';
       if (minutes === 1) return '1 minute ago';
-      if (minutes < 60) return `${minutes} minutes ago';
+      if (minutes < 60) return `${minutes} minutes ago`;
       
       const hours = Math.floor(minutes / 60);
       if (hours === 1) return '1 hour ago';
       return `${hours} hours ago`;
+    }
+    
+    // Timing metrics storage with size tracking
+    function getTimingMetrics() {
+      const stored = localStorage.getItem('log_fetch_timings');
+      if (!stored) {
+        return {
+          copyToLocal: [],
+          compression: [],
+          uploadToFiler: [],
+          total: [],
+          sizeBasedMetrics: [] // New: tracks size and duration for GB-based estimates
+        };
+      }
+      return JSON.parse(stored);
+    }
+    
+    function saveTimingMetric(operation, durationSeconds, sizeInGB = null) {
+      const metrics = getTimingMetrics();
+      
+      if (!metrics[operation]) {
+        metrics[operation] = [];
+      }
+      
+      metrics[operation].push({
+        duration: durationSeconds,
+        timestamp: Date.now(),
+        sizeGB: sizeInGB
+      });
+      
+      // Keep only last 10 measurements
+      if (metrics[operation].length > 10) {
+        metrics[operation] = metrics[operation].slice(-10);
+      }
+      
+      localStorage.setItem('log_fetch_timings', JSON.stringify(metrics));
+    }
+    
+    function saveSizeBasedMetric(totalSizeGB, totalDurationSeconds, operationBreakdown) {
+      const metrics = getTimingMetrics();
+      
+      if (!metrics.sizeBasedMetrics) {
+        metrics.sizeBasedMetrics = [];
+      }
+      
+      metrics.sizeBasedMetrics.push({
+        sizeGB: totalSizeGB,
+        duration: totalDurationSeconds,
+        timePerGB: totalDurationSeconds / totalSizeGB,
+        breakdown: operationBreakdown,
+        timestamp: Date.now()
+      });
+      
+      // Keep only last 10 measurements
+      if (metrics.sizeBasedMetrics.length > 10) {
+        metrics.sizeBasedMetrics = metrics.sizeBasedMetrics.slice(-10);
+      }
+      
+      localStorage.setItem('log_fetch_timings', JSON.stringify(metrics));
+    }
+    
+    function parseLogSize(logLine) {
+      // Parse size from log messages like "2.3GB", "512MB", "1.5G"
+      const sizeMatch = logLine.match(/(\d+\.?\d*)\s*(GB|G|MB|M)/i);
+      if (sizeMatch) {
+        let size = parseFloat(sizeMatch[1]);
+        const unit = sizeMatch[2].toUpperCase();
+        
+        if (unit.startsWith('M')) {
+          size = size / 1024; // Convert MB to GB
+        }
+        
+        return size;
+      }
+      return null;
+    }
+    
+    function getAverageTiming(operation) {
+      const metrics = getTimingMetrics();
+      const measurements = metrics[operation] || [];
+      
+      if (measurements.length === 0) return null;
+      
+      const sum = measurements.reduce((acc, m) => acc + m.duration, 0);
+      return Math.round(sum / measurements.length);
+    }
+    
+    function formatDuration(seconds) {
+      if (seconds < 60) return `${seconds}s`;
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}m ${secs}s`;
+    }
+    
+    function showEstimatedTime(currentSizeGB = null) {
+      const metrics = getTimingMetrics();
+      
+      // Try GB-based estimation first if we have size data
+      if (currentSizeGB && metrics.sizeBasedMetrics && metrics.sizeBasedMetrics.length > 0) {
+        // Calculate average time per GB from historical data
+        const timePerGBValues = metrics.sizeBasedMetrics.map(m => m.timePerGB);
+        const avgTimePerGB = timePerGBValues.reduce((a, b) => a + b, 0) / timePerGBValues.length;
+        
+        const estimatedSeconds = Math.round(avgTimePerGB * currentSizeGB);
+        const estimatedMinutes = Math.round(estimatedSeconds / 60);
+        
+        // Get sample breakdown from last run
+        const lastRun = metrics.sizeBasedMetrics[metrics.sizeBasedMetrics.length - 1];
+        const copyPercent = lastRun.breakdown?.copyPercent || 40;
+        const compressPercent = lastRun.breakdown?.compressPercent || 20;
+        const uploadPercent = lastRun.breakdown?.uploadPercent || 40;
+        
+        const copyTime = Math.round(estimatedSeconds * copyPercent / 100);
+        const compressTime = Math.round(estimatedSeconds * compressPercent / 100);
+        const uploadTime = Math.round(estimatedSeconds * uploadPercent / 100);
+        
+        const estimateDiv = document.createElement('div');
+        estimateDiv.style.cssText = 'margin-top: 0.5rem; padding: 0.75rem; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; font-size: 0.875rem;';
+        estimateDiv.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #92400E;">⏱️ Estimated Time:</strong> <span style="font-size: 1.1rem; color: #78350F;">~${formatDuration(estimatedSeconds)}</span>
+              ${estimatedSeconds > 3600 ? `<span style="color: #92400E; margin-left: 0.5rem;">(~${(estimatedSeconds / 3600).toFixed(1)} hours)</span>` : ''}
+            </div>
+            <div style="text-align: right; color: #92400E; font-size: 0.8rem;">
+              📊 ${currentSizeGB.toFixed(2)} GB × ${(avgTimePerGB / 60).toFixed(1)} min/GB
+            </div>
+          </div>
+          <div style="margin-top: 0.5rem; color: #78350F; font-size: 0.8rem;">
+            Copy: ${formatDuration(copyTime)} • Compress: ${formatDuration(compressTime)} • Upload: ${formatDuration(uploadTime)}
+          </div>
+          <div style="margin-top: 0.25rem; color: #A16207; font-size: 0.75rem; font-style: italic;">
+            Based on ${metrics.sizeBasedMetrics.length} previous run${metrics.sizeBasedMetrics.length > 1 ? 's' : ''}
+          </div>
+        `;
+        
+        const progressSection = document.querySelector('.progress-section');
+        if (progressSection && !document.getElementById('timeEstimate')) {
+          estimateDiv.id = 'timeEstimate';
+          progressSection.insertBefore(estimateDiv, progressSection.firstChild);
+        }
+        return;
+      }
+      
+      // Fallback to simple average-based estimation
+      const copyAvg = getAverageTiming('copyToLocal');
+      const compressAvg = getAverageTiming('compression');
+      const uploadAvg = getAverageTiming('uploadToFiler');
+      
+      if (!copyAvg && !compressAvg && !uploadAvg) return;
+      
+      const total = (copyAvg || 60) + (compressAvg || 30) + (uploadAvg || 45);
+      
+      const estimateDiv = document.createElement('div');
+      estimateDiv.style.cssText = 'margin-top: 0.5rem; padding: 0.75rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 0.875rem;';
+      estimateDiv.innerHTML = `
+        <strong style="color: #1E40AF;">⏱️ Estimated Time:</strong> ~${formatDuration(total)}
+        ${copyAvg ? `<span style="margin-left: 1rem; color: #6B7280;">(Copy: ${formatDuration(copyAvg)}, Compress: ${formatDuration(compressAvg || 30)}, Upload: ${formatDuration(uploadAvg || 45)})</span>` : ''}
+        <div style="margin-top: 0.25rem; color: #6B7280; font-size: 0.75rem; font-style: italic;">
+          ⚠️ Size-based estimation not yet available. Run operations to build data.
+        </div>
+      `;
+      
+      const progressSection = document.querySelector('.progress-section');
+      if (progressSection && !document.getElementById('timeEstimate')) {
+        estimateDiv.id = 'timeEstimate';
+        progressSection.insertBefore(estimateDiv, progressSection.firstChild);
+      }
     }
     
     let currentFilerConfig = filerServers.filer1;
@@ -972,10 +1268,29 @@
             targetSelect.appendChild(option);
           });
           
-          // Update refresh button tooltip
+          // Update refresh button tooltip and show cache info
           if (refreshBtn && cacheTimestamp) {
             const ageText = formatCacheAge(cacheTimestamp);
             refreshBtn.title = `Last fetched: ${ageText}\nClick to refresh`;
+            
+            // Show cache info badge
+            const cacheInfoId = targetSelect.id === 'folderLevel1' ? 'level1CacheInfo' : 'level2CacheInfo';
+            const cacheTimeId = targetSelect.id === 'folderLevel1' ? 'level1CacheTime' : 'level2CacheTime';
+            const cacheInfoDiv = document.getElementById(cacheInfoId);
+            const cacheTimeSpan = document.getElementById(cacheTimeId);
+            
+            if (cacheInfoDiv && cacheTimeSpan) {
+              if (fromCache) {
+                // Using cached data
+                const cacheDate = new Date(cacheTimestamp);
+                cacheTimeSpan.textContent = cacheDate.toLocaleString();
+                cacheInfoDiv.style.display = 'block';
+              } else {
+                // Just fetched - show "just now"
+                cacheTimeSpan.textContent = 'just now';
+                cacheInfoDiv.style.display = 'block';
+              }
+            }
           }
           
           // Auto-select default if provided and exists in folder list
@@ -1052,7 +1367,10 @@
     });
     
     // Add validation listeners to all relevant fields
-    document.getElementById('pcIp').addEventListener('input', validateFormAndUpdateButton);
+    document.getElementById('pcIp').addEventListener('input', function() {
+      updatePathPreview();
+      validateFormAndUpdateButton();
+    });
     document.getElementById('folderLevel1').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('folderLevel2').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('bugFolder').addEventListener('input', validateFormAndUpdateButton);
@@ -1064,11 +1382,19 @@
       const level1 = document.getElementById('folderLevel1').value;
       const level2 = document.getElementById('folderLevel2').value;
       const bugFolder = document.getElementById('bugFolder').value.trim();
+      const pcIp = document.getElementById('pcIp').value.trim();
       
       let pathParts = [];
       if (level1) pathParts.push(level1);
       if (level2) pathParts.push(level2);
-      if (bugFolder) pathParts.push(bugFolder);
+      
+      // If bugFolder is empty, show placeholder for auto-generated name
+      if (bugFolder) {
+        pathParts.push(bugFolder);
+      } else if (level1 && level2) {
+        // Show placeholder only if folders are selected
+        pathParts.push(pcIp ? `${pcIp}_timestamp` : '[PCIP_timestamp]');
+      }
       
       const preview = pathParts.length > 0 ? pathParts.join('/') : '[select-folders-above]';
       document.getElementById('pathPreview').textContent = preview;
@@ -1082,12 +1408,11 @@
       const pcIp = document.getElementById('pcIp').value.trim();
       const level1 = document.getElementById('folderLevel1').value;
       const level2 = document.getElementById('folderLevel2').value;
-      const bugFolder = document.getElementById('bugFolder').value.trim();
       const startBtn = document.getElementById('startBtn');
       const buttonHint = document.getElementById('buttonHint');
       
-      // Check if all required fields are filled
-      const isFormComplete = pcIp && level1 && level2 && bugFolder;
+      // Check if all required fields are filled (bugFolder is now optional)
+      const isFormComplete = pcIp && level1 && level2;
       
       if (startBtn) {
         startBtn.disabled = !isFormComplete;
@@ -1111,12 +1436,74 @@
       return parts.join('/');
     }
     
+    // Custom confirmation modal functions
+    function showCustomConfirm(folderName) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('confirmModal');
+        const editableFolderNameInput = document.getElementById('editableFolderName');
+        const confirmOkBtn = document.getElementById('confirmOk');
+        const confirmCancelBtn = document.getElementById('confirmCancel');
+        
+        // Set the folder name in the input
+        editableFolderNameInput.value = folderName;
+        
+        // Show modal
+        modal.classList.add('active');
+        
+        // Focus the input and select all text for easy editing
+        setTimeout(() => {
+          editableFolderNameInput.focus();
+          editableFolderNameInput.select();
+        }, 100);
+        
+        // Handle Enter key in input
+        const handleKeyPress = (e) => {
+          if (e.key === 'Enter') {
+            handleOk();
+          }
+        };
+        editableFolderNameInput.addEventListener('keypress', handleKeyPress);
+        
+        // Handle OK button
+        const handleOk = () => {
+          editableFolderNameInput.removeEventListener('keypress', handleKeyPress);
+          const finalFolderName = editableFolderNameInput.value.trim() || folderName;
+          modal.classList.remove('active');
+          document.getElementById('bugFolder').value = finalFolderName;
+          confirmOkBtn.removeEventListener('click', handleOk);
+          confirmCancelBtn.removeEventListener('click', handleCancel);
+          // Trigger form submission again with the folder name set
+          document.getElementById('fetchLogsForm').dispatchEvent(new Event('submit'));
+          resolve(true);
+        };
+        
+        // Handle Cancel button
+        const handleCancel = () => {
+          editableFolderNameInput.removeEventListener('keypress', handleKeyPress);
+          modal.classList.remove('active');
+          confirmOkBtn.removeEventListener('click', handleOk);
+          confirmCancelBtn.removeEventListener('click', handleCancel);
+          resolve(false);
+        };
+        
+        confirmOkBtn.addEventListener('click', handleOk);
+        confirmCancelBtn.addEventListener('click', handleCancel);
+        
+        // Close on overlay click
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            handleCancel();
+          }
+        });
+      });
+    }
+    
     // Handle form submission
     document.getElementById('fetchLogsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const pcIp = document.getElementById('pcIp').value.trim();
-      const fullBugFolder = getFullBugFolder();
+      let bugFolder = document.getElementById('bugFolder').value.trim();
       const filerPassword = document.getElementById('filerPassword').value.trim();
       
       if (!pcIp) {
@@ -1124,8 +1511,20 @@
         return;
       }
       
+      // Generate default folder name if empty
+      if (!bugFolder) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const defaultFolder = `${pcIp}_${timestamp}`;
+        
+        // Show custom confirmation modal
+        showCustomConfirm(defaultFolder);
+        return; // Exit and wait for modal response - modal will trigger submission again
+      }
+      
+      const fullBugFolder = getFullBugFolder();
+      
       if (!fullBugFolder) {
-        alert('Please select folders and enter final folder name');
+        alert('Please select folders');
         return;
       }
       
@@ -1138,9 +1537,30 @@
       
       // Reset progress bar
       updateProgress(0, 'Initializing...');
+      showEstimatedTime();
       
       // Scroll to logs
       document.getElementById('logsSection').scrollIntoView({ behavior: 'smooth' });
+      
+      // Track operation start times and sizes (store in window for access in other functions)
+      window.operationTimes = {
+        copyStart: null,
+        copyEnd: null,
+        compressStart: null,
+        compressEnd: null,
+        uploadStart: null,
+        uploadEnd: null,
+        totalStart: Date.now(),
+        // Size tracking
+        logSizeGB: null,
+        compressedSizeGB: null,
+        allLogMessages: [], // Store all messages to parse sizes at the end
+        // Track current step for better error reporting
+        currentStep: 'Initializing',
+        currentStepNumber: 0,
+        currentSubstep: null,
+        currentTotalSubsteps: null
+      };
       
       // Send POST request
       fetch('/api/fetch_fluentd_logs', {
@@ -1222,6 +1642,50 @@
                       const progressBarFill = document.getElementById('progressBarFill');
                       progressBarFill.style.background = ''; // Reset to default green
                       updateProgress(100, 'Completed Successfully');
+                      
+                      // Parse sizes from logs and save size-based metrics (only on success)
+                      if (window.operationTimes && window.operationTimes.totalStart) {
+                        const totalDuration = Math.round((Date.now() - window.operationTimes.totalStart) / 1000);
+                        
+                        // Parse sizes from all log messages
+                        let totalSizeGB = 0;
+                        const messages = window.operationTimes.allLogMessages || [];
+                        
+                        for (const msg of messages) {
+                          // Look for size patterns: "2.3GB", "1.5G", "512MB"
+                          const sizeMatch = msg.match(/(\d+\.?\d*)\s*(GB|G|MB|M)/i);
+                          if (sizeMatch) {
+                            let size = parseFloat(sizeMatch[1]);
+                            const unit = sizeMatch[2].toUpperCase();
+                            
+                            if (unit.startsWith('M')) {
+                              size = size / 1024; // Convert MB to GB
+                            }
+                            
+                            // Accumulate the largest size found (likely the total)
+                            if (size > totalSizeGB) {
+                              totalSizeGB = size;
+                            }
+                          }
+                        }
+                        
+                        // Calculate operation percentages
+                        const copyDuration = (window.operationTimes.copyEnd - window.operationTimes.copyStart) / 1000 || 0;
+                        const compressDuration = (window.operationTimes.compressEnd - window.operationTimes.compressStart) / 1000 || 0;
+                        const uploadDuration = (window.operationTimes.uploadEnd - window.operationTimes.uploadStart) / 1000 || 0;
+                        
+                        const operationBreakdown = {
+                          copyPercent: totalDuration > 0 ? Math.round((copyDuration / totalDuration) * 100) : 40,
+                          compressPercent: totalDuration > 0 ? Math.round((compressDuration / totalDuration) * 100) : 20,
+                          uploadPercent: totalDuration > 0 ? Math.round((uploadDuration / totalDuration) * 100) : 40
+                        };
+                        
+                        // Save size-based metric if we found a size
+                        if (totalSizeGB > 0) {
+                          saveSizeBasedMetric(totalSizeGB, totalDuration, operationBreakdown);
+                          console.log(`Saved size-based metric: ${totalSizeGB.toFixed(2)} GB in ${totalDuration}s (${(totalDuration / totalSizeGB).toFixed(1)}s per GB)`);
+                        }
+                      }
                     }
                     document.getElementById('startBtn').disabled = false;
                     return;
@@ -1235,6 +1699,11 @@
                     <span class="log-message">${escapeHtml(data.message)}</span>
                   `;
                   document.getElementById('logsContainer').appendChild(logLine);
+                  
+                  // Store message for size parsing later
+                  if (window.operationTimes && window.operationTimes.allLogMessages) {
+                    window.operationTimes.allLogMessages.push(data.message);
+                  }
                   
                   // Detect progress from log message
                   detectProgressFromLog(data.message);
@@ -1299,16 +1768,28 @@
       'Done': 100
     };
     
-    function updateProgress(percentage, stepText) {
+    function updateProgress(percentage, stepText, stepNumber = null, totalSteps = 7, substep = null, totalSubsteps = null, substepName = null) {
       const progressBarFill = document.getElementById('progressBarFill');
       const progressBarText = document.getElementById('progressBarText');
       const progressPercentage = document.getElementById('progressPercentage');
       const progressStep = document.getElementById('progressStep');
       
+      // Build step text with number if provided
+      let displayText = stepText;
+      if (stepNumber !== null && stepNumber > 0) {
+        displayText = `Step ${stepNumber}/${totalSteps}: ${stepText}`;
+        
+        // Add substep on new line if provided
+        if (substep !== null && totalSubsteps !== null && totalSubsteps > 0) {
+          const substepLabel = substepName || 'Processing';
+          displayText += `\n↳ Substep ${substep}/${totalSubsteps}: ${substepLabel}`;
+        }
+      }
+      
       // Update progress bar
       progressBarFill.style.width = percentage + '%';
       progressPercentage.textContent = percentage + '%';
-      progressStep.textContent = stepText;
+      progressStep.textContent = displayText;
       
       // Update text inside bar if there's enough space
       if (percentage > 20) {
@@ -1327,12 +1808,17 @@
         '✗',
         'Failed to',
         'Error:',
+        'ERROR:',
         'Cannot proceed',
         'directory not found',
         'No log files found',
         'Logs directory not created',
         'kubectl cp may have failed',
-        'No files were compressed'
+        'No files were compressed',
+        'Permission denied',
+        'Authentication failed',
+        'Connection refused',
+        'No such file'
       ];
       
       const hasError = errorPatterns.some(pattern => message.includes(pattern));
@@ -1346,15 +1832,200 @@
         logsStatus.className = 'logs-status error';
         logsStatus.textContent = 'Failed';
         
-        // Update progress text
+        // Get current step info for better error message
+        const currentStep = window.operationTimes?.currentStep || 'Unknown Step';
+        const stepNum = window.operationTimes?.currentStepNumber || 0;
+        const substep = window.operationTimes?.currentSubstep;
+        const totalSubsteps = window.operationTimes?.currentTotalSubsteps;
+        const substepName = window.operationTimes?.currentSubstepName || '';
+        
+        // Detect specific error type
+        let errorDetail = '';
+        if (message.includes('Permission denied')) {
+          errorDetail = 'Permission Denied (check filer user access)';
+        } else if (message.includes('Authentication failed') || message.includes('password')) {
+          errorDetail = 'Authentication Failed (check FILER_PASSWORD)';
+        } else if (message.includes('No such file') || message.includes('not found') || message.includes('Path not found')) {
+          errorDetail = 'Path Not Found (check filer path)';
+        } else if (message.includes('Connection refused') || message.includes('network') || message.includes('unreachable') || message.includes('timeout')) {
+          errorDetail = 'Connection Failed (check filer network)';
+        } else if (message.includes('kubectl cp may have failed')) {
+          errorDetail = 'kubectl copy failed (check pod access)';
+        } else if (message.includes('No files were compressed')) {
+          errorDetail = 'No files to compress';
+        } else if (message.includes('Script exited with code 1')) {
+          errorDetail = 'Script failed (check logs for details)';
+        } else {
+          errorDetail = 'Operation failed';
+        }
+        
+        // Build error message with step, substep name, and specific error
+        let errorMessage;
+        if (stepNum > 0) {
+          errorMessage = `❌ Step ${stepNum}/7 Failed: ${currentStep}`;
+          if (substep && totalSubsteps) {
+            // Include substep name in error message
+            const substepText = substepName ? `${substepName}` : `Substep ${substep}/${totalSubsteps}`;
+            errorMessage += `\n↳ Substep ${substep}/${totalSubsteps}: ${substepText} - ${errorDetail}`;
+          } else {
+            errorMessage += `\n↳ ${errorDetail}`;
+          }
+        } else {
+          errorMessage = `❌ Failed: ${currentStep}\n↳ ${errorDetail}`;
+        }
+        
+        // Update progress text with failed step info
         const currentPercentage = parseInt(document.getElementById('progressPercentage').textContent) || 0;
+        
         if (currentPercentage < 100) {
-          updateProgress(currentPercentage, 'Error - Operation Failed');
+          updateProgress(currentPercentage, errorMessage);
         } else {
           updateProgress(100, 'Failed - Check logs');
         }
         
         return; // Don't process further
+      }
+      
+      // Track intermediate operations for better context and granular progress
+      if (message.includes('Connecting to') && message.includes('PC')) {
+        window.operationTimes.currentStep = 'Connecting to PC';
+        window.operationTimes.currentStepNumber = 1;
+        updateProgress(5, 'Connecting to PC', 1);
+      } else if (message.includes('kubectl') && message.includes('config')) {
+        window.operationTimes.currentStep = 'Fetching Kubeconfig';
+        window.operationTimes.currentStepNumber = 1;
+      } else if (message.includes('Verifying Kubeconfig') || message.includes('cluster is reachable')) {
+        window.operationTimes.currentStep = 'Verifying Kubeconfig';
+        window.operationTimes.currentStepNumber = 2;
+      } else if (message.includes('Creating output directory')) {
+        window.operationTimes.currentStep = 'Preparing to copy logs';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 1;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Creating output directory';
+        updateProgress(30, 'Preparing to copy logs', 3, 7, 1, 3, 'Creating output directory');
+      } else if (message.includes('Copying logs from') || (message.includes('Starting kubectl cp') || message.includes('This operation streams files'))) {
+        window.operationTimes.currentStep = 'Copying logs from pod';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 2;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Streaming files via kubectl';
+        updateProgress(35, 'Copying logs from pod', 3, 7, 2, 3, 'Streaming files via kubectl');
+      } else if (message.includes('kubectl cp command completed')) {
+        window.operationTimes.currentStep = 'Copy operation completed';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 2;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Transfer complete';
+        updateProgress(40, 'Copy operation completed', 3, 7, 2, 3, 'Transfer complete');
+      } else if (message.includes('Verifying copied logs') || message.includes('Checking if logs directory exists')) {
+        window.operationTimes.currentStep = 'Verifying copied logs';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Checking directory structure';
+        updateProgress(42, 'Verifying copied logs', 3, 7, 3, 3, 'Checking directory structure');
+      } else if (message.includes('Counting log directories') || message.includes('Counting directories in logs')) {
+        window.operationTimes.currentStep = 'Verifying copied logs';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Counting log directories';
+        updateProgress(43, 'Verifying copied logs', 3, 7, 3, 3, 'Counting log directories');
+      } else if (message.includes('Found') && (message.includes('log directories') || message.includes('namespace log directories'))) {
+        window.operationTimes.currentStep = 'Verifying copied logs';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Directories verified';
+        updateProgress(44, 'Verifying copied logs', 3, 7, 3, 3, 'Directories verified');
+      } else if (message.includes('Local logs:') && message.includes('directories')) {
+        window.operationTimes.currentStep = 'Logs copied successfully';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'Verification complete';
+        updateProgress(45, 'Logs copied successfully', 3, 7, 3, 3, 'Verification complete');
+      } else if (message.includes('Step 3 completed')) {
+        window.operationTimes.currentStep = 'Logs copied and verified';
+        window.operationTimes.currentStepNumber = 3;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 3;
+        window.operationTimes.currentSubstepName = 'All checks passed';
+        updateProgress(48, 'Logs copied and verified', 3, 7, 3, 3, 'All checks passed');
+      } else if (message.includes('Creating folder on filer') || message.includes('Creating directory')) {
+        window.operationTimes.currentStep = 'Creating filer directory';
+        window.operationTimes.currentStepNumber = 4;
+        updateProgress(48, 'Creating filer directory', 4);
+      } else if (message.includes('Folder created on filer') || message.includes('Folder verified')) {
+        window.operationTimes.currentStep = 'Filer directory ready';
+        window.operationTimes.currentStepNumber = 4;
+      } else if (message.includes('Analyzing logs structure')) {
+        window.operationTimes.currentStep = 'Analyzing logs structure';
+        window.operationTimes.currentStepNumber = 5;
+        window.operationTimes.currentSubstep = 1;
+        window.operationTimes.currentTotalSubsteps = 4;
+        window.operationTimes.currentSubstepName = 'Scanning log directories';
+        updateProgress(55, 'Analyzing logs structure', 5, 7, 1, 4, 'Scanning log directories');
+      } else if (message.includes('Found') && message.includes('namespace')) {
+        window.operationTimes.currentStep = 'Preparing compression';
+        window.operationTimes.currentStepNumber = 5;
+        window.operationTimes.currentSubstep = 2;
+        window.operationTimes.currentTotalSubsteps = 4;
+        window.operationTimes.currentSubstepName = 'Organizing by namespace';
+        updateProgress(58, 'Preparing compression', 5, 7, 2, 4, 'Organizing by namespace');
+      } else if (message.includes('Compressing namespace:')) {
+        window.operationTimes.currentStep = 'Compressing namespaces';
+        window.operationTimes.currentStepNumber = 5;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 4;
+        window.operationTimes.currentSubstepName = 'Creating tar.gz archives';
+        updateProgress(62, 'Compressing namespaces', 5, 7, 3, 4, 'Creating tar.gz archives');
+      } else if (message.includes('Compressed:') && message.includes('GB')) {
+        window.operationTimes.currentStep = 'Compression in progress';
+        window.operationTimes.currentStepNumber = 5;
+        window.operationTimes.currentSubstep = 3;
+        window.operationTimes.currentTotalSubsteps = 4;
+        window.operationTimes.currentSubstepName = 'Creating tar.gz archives';
+        updateProgress(68, 'Compression in progress', 5, 7, 3, 4, 'Creating tar.gz archives');
+      } else if (message.includes('Created') && message.includes('compressed file')) {
+        window.operationTimes.currentStep = 'Compression complete';
+        window.operationTimes.currentStepNumber = 5;
+        window.operationTimes.currentSubstep = 4;
+        window.operationTimes.currentTotalSubsteps = 4;
+        window.operationTimes.currentSubstepName = 'All archives created';
+        updateProgress(72, 'Compression complete', 5, 7, 4, 4, 'All archives created');
+      } else if (message.includes('Uploading:')) {
+        const filename = message.split('Uploading:')[1]?.trim() || '';
+        window.operationTimes.currentStep = `Uploading ${filename}`;
+        window.operationTimes.currentStepNumber = 6;
+        updateProgress(75, `Uploading ${filename}`, 6);
+      } else if (message.includes('Using rsync') || message.includes('Falling back to scp')) {
+        window.operationTimes.currentStep = 'Transferring files';
+        window.operationTimes.currentStepNumber = 6;
+      } else if (message.includes('Uploaded:') && message.includes('.tar.gz')) {
+        window.operationTimes.currentStep = 'File uploaded';
+        window.operationTimes.currentStepNumber = 6;
+        updateProgress(82, 'Upload in progress', 6);
+      } else if (message.includes('file(s) uploaded successfully')) {
+        window.operationTimes.currentStep = 'All uploads complete';
+        window.operationTimes.currentStepNumber = 6;
+        updateProgress(88, 'All uploads complete', 6);
+      } else if (message.includes('Verifying uploaded files')) {
+        window.operationTimes.currentStep = 'Verifying uploads';
+        window.operationTimes.currentStepNumber = 7;
+        updateProgress(90, 'Verifying uploads', 7);
+      } else if (message.includes('Verifying:') && message.includes('.tar.gz')) {
+        window.operationTimes.currentStep = 'Verifying files';
+        window.operationTimes.currentStepNumber = 7;
+      } else if (message.includes('file(s) verified')) {
+        window.operationTimes.currentStep = 'Verification complete';
+        window.operationTimes.currentStepNumber = 7;
+        updateProgress(95, 'Verification complete', 7);
+      } else if (message.includes('Cleaning up local files')) {
+        window.operationTimes.currentStep = 'Cleaning up';
+        window.operationTimes.currentStepNumber = 7;
+        updateProgress(97, 'Cleaning up', 7);
       }
       
       // Check each step keyword and update progress
@@ -1365,27 +2036,118 @@
         }
       }
       
-      // Specific step detection (updated for 7 steps)
+      // Specific step detection (updated for 7 steps) with timing tracking
       if (message.includes('Step 1/7') || message.includes('Fetching Kubeconfig')) {
-        updateProgress(10, 'Fetching Kubeconfig from PC');
+        window.operationTimes.currentStep = 'Fetching Kubeconfig from PC';
+        window.operationTimes.currentStepNumber = 1;
+        updateProgress(10, 'Fetching Kubeconfig from PC', 1);
       } else if (message.includes('Step 2/7') || message.includes('Verifying Kubeconfig')) {
-        updateProgress(20, 'Verifying Kubeconfig');
+        window.operationTimes.currentStep = 'Verifying Kubeconfig';
+        window.operationTimes.currentStepNumber = 2;
+        updateProgress(20, 'Verifying Kubeconfig', 2);
       } else if (message.includes('Step 3/7') || message.includes('Copying Fluentd Logs') || message.includes('Copying Logs')) {
-        updateProgress(35, 'Copying Logs from Pod');
+        window.operationTimes.currentStep = 'Copying Logs from Pod';
+        window.operationTimes.currentStepNumber = 3;
+        if (!window.operationTimes.copyStart) {
+          window.operationTimes.copyStart = Date.now();
+        }
+        updateProgress(35, 'Copying Logs from Pod', 3);
       } else if (message.includes('Step 4/7') || message.includes('Creating Folder on Filer')) {
-        updateProgress(50, 'Creating Folder on Filer');
+        window.operationTimes.currentStep = 'Creating Folder on Filer';
+        window.operationTimes.currentStepNumber = 4;
+        // Copy operation ended, compression about to start
+        if (window.operationTimes.copyStart && !window.operationTimes.copyEnd) {
+          window.operationTimes.copyEnd = Date.now();
+          const duration = Math.round((window.operationTimes.copyEnd - window.operationTimes.copyStart) / 1000);
+          saveTimingMetric('copyToLocal', duration);
+        }
+        updateProgress(50, 'Creating Folder on Filer', 4);
       } else if (message.includes('Step 5/7') || message.includes('Compressing Logs by Namespace')) {
-        updateProgress(60, 'Compressing by Namespace');
+        window.operationTimes.currentStep = 'Compressing by Namespace';
+        window.operationTimes.currentStepNumber = 5;
+        if (!window.operationTimes.compressStart) {
+          window.operationTimes.compressStart = Date.now();
+        }
+        updateProgress(60, 'Compressing by Namespace', 5);
       } else if (message.includes('Step 6/7') || message.includes('Uploading Compressed Files')) {
-        updateProgress(80, 'Uploading Files to Filer');
+        window.operationTimes.currentStep = 'Uploading Files to Filer';
+        window.operationTimes.currentStepNumber = 6;
+        // Compression ended, upload about to start
+        if (window.operationTimes.compressStart && !window.operationTimes.compressEnd) {
+          window.operationTimes.compressEnd = Date.now();
+          const duration = Math.round((window.operationTimes.compressEnd - window.operationTimes.compressStart) / 1000);
+          saveTimingMetric('compression', duration);
+        }
+        if (!window.operationTimes.uploadStart) {
+          window.operationTimes.uploadStart = Date.now();
+        }
+        updateProgress(80, 'Uploading Files to Filer', 6);
       } else if (message.includes('Step 7/7') || message.includes('Verification and Cleanup')) {
-        updateProgress(92, 'Verifying and Cleaning Up');
+        window.operationTimes.currentStep = 'Verifying and Cleaning Up';
+        window.operationTimes.currentStepNumber = 7;
+        // Upload ended
+        if (window.operationTimes.uploadStart && !window.operationTimes.uploadEnd) {
+          window.operationTimes.uploadEnd = Date.now();
+          const duration = Math.round((window.operationTimes.uploadEnd - window.operationTimes.uploadStart) / 1000);
+          saveTimingMetric('uploadToFiler', duration);
+        }
+        updateProgress(92, 'Verifying and Cleaning Up', 7);
       } else if (message.includes('completed successfully') || message.includes('✅') || message.includes('Success - All Operations Completed')) {
+        window.operationTimes.currentStep = 'Completed Successfully';
+        window.operationTimes.currentStepNumber = 7;
+        // Total operation time
+        if (window.operationTimes.totalStart) {
+          const totalDuration = Math.round((Date.now() - window.operationTimes.totalStart) / 1000);
+          saveTimingMetric('total', totalDuration);
+        }
         const progressBarFill = document.getElementById('progressBarFill');
         progressBarFill.style.background = ''; // Reset to default green
-        updateProgress(100, 'Completed Successfully');
+        updateProgress(100, 'Completed Successfully', 7);
       }
     }
   </script>
+  
+  <!-- Custom Confirmation Modal -->
+  <div id="confirmModal" class="custom-confirm-overlay">
+    <div class="custom-confirm-modal">
+      <div class="custom-confirm-header">
+        <div class="custom-confirm-title">
+          <span class="custom-confirm-icon">📁</span>
+          <span>Auto-Generated Folder Name</span>
+        </div>
+      </div>
+      <div class="custom-confirm-body">
+        <div class="custom-confirm-message">
+          No folder name provided. You can use the auto-generated name below or edit it:
+        </div>
+        <input type="text" class="custom-confirm-folder-input" id="editableFolderName" 
+               placeholder="Enter folder name" style="
+                 width: 100%;
+                 padding: 12px;
+                 border: 2px solid #007cba;
+                 border-radius: 6px;
+                 font-family: 'Courier New', monospace;
+                 font-size: 0.95rem;
+                 color: #007cba;
+                 font-weight: 600;
+                 text-align: center;
+                 margin-top: 12px;
+                 background: #f9fafb;
+                 transition: all 0.2s;
+               ">
+        <div class="custom-confirm-message" style="margin-top: 16px; font-size: 0.9rem; color: #6b7280;">
+          Edit the folder name if needed, then click Proceed.
+        </div>
+      </div>
+      <div class="custom-confirm-actions">
+        <button class="custom-confirm-btn custom-confirm-btn-cancel" id="confirmCancel">
+          Cancel
+        </button>
+        <button class="custom-confirm-btn custom-confirm-btn-ok" id="confirmOk">
+          Proceed
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
