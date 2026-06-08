@@ -1,0 +1,3273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Onboard PC - Federation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --primary-blue: #3B82F6;
+      --bg-light: #F9FAFB;
+      --text-dark: #1F2937;
+      --text-muted: #6B7280;
+      --border-gray: #E5E7EB;
+      --font-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--sidebar-bg);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      left: 0;
+      top: 0;
+    }
+    
+    .sidebar-brand {
+      padding: 1.5rem 1.25rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0;
+    }
+    
+    .nav-group-title {
+      padding: 0.75rem 1.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .nav-item {
+      display: block;
+      padding: 0.75rem 1.25rem;
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+    
+    .nav-item.active {
+      background: var(--sidebar-active);
+      border-left-color: var(--primary-blue);
+      color: white;
+      font-weight: 500;
+    }
+    
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-footer a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    
+    .sidebar-footer a:hover {
+      color: white;
+    }
+    
+    /* Main Content */
+    .main-content {
+      margin-left: 240px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-header {
+      background: white;
+      border-bottom: 1px solid var(--border-gray);
+      padding: 1.5rem 2rem;
+    }
+    
+    .breadcrumb {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--text-dark);
+    }
+    
+    .content-area {
+      padding: 2rem;
+      flex: 1;
+    }
+    
+    /* Form Card */
+    .form-card {
+      background: white;
+      border: 1px solid var(--border-gray);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      max-width: 800px;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-dark);
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="password"],
+    .form-group input[type="number"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border: 1px solid var(--border-gray);
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-group textarea {
+      min-height: 6rem;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      resize: vertical;
+    }
+    
+    .form-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .form-row > .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      width: 1.125rem;
+      height: 1.125rem;
+      cursor: pointer;
+    }
+    
+    .checkbox-group label {
+      margin: 0;
+      font-weight: 400;
+      cursor: pointer;
+    }
+    
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--primary-blue);
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #2563EB;
+      box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+    }
+    
+    .btn-secondary {
+      background: #E5E7EB;
+      color: var(--text-dark);
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #D1D5DB;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .upload-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+    
+    /* Helper text */
+    .help-text {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    
+    /* Status messages */
+    .message {
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+    }
+    
+    .message.success {
+      background: #DEF7EC;
+      border: 1px solid #84E1BC;
+      color: #03543F;
+    }
+    
+    .message.error {
+      background: #FDE8E8;
+      border: 1px solid #F98080;
+      color: #9B1C1C;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 0;
+        overflow: hidden;
+      }
+      
+      .main-content {
+        margin-left: 0;
+      }
+      
+      .content-area {
+        padding: 1rem;
+      }
+      
+      .form-card {
+        padding: 1.5rem;
+      }
+    }
+    
+    /* Additional table styles for compatibility */
+    .cell-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      vertical-align: middle;
+      line-height: 1.2;
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease,
+        opacity 0.3s ease;
+    }
+    .cell-badge-ok {
+      background: #1a3328;
+      color: #81c995;
+      border: 1px solid #2d5c45;
+    }
+    .cell-badge-fail {
+      background: #3d2020;
+      color: #f28b82;
+      border: 1px solid #6b3535;
+    }
+    .cell-badge-neutral {
+      background: #2a2d35;
+      color: #9aa0a6;
+      border: 1px solid #3c434d;
+    }
+    .cell-badge-progress {
+      background: #243044;
+      color: #8ab4f8;
+      border: 1px solid #4a6fa8;
+      animation: cell-badge-progress-glow 2.4s ease-in-out infinite;
+    }
+    .cell-badge-progress-dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #b8e8ff, #5c9eff 45%, #3d7ebe 75%);
+      flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(100, 180, 255, 0.5);
+      animation: cell-badge-running-dot-pulse 1.4s ease-in-out infinite;
+    }
+    .cell-badge-fail-dot {
+      width: 0.42rem;
+      height: 0.42rem;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffc9c4, #e8716c 50%, #a8423a);
+      flex-shrink: 0;
+      box-shadow: 0 0 7px rgba(242, 139, 130, 0.45);
+      animation: cell-badge-fail-dot-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes cell-badge-progress-glow {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(138, 180, 248, 0.12);
+      }
+      50% {
+        box-shadow: 0 0 12px rgba(138, 180, 248, 0.14);
+      }
+    }
+    @keyframes cell-badge-running-dot-pulse {
+      0%, 100% {
+        opacity: 0.4;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    @keyframes cell-badge-fail-dot-pulse {
+      0%, 100% {
+        opacity: 0.4;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cell-badge-progress { animation: none; box-shadow: none; }
+      .cell-badge-progress-dot,
+      .cell-badge-fail-dot {
+        animation: none;
+        opacity: 1;
+      }
+    }
+    ul.schedules { list-style: none; padding: 0; margin: 0.5rem 0; }
+    ul.schedules li { border: 1px solid #3c434d; border-radius: 6px; padding: 0.65rem; margin: 0.4rem 0; background: #0e1014; }
+    code { font-size: 0.85em; }
+    #disk-op-radios label { display: block; margin: 0.25rem 0; cursor: pointer; }
+    .pipeline-stage {
+      display: flex; align-items: center; gap: 0.65rem; padding: 0.4rem 0; font-size: 0.88rem;
+      border-bottom: 1px solid #3c434d;
+    }
+    .pipeline-stage .st-label { min-width: 16rem; color: #9aa0a6; flex-shrink: 0; }
+    .pipeline-stage .st-label.st-label-with-tip {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .pipeline-stage .st-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+    .pipeline-stage > .st-detail { flex: 1; min-width: 0; }
+    .pipeline-stage .st-detail { color: #9aa0a6; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pipeline-stage .st-link-wrap { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pipeline-stage .st-job-link { color: #8ab4f8; font-weight: 600; }
+    .pipeline-stage.st-done .st-status { color: #81c995; font-weight: 600; }
+    .pipeline-stage.st-run .st-status { color: #8ab4f8; font-weight: 600; }
+    .pipeline-stage.st-err .st-status { color: #f28b82; font-weight: 600; }
+    .pipeline-stage.st-pending .st-status { color: #5f6368; }
+    #pe-cvm-ips-display {
+      margin: 0.35rem 0 0 0; padding: 0.5rem 0.65rem; max-height: 8rem; overflow: auto;
+      font-size: 0.82rem; line-height: 1.35; background: #0e1014; border: 1px solid #3c434d; border-radius: 6px;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .layout-index { max-width: 56rem; }
+    .status-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0 1.25rem 0;
+    }
+    .dash-card {
+      background: #22252c;
+      border: 1px solid #3c434d;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      min-width: 0;
+    }
+    .dash-card h3 {
+      margin: 0 0 0.45rem 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8ab4f8;
+    }
+    .dash-card .dash-body { font-size: 0.88rem; }
+    #vm-fetch-status { min-height: 1.2em; margin: 0; }
+    ul.dash-schedules-compact {
+      list-style: none; padding: 0; margin: 0.35rem 0 0 0;
+      max-height: 10rem; overflow: auto;
+    }
+    ul.dash-schedules-compact li {
+      font-size: 0.82rem; padding: 0.35rem 0; border-bottom: 1px solid #2f3540;
+    }
+    ul.dash-schedules-compact li:last-child { border-bottom: none; }
+    ul.dash-recent-list { list-style: none; padding: 0; margin: 0.35rem 0 0 0; max-height: 11rem; overflow: auto; }
+    ul.dash-recent-list li {
+      font-size: 0.82rem;
+      padding: 0.4rem 0.45rem;
+      margin: 0.12rem 0;
+      border-bottom: 1px solid #2f3540;
+      line-height: 1.35;
+      border-radius: 6px;
+      transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    ul.dash-recent-list li:last-child { border-bottom: none; }
+    ul.dash-recent-list li:hover {
+      background: rgba(138, 180, 248, 0.07);
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(138, 180, 248, 0.06);
+      transform: translateY(-1px);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      ul.dash-recent-list li { transition: none; }
+      ul.dash-recent-list li:hover { transform: none; }
+    }
+    .dash-recent-meta { color: #9aa0a6; font-size: 0.78rem; }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    .inv-dash-skel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.15rem 0 0 0;
+    }
+    .inv-dash-skel[hidden] { display: none !important; }
+    .skel-bar {
+      height: 0.72rem;
+      border-radius: 4px;
+      background: linear-gradient(
+        110deg,
+        #2a2d35 0%,
+        #2a2d35 40%,
+        #3d4450 50%,
+        #2a2d35 60%,
+        #2a2d35 100%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.35s ease-in-out infinite;
+    }
+    .skel-bar--wide { width: 88%; max-width: 14rem; }
+    .skel-bar--narrow { width: 55%; max-width: 9rem; opacity: 0.85; }
+    .skel-row td {
+      padding: 0.42rem 0.5rem;
+      vertical-align: middle;
+    }
+    .skel-cell {
+      display: block;
+      height: 0.72rem;
+      max-width: 100%;
+      border-radius: 4px;
+      background: linear-gradient(
+        110deg,
+        #1e2128 0%,
+        #1e2128 38%,
+        #2f3540 50%,
+        #1e2128 62%,
+        #1e2128 100%
+      );
+      background-size: 220% 100%;
+      animation: skeleton-shimmer 1.35s ease-in-out infinite;
+    }
+    .skel-row td:nth-child(1) .skel-cell { width: 72%; }
+    .skel-row td:nth-child(2) .skel-cell { width: 40%; }
+    .skel-row td:nth-child(3) .skel-cell { width: 55%; }
+    .skel-row td:nth-child(4) .skel-cell { width: 60%; }
+    .skel-row td:nth-child(5) .skel-cell { width: 50%; }
+    .skel-row td:nth-child(6) .skel-cell { width: 28%; }
+    .skel-row td:nth-child(7) .skel-cell { width: 32%; }
+    @media (prefers-reduced-motion: reduce) {
+      .skel-bar, .skel-cell { animation: none; background: #2a2d35; }
+    }
+    .config-card {
+      background: #22252c;
+      border: 1px solid #3c434d;
+      border-radius: 10px;
+      padding: 0.85rem 1rem 1rem;
+      margin: 1rem 0;
+    }
+    .config-card > .config-card-title {
+      margin: 0 0 0.65rem 0;
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: #e8eaed;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid #3c434d;
+    }
+    .config-card fieldset {
+      margin: 0;
+      border: none;
+      padding: 0;
+      background: transparent;
+    }
+    .config-card fieldset legend {
+      float: none;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0 0 0.5rem 0;
+      padding: 0;
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: #e8eaed;
+      border-bottom: 1px solid #3c434d;
+      padding-bottom: 0.45rem;
+    }
+    details.advanced-disclosure {
+      margin: 0.85rem 0 0.25rem 0;
+      border: 1px solid #353945;
+      border-radius: 8px;
+      background: #1a1d23;
+      padding: 0 0.75rem 0.65rem;
+    }
+    details.advanced-disclosure > summary {
+      cursor: pointer;
+      padding: 0.55rem 0;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #b4b8bc;
+      list-style-position: outside;
+      user-select: none;
+    }
+    details.advanced-disclosure > summary:hover { color: #e8eaed; }
+    button.btn-impact-cta {
+      background: linear-gradient(180deg, #c5221f 0%, #9e1a18 100%);
+      color: #fce8e6;
+      border: 1px solid #f28b82;
+      font-weight: 700;
+    }
+    button.btn-impact-cta:hover:not(:disabled) { filter: brightness(1.08); }
+    button.btn-curator-impact {
+      background: #3d2020;
+      color: #f9ab9d;
+      border: 1px solid #c45c5c;
+      font-weight: 600;
+    }
+    button.btn-curator-impact:hover:not(:disabled) { background: #4a2828; }
+    button.btn-confirm-danger {
+      background: #8b1d18;
+      color: #fff;
+      border: 1px solid #f28b82;
+    }
+    button.btn-confirm-danger:hover:not(:disabled) { filter: brightness(1.1); }
+    #disk-op-radios label.disk-op-danger { color: #f28b82; }
+    #disk-op-radios label.disk-op-danger input { accent-color: #e8716a; }
+    .confirm-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .confirm-modal {
+      background: #22252c;
+      border: 1px solid #3c434d;
+      border-radius: 12px;
+      max-width: 32rem;
+      width: 100%;
+      padding: 1.15rem 1.25rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    .confirm-modal-title {
+      margin: 0 0 0.65rem 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .confirm-modal-body {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+    .confirm-modal-body ul { margin: 0.35rem 0 0 1rem; padding: 0; }
+    .confirm-modal-actions {
+      display: flex;
+      gap: 0.65rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .sticky-controls-stack {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: #1a1d23;
+      padding-bottom: 0.35rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
+      border-bottom: 1px solid #353945;
+    }
+    .sticky-controls-stack .config-card {
+      margin-top: 0;
+      margin-bottom: 0.65rem;
+    }
+    .primary-actions-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.65rem;
+      background: #22252c;
+      border: 1px solid #3c434d;
+      border-radius: 10px;
+      padding: 0.55rem 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .primary-actions-toolbar .toolbar-hint {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #8ab4f8;
+      font-weight: 700;
+      margin-right: 0.15rem;
+    }
+    .pipeline-progress-dock {
+      background: #22252c;
+      border: 1px solid #3c434d;
+      border-radius: 10px;
+      padding: 0.55rem 0.75rem 0.65rem;
+      margin-bottom: 0.65rem;
+    }
+    .pipeline-progress-dock .active-disk-job-hint {
+      color: #f9ab00;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+    .input-inline-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .input-inline-row input {
+      flex: 1;
+      min-width: 0;
+    }
+    .field-feedback-icon {
+      flex-shrink: 0;
+      font-size: 1.05rem;
+      line-height: 1;
+      min-width: 1.35rem;
+      text-align: center;
+      cursor: default;
+    }
+    .field-feedback-icon.ok { color: #81c995; }
+    .field-feedback-icon.err { color: #f28b82; }
+    .field-feedback-icon.wait { color: #8ab4f8; }
+    .skip-regex-hint { margin-top: 0.35rem; min-height: 1.25em; font-size: 0.82rem; }
+    .live-progress-track {
+      height: 0.45rem;
+      border-radius: 4px;
+      background: #2a2d35;
+      border: 1px solid #3c434d;
+      overflow: hidden;
+    }
+    .live-progress-fill {
+      position: relative;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #5c9eff 0%, #8ab4f8 100%);
+      border-radius: 3px;
+      transition: width 0.35s ease-out, background 0.3s ease;
+      overflow: hidden;
+    }
+    .live-progress-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        100deg,
+        transparent 0%,
+        transparent 38%,
+        rgba(255, 255, 255, 0.28) 50%,
+        transparent 62%,
+        transparent 100%
+      );
+      width: 55%;
+      animation: progress-fill-shimmer 1.85s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes progress-fill-shimmer {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(220%);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .live-progress-fill::after {
+        animation: none;
+        display: none;
+      }
+    }
+    .pipeline-stage .st-progress-wrap { width: 100%; max-width: 22rem; margin-top: 0.25rem; }
+    .pipeline-stage .st-progress-wrap[hidden] { display: none !important; }
+    .pipeline-stage .st-progress-label { font-size: 0.78rem; display: block; margin-top: 0.2rem; color: #9aa0a6; }
+    .inventory-table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      margin: 0.65rem 0 0.5rem 0;
+    }
+    .inventory-table-toolbar input[type="search"] {
+      flex: 1;
+      min-width: 12rem;
+      max-width: 24rem;
+    }
+    .inventory-table-scroll {
+      max-height: 28rem;
+      overflow: auto;
+      border: 1px solid #3c434d;
+      border-radius: 8px;
+      background: #0e1014;
+    }
+    table.inventory-vm-table { margin: 0; font-size: 0.82rem; }
+    table.inventory-vm-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(36, 39, 47, 0.98);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 1px 0 var(--table-divider);
+    }
+    /* IPs, vCPU, RAM: monospace + tabular alignment */
+    table.inventory-vm-table tbody td:nth-child(4),
+    table.inventory-vm-table tbody td:nth-child(5),
+    table.inventory-vm-table tbody td:nth-child(6),
+    table.inventory-vm-table tbody td:nth-child(7) {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+    }
+    table.inventory-vm-table tbody td code {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.92em;
+    }
+    .disk-limit-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 0.35rem;
+    }
+    .disk-limit-slider-row input[type="range"] {
+      flex: 1;
+      min-width: 10rem;
+      max-width: 22rem;
+      accent-color: #8ab4f8;
+    }
+    .job-console-pre {
+      margin: 0.5rem 0 0 0;
+      padding: 0.65rem 0.75rem;
+      max-height: 22rem;
+      overflow: auto;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      background: #0e1014;
+      border: 1px solid #3c434d;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .job-console-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem 1rem;
+      margin-top: 0.35rem;
+    }
+    .input-with-suffix {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      max-width: 40rem;
+    }
+    .input-with-suffix > input,
+    .input-with-suffix > select {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+      max-width: none;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .input-with-suffix .input-suffix {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #3c434d;
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+      background: #2a2d35;
+      color: #9aa0a6;
+      font-size: 0.82rem;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .label-with-help {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      margin: 0.5rem 0 0.15rem 0;
+    }
+    .label-with-help > label {
+      margin: 0;
+    }
+    button.help-tip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.2rem;
+      height: 1.2rem;
+      padding: 0;
+      margin: 0;
+      border-radius: 50%;
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1;
+      background: #3c434d;
+      color: #bdc1c6;
+      border: 1px solid #5f6368;
+      cursor: help;
+      flex-shrink: 0;
+    }
+    button.help-tip:hover,
+    button.help-tip:focus-visible {
+      background: #4a5058;
+      color: #e8eaed;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+    }
+    legend.legend-with-help {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .checkbox-help-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      align-self: flex-end;
+    }
+    .checkbox-help-row label {
+      margin: 0;
+    }
+ </style>
+</head>
+<body class="layout-index">
+  <h1>Bulk VM snapshots</h1>
+  <p class="muted">Prism Central · non-CVM <code>mh_vm</code> inventory, snapshot runs, and bulk disk changes (v3 API).</p>
+
+  {% if success %}
+  <div class="ok">{{ success }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="err">{{ error }}{% if error_schedule_conflict %} Use “Cancel schedule” for that host first.{% endif %}</div>
+  {% endif %}
+
+  <section class="status-dashboard" id="status-dashboard" aria-label="Status overview">
+    <div class="dash-card">
+      <h3>Inventory</h3>
+      <div class="dash-body">
+        <div id="inventory-dash-skeleton" class="inv-dash-skel" hidden aria-hidden="true">
+          <div class="skel-bar skel-bar--wide"></div>
+          <div class="skel-bar skel-bar--narrow"></div>
+        </div>
+        <p id="vm-fetch-status" class="muted"></p>
+      </div>
+    </div>
+    <div class="dash-card">
+      <h3>Active schedules</h3>
+      <div class="dash-body">
+        {% if not active_schedules %}
+        <p class="muted" style="margin:0;">None.</p>
+        {% else %}
+        <p style="margin:0; font-size:0.92rem;"><strong>{{ active_schedules|length }}</strong> active · <a href="#schedules-full" style="color:#8ab4f8;">Manage &amp; cancel</a></p>
+        <ul class="dash-schedules-compact">
+          {% for row in active_schedules %}
+          <li>
+            <strong>{{ row.pc_ip }}</strong> · {{ row.kind }}
+            · <code style="font-size:0.76rem;">{{ row.next_run_utc }}</code>
+            {% if row.in_progress %}<span class="cell-badge cell-badge-progress" style="margin-left:0.35rem;"><span class="cell-badge-progress-dot" aria-hidden="true"></span>In progress</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+    <div class="dash-card">
+      <h3>Recent runs</h3>
+      <div class="dash-body">
+        {% if recent_runs %}
+        <ul class="dash-recent-list">
+          {% for r in recent_runs %}
+          <li>
+            {% if r.run_id %}<a href="{{ url_for('job_status', run_id=r.run_id) }}" style="color:#8ab4f8; font-weight:600;">{{ r.run_id[:10] }}…</a>{% else %}—{% endif %}
+            <span class="dash-recent-meta"> · {{ r.job_kind }}{% if r.succeeded is not none %} · {{ r.succeeded }} ok{% endif %}{% if r.failed is not none %}/{{ r.failed }} fail{% endif %}{% if r.duration_sec is not none %} · {{ (r.duration_sec | float) | round | int }}s{% endif %}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted" style="margin:0;">No completed runs in local history.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <form id="main-form" method="post" action="{{ url_for('start') }}">
+    <div class="sticky-controls-stack">
+    <section class="config-card" id="section-connection">
+    <fieldset>
+      <legend>Connection</legend>
+      <div class="row">
+        <div>
+          <label for="pc_ip">Prism Central IP / hostname / URL</label>
+          <div class="input-inline-row">
+            <input id="pc_ip" name="pc_ip" type="text" required autocomplete="off"
+              value="10.99.88.220"
+              placeholder="10.0.0.1 or https://pc.example.com:9440" />
+            <span id="pc-ip-feedback" class="field-feedback-icon" title="" aria-live="polite"></span>
+          </div>
+        </div>
+        <div>
+          <label for="pc_user">Username</label>
+          <input id="pc_user" name="pc_user" type="text" required autocomplete="username" value="admin" />
+        </div>
+        <div>
+          <label for="pc_password">Password</label>
+          <input id="pc_password" name="pc_password" type="password" autocomplete="current-password" value="Nutanix.123" />
+        </div>
+      </div>
+    </fieldset>
+    </section>
+    <div class="primary-actions-toolbar" id="primary-actions-toolbar" aria-label="Primary actions">
+      <span class="toolbar-hint">Actions</span>
+      <button type="button" class="btn-impact-cta" id="btn-start-disk-job" disabled>Start disk job</button>
+      <button type="button" class="btn-impact-cta" id="btn-run-full-pipeline" disabled>Run full pipeline</button>
+      <button type="submit" id="btn-start-snapshot-run">Start run</button>
+    </div>
+    <div id="pipeline-progress-dock" class="pipeline-progress-dock" aria-live="polite">
+      <p id="active-disk-job-hint" class="active-disk-job-hint" style="display:none; margin:0 0 0.35rem 0;"></p>
+      <span id="pipeline-global-status" class="muted"></span>
+      <div id="pipeline-stages" style="display:none; margin-top:0.75rem;">
+        <div class="pipeline-stage st-pending" data-stage="0"><span class="st-label">1. Inventory &amp; PE CVM IPs</span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+        <div class="pipeline-stage st-pending" data-stage="1"><span class="st-label">2. Disk job (guest SSH)</span><span class="st-status">Pending</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Disk job progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link" target="_blank" rel="noopener noreferrer">Open disk job</a></span></div></div>
+        <div class="pipeline-stage st-pending" data-stage="2"><span class="st-label">3. Snapshot run</span><span class="st-status">Pending</span><div class="st-col"><span class="st-detail"></span><div class="st-progress-wrap" hidden><div class="live-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Snapshot run progress"><div class="live-progress-fill"></div></div><span class="st-progress-label"></span></div><span class="st-link-wrap" style="display:none;"><a class="st-job-link" target="_blank" rel="noopener noreferrer">Open snapshot job</a></span></div></div>
+        <div class="pipeline-stage st-pending" data-stage="3"><span class="st-label st-label-with-tip">4. Curator on PEs<button type="button" class="help-tip" aria-label="Curator stage explained" title="Runs curator_cli on each PE controller VM (same as the Curator section below). Advances Nutanix background storage maintenance but adds load on CVMs; use caution on busy clusters.">?</button></span><span class="st-status">Pending</span><span class="st-detail"></span></div>
+      </div>
+    </div>
+    </div>
+
+    <section class="config-card">
+    <fieldset>
+      <legend>PE CVM IPs (from Prism Central)</legend>
+      <p class="muted" style="margin-top:0;">
+        Read-only list from <code>ncli multicluster get-cluster-state</code> when VM inventory loads (same SSH as Curator: <code>BULK_SNAP_CURATOR_PC_SSH_*</code> on the server). Disk jobs and Curator use these IPs automatically; the <strong>Cluster</strong> table maps names when order matches.
+      </p>
+      <pre id="pe-cvm-ips-display">(not loaded yet)</pre>
+      <p id="pe-cvm-ips-err" class="muted" style="display:none; margin:0.35rem 0 0 0;"></p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset id="unified-pipeline-fs">
+      <legend>Full pipeline (one button)</legend>
+      <p class="muted" style="margin-top:0;">
+        Runs in order: refresh <strong>VM inventory</strong> (Prism + PE CVM IPs via <code>ncli</code>) → force disk job to
+        <strong>Update</strong> + <strong>parallel clusters</strong> + <strong>PE stats throttle</strong> + <strong>adaptive SSH</strong> →
+        <strong>Disk job</strong> (guest SSH; pipeline waits) → <strong>Snapshot run</strong> (waits) →
+        <strong>Curator on PEs</strong>. While it runs, <strong>stage status and progress bars</strong> stay in the sticky strip under <strong>Actions</strong> above; each stage has an <strong>Open job</strong> link when a background job exists.
+        Only one disk job per Prism Central is allowed at a time (server blocks a second start while one is queued or running).
+        Individual buttons elsewhere still work as before.
+      </p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset>
+      <legend>Targeting &amp; filters</legend>
+      <p class="muted" style="margin-top:0;">
+        Loads automatically when this page opens: all non-CVM VMs from the groups API (same filter as snapshot runs). The response is cached on the server for guest disk preview/run until the cache expires or you reload after changing skip rules. Inventory status is summarized in the <a href="#status-dashboard" style="color:#8ab4f8;">status strip</a> above.
+      </p>
+
+      <div id="vm-summary" style="display:none;">
+        <div class="stat-grid" id="vm-stat-cards"></div>
+        <h2 style="margin-top:1rem; font-size:1rem;">VM inventory</h2>
+        <p class="muted" style="margin:0 0 0.25rem 0;">Search and page through VMs (non-CVM <code>mh_vm</code>). Data comes from the server cache after each inventory load.</p>
+        <div id="vm-inventory-table-wrap">
+          <div class="inventory-table-toolbar">
+            <input type="search" id="inventory-search" placeholder="Filter by name, cluster, IP, power…" autocomplete="off" />
+            <label class="muted" style="font-size:0.85rem;">Page size
+              <select id="inventory-page-size" style="margin-left:0.25rem;">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <span id="inventory-page-info" class="muted" style="font-size:0.85rem;"></span>
+            <button type="button" class="secondary" id="inventory-prev">Previous</button>
+            <button type="button" class="secondary" id="inventory-next">Next</button>
+          </div>
+          <p id="inventory-table-err" class="err" style="display:none;"></p>
+          <div class="inventory-table-scroll">
+            <table class="mini inventory-vm-table" id="tbl-inventory-vms">
+              <thead>
+                <tr>
+                  <th>VM name</th>
+                  <th>Power</th>
+                  <th>Cluster</th>
+                  <th>PE CVM IP</th>
+                  <th>Guest IP</th>
+                  <th>vCPU</th>
+                  <th>RAM (MiB)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <p id="cluster-pe-ip-hint" class="muted" style="display:none; margin-top:0.5rem;"></p>
+      </div>
+      <div id="vm-fetch-err" class="err" style="display:none;"></div>
+      <p class="muted">Reload after changing skips so disk-eligible counts stay in sync. PE CVM IP column uses <code>ncli multicluster get-cluster-state</code> on Prism Central (<code>BULK_SNAP_CURATOR_PC_SSH_*</code> on the app server).</p>
+
+      <label for="skip_substrings">Skip VM names containing (one per line or comma-separated)</label>
+      <textarea id="skip_substrings" name="skip_substrings" rows="2" placeholder="auto_pc"></textarea>
+      <label for="skip_regexes">Skip VM names matching regex (one per line)</label>
+      <textarea id="skip_regexes" name="skip_regexes" rows="2" placeholder="nc-.+-default"></textarea>
+      <p id="skip-regex-validation" class="skip-regex-hint muted"></p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset>
+      <legend>Workload simulation (guest SSH / disk churn)</legend>
+      <p class="muted">
+        Eligible guests: IP in Prism inventory, <strong>powered on</strong>, configured <strong>RAM</strong> above the minimum (MiB from Prism; default &gt;250), and not skipped by name rules. Guest SSH counts use the server inventory cache from when this page loaded (reload after changing skips). Limit how many get SSH with a number or percent (e.g. <code>100</code>, <code>50%</code>); leave blank for all eligible.
+        Each run uses <code>sshpass</code> + <code>ssh</code> to the guest and runs:
+        <strong>Delete</strong> — <code>rm -f …*.img</code> ·
+        <strong>Create</strong> — <code>openssl | dd</code> with your <strong>bs</strong> and <strong>count</strong> ·
+        <strong>Add</strong> — append ·
+        <strong>Update</strong> — overwrite ·
+        <strong>All mix</strong> — random per VM.
+      </p>
+      <input type="hidden" id="disk_run_limit" name="disk_run_limit" value="" />
+      <div class="row">
+        <div style="flex: 1 1 100%; min-width: 16rem;">
+          <label for="disk_limit_mode">How many VMs to run (guest SSH)</label>
+          <select id="disk_limit_mode">
+            <option value="all" selected>All eligible VMs</option>
+            <option value="count">Fixed max count</option>
+            <option value="percent">Percent of eligible</option>
+          </select>
+          <div id="disk-limit-count-wrap" style="display:none; margin-top:0.4rem;">
+            <label for="disk_limit_count" class="muted" style="font-size:0.85rem;">Max VMs</label>
+            <div class="input-with-suffix">
+              <input id="disk_limit_count" type="number" min="1" max="500000" value="100" />
+              <span class="input-suffix">VMs</span>
+            </div>
+          </div>
+          <div id="disk-limit-pct-wrap" style="display:none; margin-top:0.4rem;">
+            <div class="disk-limit-slider-row">
+              <input type="range" id="disk_limit_pct" min="1" max="100" value="50" aria-valuemin="1" aria-valuemax="100" />
+              <span id="disk_limit_pct_label" style="font-weight:600; min-width:3.5rem;">50%</span>
+            </div>
+            <p class="muted" style="margin:0.25rem 0 0 0; font-size:0.82rem;">Sends e.g. <code>50%</code> to the server (percent of eligible guests).</p>
+          </div>
+        </div>
+        <div>
+          <label for="guest_min_memory_mib">Min VM RAM</label>
+          <div class="input-with-suffix">
+            <input id="guest_min_memory_mib" type="number" min="0" max="1000000" value="250" title="Eligible only if Prism memory is strictly greater than this; 0 disables" />
+            <span class="input-suffix">MiB</span>
+          </div>
+        </div>
+      </div>
+      <p id="disk-preview-line" class="muted" style="min-height:1.5em;"></p>
+      <div id="disk-op-radios" style="margin:0.5rem 0;">
+        <label><input type="radio" name="disk_op_mode" value="create" /> Create (new dummy file)</label>
+        <label><input type="radio" name="disk_op_mode" value="add" /> Add (append to file)</label>
+        <label><input type="radio" name="disk_op_mode" value="update" checked /> Update (overwrite MiB)</label>
+        <label class="disk-op-danger"><input type="radio" name="disk_op_mode" value="delete" /> Delete (rm glob)</label>
+        <label class="disk-op-danger"><input type="radio" name="disk_op_mode" value="random_mix" /> All mix (random per VM)</label>
+      </div>
+      <div class="row">
+        <div>
+          <label for="guest_ssh_user">Guest SSH user</label>
+          <input id="guest_ssh_user" type="text" value="root" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_ssh_password">Guest SSH password</label>
+          <input id="guest_ssh_password" type="password" value="nutanix/4u" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_ssh_port">Guest SSH port</label>
+          <input id="guest_ssh_port" type="number" min="1" max="65535" value="22" />
+        </div>
+        <div>
+          <label for="guest_ssh_parallel">Concurrent SSH</label>
+          <select id="guest_ssh_parallel_preset" style="max-width:12rem; margin-bottom:0.35rem;" title="Quick presets; choose Custom to edit the number.">
+            <option value="10" selected>10 (default)</option>
+            <option value="5">5</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <div class="input-with-suffix">
+            <input id="guest_ssh_parallel" type="number" min="1" max="500" value="10" title="Baseline concurrent guest SSH (per cluster when parallel-by-cluster is on). With adaptive SSH and Max concurrent=0, the UI cap is max(this, 30)." />
+            <span class="input-suffix">VMs</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div style="align-self:flex-end;">
+          <label title="Run up to N VMs from each cluster in parallel; total can be N × number of clusters (subject to global limit below)">
+            <input type="checkbox" id="parallel_clusters" />
+            Parallel across clusters
+          </label>
+        </div>
+        <div>
+          <label for="vm_per_cluster">VMs per cluster cap</label>
+          <div class="input-with-suffix">
+            <input id="vm_per_cluster" type="number" min="0" max="500" value="0" title="Cap how many VMs are selected per cluster; 0 = all eligible in each cluster. Concurrent SSH is separate (field above)." />
+            <span class="input-suffix">VMs</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="checkbox-help-row">
+          <label title="With parallel clusters, PE CPU throttle is always on: poll cluster/stats and pause guest work when CPU is at/above the limit (PE CVM IPs come from ncli on the server).">
+            <input type="checkbox" id="cluster_pe_top_monitor" disabled checked />
+            PE stats CPU throttle (always on with parallel clusters)
+          </label>
+          <button type="button" class="help-tip" aria-label="PE stats throttle explained" title="When parallel clusters are enabled, the server polls Prism Element cluster/stats and PE CVM top. Guest disk work pauses if CPU is at or above Max CPU so SSH churn does not push controllers into overload.">?</button>
+        </div>
+        <div>
+          <label for="cluster_cpu_max_pct">Max CPU (PE top)</label>
+          <div class="input-with-suffix">
+            <input id="cluster_cpu_max_pct" type="number" min="0" max="100" value="80" disabled title="0 = do not check CPU; pause when top reports usage ≥ this" />
+            <span class="input-suffix">%</span>
+          </div>
+        </div>
+      </div>
+      <details class="advanced-disclosure">
+        <summary>Advanced: adaptive SSH ramp, PE access &amp; guest SSH timeouts</summary>
+      <div class="row">
+        <div class="checkbox-help-row">
+          <label title="Requires parallel clusters. Concurrency increases only on a time-based schedule (ramp phases) while PE CPU stays below its limits; overload resets to Concurrent SSH.">
+            <input type="checkbox" id="cluster_adaptive_ssh_parallel" disabled />
+            Adaptive SSH concurrency (PE CPU)
+          </label>
+          <button type="button" class="help-tip" aria-label="Adaptive SSH explained" title="While PE CPU stays under the adaptive threshold, concurrency can grow over time using ramp phases (below). If CPU exceeds the threshold or a spike is detected, concurrency drops back to the baseline Concurrent SSH value, an overload pause applies, and ramp timers reset after the cooldown.">?</button>
+        </div>
+        <div>
+          <label for="cluster_adaptive_cpu_threshold_pct">Adaptive: max CPU for ramp (overload if ≥)</label>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_cpu_threshold_pct" type="number" min="0" max="100" value="70" disabled title="If PE stats CPU is at or above this, reset to baseline and restart ramp timers. Keep at or below your PE throttle CPU if you use both." />
+            <span class="input-suffix">%</span>
+          </div>
+        </div>
+        <div>
+          <label for="cluster_adaptive_ssh_ceiling">Max concurrent (0 = auto)</label>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_ssh_ceiling" type="number" min="0" max="500" value="0" disabled title="Adaptive ramp ceiling; 0 = max(Concurrent SSH, 30), capped by VMs in cluster. Set explicitly to override." />
+            <span class="input-suffix">VMs</span>
+          </div>
+        </div>
+        <div>
+          <div class="label-with-help">
+            <label for="cluster_adaptive_cpu_spike_delta_pct">Spike guard: CPU Δ ≥</label>
+            <button type="button" class="help-tip" aria-label="Spike guard explained" title="If PE CPU jumps by this many percentage points between two cluster/stats samples, guest SSH concurrency resets to the baseline immediately—even if CPU is still below the ramp threshold. Dampens sudden load spikes. Use 0 to disable.">?</button>
+          </div>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_cpu_spike_delta_pct" type="number" min="0" max="100" step="0.5" value="10" disabled title="Reset concurrency to baseline if PE CPU jumps by this many points vs the prior stats sample, even when still below the ramp threshold; 0 = off" />
+            <span class="input-suffix">pts</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex: 1 1 100%; min-width: 100%;">
+          <div class="label-with-help">
+            <label for="cluster_adaptive_ramp">Adaptive ramp phases</label>
+            <button type="button" class="help-tip" aria-label="Ramp phases format" title="Comma-separated phases. Each phase is waitSec/slotsToAdd: wait that many seconds with PE CPU under the adaptive max, then allow that many extra concurrent SSH sessions (subject to the ceiling). Overload or spike resets concurrency and pauses ramp increases for the cooldown.">?</button>
+          </div>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_ramp" type="text" value="180/5,300/3" disabled autocomplete="off" title="Comma-separated phases. Each phase: wait that many seconds with PE CPU under the adaptive max, then add that many SSH slots. Overload (CPU over limit) or spike resets to Concurrent SSH, triggers overload pause, and freezes ramp for the cooldown period." />
+            <span class="input-suffix">sec/slots</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="cluster_adaptive_overload_pause_sec">Overload pause</label>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_overload_pause_sec" type="number" min="0" max="3600" step="1" value="10" disabled title="When PE CPU first crosses adaptive limits (or spike fires), wait this long before starting the next guest SSH on this cluster. Default 10." />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+        <div>
+          <label for="cluster_adaptive_cooldown_sec">Ramp cooldown after overload</label>
+          <div class="input-with-suffix">
+            <input id="cluster_adaptive_cooldown_sec" type="number" min="0" max="86400" step="1" value="300" disabled title="After overload or spike: concurrency stays at baseline and no ramp increases for this long (default 5 min = 300 s), even if CPU drops." />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="margin:0.25rem 0 0 0;">
+        <strong>PE Prism Element</strong> <code>cluster/stats</code> and PE CVM SSH (<code>top</code>): the server discovers controller VM IPs via <code>ncli</code> on Prism Central when you start a disk job or preview (same as Curator). No IP list in the UI.
+      </p>
+      <div class="row">
+        <div>
+          <label for="pe_prism_rest_port">PE Prism HTTPS port (cluster/stats)</label>
+          <input id="pe_prism_rest_port" type="number" min="1" max="65535" value="9440" disabled title="Prism Element REST port; default 9440. Override with BULK_SNAP_PE_PRISM_REST_PORT on the server." />
+        </div>
+        <div>
+          <label for="pe_cvm_ssh_user">PE CVM SSH user (<code>top</code> / optional SSH)</label>
+          <input id="pe_cvm_ssh_user" type="text" value="nutanix" disabled autocomplete="off" title="SSH user for PE CVM when running top -bn1 (CVM us/wa, stargate). Sent with the disk job; server defaults to BULK_SNAP_CURATOR_PE_SSH_USER if empty." />
+        </div>
+        <div>
+          <label for="pe_cvm_ssh_port">PE CVM SSH port</label>
+          <input id="pe_cvm_ssh_port" type="number" min="1" max="65535" value="22" disabled title="SSH port for PE CVM top; default matches BULK_SNAP_CURATOR_PE_SSH_PORT on the server." />
+        </div>
+        <div>
+          <label for="pe_cvm_ssh_password">PE CVM SSH password</label>
+          <input id="pe_cvm_ssh_password" type="password" value="RDMCluster.123" disabled autocomplete="off" title="SSH password for PE CVM top and legacy paths. Server defaults to BULK_SNAP_CURATOR_PE_SSH_PASSWORD if empty." />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="guest_ssh_connect_timeout">SSH connect timeout</label>
+          <div class="input-with-suffix">
+            <input id="guest_ssh_connect_timeout" type="number" min="5" value="30" />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+        <div>
+          <label for="guest_ssh_command_timeout">SSH command timeout</label>
+          <div class="input-with-suffix">
+            <input id="guest_ssh_command_timeout" type="number" min="60" value="7200" />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+      </div>
+      </details>
+      <div class="row">
+        <div>
+          <label for="guest_target_file">Target file (create / add / update)</label>
+          <input id="guest_target_file" type="text" value="/root/dummy_snapshot_data_1.img" autocomplete="off" />
+        </div>
+        <div>
+          <label for="guest_delete_glob">Delete glob pattern</label>
+          <input id="guest_delete_glob" type="text" value="/root/dummy_snapshot_data_*.img" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="label-with-help">
+            <label for="guest_dd_bs">dd block size (<code>bs</code>)</label>
+            <button type="button" class="help-tip" aria-label="dd bs parameter" title="Passed to GNU dd as bs=. Examples: 1M (1024^2 bytes per block), 512, 10MB (10^6 bytes). Total data is roughly bs times count (blocks).">?</button>
+          </div>
+          <input id="guest_dd_bs" type="text" value="1M" autocomplete="off" title="GNU dd bs= (e.g. 1M, 10MB, 512). Total = bs times block count; M is 1024^2 bytes, MB is 10^6 (coreutils-style)." />
+        </div>
+        <div>
+          <label for="create_count_mib">Create: dd count</label>
+          <div class="input-with-suffix">
+            <input id="create_count_mib" type="number" min="1" value="1024" title="Number of bs-sized blocks on create. With bs=1M, count 1024 is 1024 MiB." />
+            <span class="input-suffix">blocks</span>
+          </div>
+        </div>
+        <div>
+          <label for="churn_count_mib">Add / update: dd count</label>
+          <div class="input-with-suffix">
+            <input id="churn_count_mib" type="number" min="1" value="500" title="Number of bs-sized blocks for add/update." />
+            <span class="input-suffix">blocks</span>
+          </div>
+        </div>
+      </div>
+      <p id="disk-dd-size-preview" class="muted" style="margin:0.25rem 0; min-height:2.5em;"> </p>
+      <div class="row">
+        <div>
+          <label for="disk_random_seed">Random seed (mix mode, optional)</label>
+          <input id="disk_random_seed" type="text" placeholder="empty = non-deterministic" autocomplete="off" />
+        </div>
+      </div>
+      <p class="muted">Requires <code>sshpass</code> + <code>ssh</code> on this server. Disable with <code>BULK_SNAP_GUEST_NO_SSHPASS=1</code>. Guest reachability may still differ from Prism-reported IPs; trial with a small limit first.</p>
+      <p class="muted" style="margin:0.25rem 0 0 0; font-size:0.85rem;"><strong>Start disk job</strong> is in the sticky <strong>Actions</strong> bar above.</p>
+      <span id="disk-job-status" class="muted"></span>
+      <div id="disk-job-err" class="err" style="display:none;"></div>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset>
+      <legend>Execution — snapshot run</legend>
+      <div class="row">
+        <div>
+          <label for="batch_size">Batch size</label>
+          <select id="batch_size_preset" style="max-width:12rem; margin-bottom:0.35rem;" title="Apply a common batch size">
+            <option value="">Preset…</option>
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <div class="input-with-suffix">
+            <input id="batch_size" name="batch_size" type="number" min="1" value="10" />
+            <span class="input-suffix">VMs</span>
+          </div>
+        </div>
+        <div>
+          <label for="expiration_days">Snapshot expiration</label>
+          <div class="input-with-suffix">
+            <input id="expiration_days" name="expiration_days" type="number" min="1" value="30" />
+            <span class="input-suffix">days</span>
+          </div>
+        </div>
+        <div>
+          <label for="task_timeout_sec">Task timeout</label>
+          <div class="input-with-suffix">
+            <input id="task_timeout_sec" name="task_timeout_sec" type="number" min="60" value="300" />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+      </div>
+      <details class="advanced-disclosure">
+        <summary>Advanced: API paging &amp; task polling</summary>
+      <div class="row">
+        <div>
+          <label for="group_member_page">Groups page size</label>
+          <div class="input-with-suffix">
+            <input id="group_member_page" name="group_member_page" type="number" min="1" value="500" />
+            <span class="input-suffix">VMs</span>
+          </div>
+        </div>
+        <div>
+          <label for="poll_interval">Poll interval</label>
+          <div class="input-with-suffix">
+            <input id="poll_interval" name="poll_interval" type="number" min="0.5" step="0.5" value="4" />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+        <div>
+          <label for="sleep_before_task_poll_sec">Sleep before task poll</label>
+          <div class="input-with-suffix">
+            <input id="sleep_before_task_poll_sec" name="sleep_before_task_poll_sec" type="number" min="0" step="0.5" value="0" />
+            <span class="input-suffix">sec</span>
+          </div>
+        </div>
+      </div>
+      </details>
+
+      <div class="label-with-help">
+        <label for="snapshot_trigger_mode">Snapshot trigger mode</label>
+        <button type="button" class="help-tip" aria-label="Snapshot trigger modes" title="series: one snapshot API call per VM in sequence within each batch (lighter on Prism Central). parallel: issue all calls in the batch at once (faster, higher concurrent load on PC and storage).">?</button>
+      </div>
+      <select id="snapshot_trigger_mode" name="snapshot_trigger_mode">
+        <option value="series" selected>series (one POST at a time per batch)</option>
+        <option value="parallel">parallel (all POSTs in batch at once)</option>
+      </select>
+
+      <div class="label-with-help">
+        <label for="recovery_point_type">Recovery point type</label>
+        <button type="button" class="help-tip" aria-label="Recovery point types" title="CRASH_CONSISTENT: faster; like a sudden power-off from the storage view. APPLICATION_CONSISTENT: may quiesce supported apps for a cleaner point-in-time; often slower. The random option mixes modes per VM for stress-style runs.">?</button>
+      </div>
+      <select id="recovery_point_type" name="recovery_point_type">
+        <option value="CRASH_CONSISTENT" selected>CRASH_CONSISTENT</option>
+        <option value="APPLICATION_CONSISTENT">APPLICATION_CONSISTENT</option>
+        <option value="{{ RANDOM_CRASH_OR_APP }}">{{ RANDOM_CRASH_OR_APP }} (random per VM)</option>
+      </select>
+
+      <p id="estimate-line" class="muted"></p>
+
+      <p class="muted" style="margin:0.35rem 0 0 0; font-size:0.85rem;"><strong>Start run</strong> (snapshot) is in the sticky <strong>Actions</strong> bar above.</p>
+    </fieldset>
+    </section>
+
+    <section class="config-card">
+    <fieldset>
+      <legend>Scheduling (optional)</legend>
+      <label><input type="checkbox" name="schedule_enabled" value="1" id="schedule_enabled" /> Enable schedule instead of starting now</label>
+      <label for="schedule_kind">Schedule type</label>
+      <select id="schedule_kind" name="schedule_kind">
+        <option value="one_time">One-time (UTC)</option>
+        <option value="recurring">Recurring</option>
+      </select>
+      <label for="schedule_one_time_utc">One-time run at (ISO-8601 UTC, e.g. <code>2026-04-03T14:30:00+00:00</code>)</label>
+      <input id="schedule_one_time_utc" name="schedule_one_time_utc" type="text" autocomplete="off" />
+      <label for="recurring_interval_minutes">Recurring interval</label>
+      <div class="input-with-suffix">
+        <input id="recurring_interval_minutes" name="recurring_interval_minutes" type="number" min="1" value="60" />
+        <span class="input-suffix">min</span>
+      </div>
+      <p class="muted">When schedule is enabled, use <strong>Start run</strong> in the sticky <strong>Actions</strong> bar to save the schedule (no job starts until the chosen time). Prism Central address must be unique per active schedule.</p>
+    </fieldset>
+    </section>
+  </form>
+
+  <section class="config-card" id="schedules-full">
+  <h2 class="config-card-title" style="border:none; padding:0; margin:0 0 0.65rem 0;">Schedules — manage &amp; cancel</h2>
+  {% if not active_schedules %}
+  <p class="muted">None. Active schedules also appear in the <a href="#status-dashboard" style="color:#8ab4f8;">status strip</a>.</p>
+  {% else %}
+  <ul class="schedules">
+    {% for row in active_schedules %}
+    <li>
+      <strong>{{ row.pc_ip }}</strong>
+      · {{ row.kind }}{% if row.detail %} · {{ row.detail }}{% endif %}
+      · next (UTC): <code>{{ row.next_run_utc }}</code>
+      {% if row.in_progress %}
+      <span class="muted">· In progress:
+        {% for j in row.in_progress %}
+        <a href="{{ j.job_url }}">{{ j.run_id[:8] }}… ({{ j.status }})</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </span>
+      {% endif %}
+      <form method="post" action="{{ url_for('cancel_schedule') }}" style="margin-top:0.5rem;">
+        <input type="hidden" name="pc_ip" value="{{ row.pc_ip }}" />
+        <label style="display:inline;"><input type="checkbox" name="abort_in_progress" value="1" /> Abort in-progress job(s)</label>
+        <button type="submit" class="secondary">Cancel schedule</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  </section>
+
+  <section class="config-card">
+  <fieldset>
+    <legend class="legend-with-help">
+      <span>Curator (PE CVM) — <code>curator_cli</code></span>
+      <button type="button" class="help-tip" aria-label="What Curator does" title="Nutanix Curator performs background storage maintenance (e.g. scans, reclaims). Running curator_cli on PE controller VMs can advance that work after heavy disk or snapshot churn, but it consumes CPU and I/O on CVMs—prefer maintenance windows on busy clusters.">?</button>
+    </legend>
+    <p class="muted">Resolves PE CVM IPs on the server via <code>ncli</code> on Prism Central (<strong>Connection</strong> above). SSH on each PE uses <code>BULK_SNAP_CURATOR_*</code> on the app server.</p>
+    <button type="button" class="secondary btn-curator-impact" id="btn-curator-run">Run curator_cli on PEs</button>
+    <span id="curator-run-status" class="muted"></span>
+    <pre id="curator-out" style="display:none; max-height:12rem; overflow:auto; font-size:0.78rem; background:#0e1014; border:1px solid #3c434d; padding:0.5rem;"></pre>
+  </fieldset>
+  </section>
+
+  <section class="config-card" id="integrated-job-console-section">
+    <h2 class="config-card-title" style="border:none; padding:0; margin:0 0 0.5rem 0;">Job console</h2>
+    <p class="muted" style="margin:0 0 0.35rem 0;">
+      During <strong>Run full pipeline</strong>, job logs stream here so you do not need an extra browser tab. Snapshot runs show task/API log tails; disk jobs include a live log tail plus progress in the stage row above.
+    </p>
+    <div class="job-console-toolbar">
+      <button type="button" class="secondary" id="job-console-clear">Clear</button>
+      <label class="muted" style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.88rem;">
+        <input type="checkbox" id="job-console-autoscroll" checked /> Auto-scroll
+      </label>
+      <span id="job-console-status" class="muted" style="font-size:0.85rem;"></span>
+    </div>
+    <pre id="job-console-output" class="job-console-pre" aria-live="polite"></pre>
+  </section>
+
+  <p class="muted"><a href="{{ url_for('index') }}" style="color:#8ab4f8;">Reload</a></p>
+
+  <div
+    id="disk-confirm-modal"
+    class="confirm-modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="disk-confirm-title"
+  >
+    <div class="confirm-modal">
+      <h2 id="disk-confirm-title" class="confirm-modal-title"></h2>
+      <div id="disk-confirm-body" class="confirm-modal-body"></div>
+      <div class="confirm-modal-actions">
+        <button type="button" class="secondary" id="disk-confirm-cancel">Cancel</button>
+        <button type="button" id="disk-confirm-ok"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    /** Set when VM inventory loads (page load); sent with disk preview/start to skip a second Prism inventory fetch. */
+    let inventoryCacheId = null;
+    let lastDiskPreviewNorm = null;
+    let lastStoredNormFp = "";
+    let lastDiskPreviewPipe = null;
+    let lastStoredPipeFp = "";
+    let inventoryTablePage = 1;
+    let inventoryLastTotalPages = 1;
+    let inventorySearchDebounce = null;
+    let jobConsoleTimer = null;
+    let jobConsoleActiveRunId = null;
+
+    function readConn() {
+      return {
+        pc_ip: $("pc_ip").value.trim(),
+        pc_user: $("pc_user").value.trim(),
+        pc_password: $("pc_password").value,
+        group_member_page: parseInt($("group_member_page").value, 10) || 500,
+      };
+    }
+
+    const activeDiskJobUrl = "{{ url_for('api_active_disk_job') }}";
+    let activeDiskJobDebounce = null;
+    /** Last POST /api/active_disk_job result for the form’s pc_ip (busy = duplicate guard). */
+    let serverActiveDiskJob = null;
+
+    function updateActiveDiskJobHint() {
+      const el = $("active-disk-job-hint");
+      if (!el) return;
+      el.textContent = "";
+      el.style.display = "none";
+      const c = readConn();
+      const st = serverActiveDiskJob;
+      const pcTrim = (c.pc_ip || "").trim();
+      if (!st || !st.busy || st.for_pc_ip !== pcTrim || !pcTrim) return;
+      el.style.display = "block";
+      const frag = document.createDocumentFragment();
+      frag.appendChild(document.createTextNode("Disk job already "));
+      const strong = document.createElement("strong");
+      strong.textContent = st.status || "running";
+      frag.appendChild(strong);
+      frag.appendChild(
+        document.createTextNode(" for this PC (" + String(st.run_id || "").slice(0, 12) + "…). "),
+      );
+      if (st.job_url) {
+        let href = "";
+        try {
+          href = new URL(st.job_url, window.location.origin).href;
+        } catch (e) {
+          href = String(st.job_url);
+        }
+        const a = document.createElement("a");
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.style.color = "#8ab4f8";
+        a.style.fontWeight = "600";
+        a.textContent = "Open disk job";
+        frag.appendChild(a);
+        frag.appendChild(document.createTextNode(" "));
+      }
+      frag.appendChild(
+        document.createTextNode("Wait for it to finish before starting another disk job or pipeline."),
+      );
+      el.appendChild(frag);
+    }
+
+    async function refreshActiveDiskJobState() {
+      const c = readConn();
+      const pc = (c.pc_ip || "").trim();
+      if (!pc) {
+        serverActiveDiskJob = { for_pc_ip: "", busy: false };
+        syncImpactActionButtons();
+        return;
+      }
+      try {
+        const r = await fetch(activeDiskJobUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ pc_ip: pc }),
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          serverActiveDiskJob = { for_pc_ip: pc, busy: false };
+        } else {
+          serverActiveDiskJob = {
+            for_pc_ip: pc,
+            busy: !!j.busy,
+            run_id: j.run_id,
+            status: j.status,
+            job_url: j.job_url,
+          };
+        }
+      } catch (_) {
+        serverActiveDiskJob = { for_pc_ip: pc, busy: false };
+      }
+      syncImpactActionButtons();
+    }
+
+    function scheduleActiveDiskJobRefresh() {
+      if (activeDiskJobDebounce) clearTimeout(activeDiskJobDebounce);
+      activeDiskJobDebounce = setTimeout(() => {
+        activeDiskJobDebounce = null;
+        refreshActiveDiskJobState();
+      }, 400);
+    }
+
+    function readGuestMinMemoryMib() {
+      const v = parseInt($("guest_min_memory_mib").value, 10);
+      if (!Number.isFinite(v)) {
+        return 250;
+      }
+      return Math.max(0, Math.min(v, 1000000));
+    }
+
+    function readGuestSshParallel() {
+      const v = parseInt($("guest_ssh_parallel").value, 10);
+      if (!Number.isFinite(v)) {
+        return 10;
+      }
+      return Math.max(1, Math.min(v, 500));
+    }
+
+    function readParallelClusters() {
+      return $("parallel_clusters").checked;
+    }
+
+    function readVmPerCluster() {
+      const v = parseInt($("vm_per_cluster").value, 10);
+      if (!Number.isFinite(v) || v < 0) {
+        return 0;
+      }
+      return Math.min(v, 500);
+    }
+
+    function readClusterPeTopMonitor() {
+      return true;
+    }
+
+    function readClusterAdaptiveSsh() {
+      return $("cluster_adaptive_ssh_parallel").checked;
+    }
+
+    function readClusterAdaptiveCpuThresholdPct() {
+      const v = parseFloat($("cluster_adaptive_cpu_threshold_pct").value);
+      if (!Number.isFinite(v)) return 90;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterAdaptiveRamp() {
+      const s = ($("cluster_adaptive_ramp").value || "").trim();
+      return s || "180/5,300/3";
+    }
+
+    function readClusterAdaptiveOverloadPauseSec() {
+      const v = parseFloat($("cluster_adaptive_overload_pause_sec").value);
+      if (!Number.isFinite(v) || v < 0) return 10;
+      return Math.min(v, 3600);
+    }
+
+    function readClusterAdaptiveCooldownSec() {
+      const v = parseFloat($("cluster_adaptive_cooldown_sec").value);
+      if (!Number.isFinite(v) || v < 0) return 300;
+      return Math.min(v, 86400);
+    }
+
+    function readClusterAdaptiveSshCeiling() {
+      const v = parseInt($("cluster_adaptive_ssh_ceiling").value, 10);
+      if (!Number.isFinite(v) || v < 0) return 0;
+      return Math.min(v, 500);
+    }
+
+    function readClusterAdaptiveCpuSpikeDeltaPct() {
+      const v = parseFloat($("cluster_adaptive_cpu_spike_delta_pct").value);
+      if (!Number.isFinite(v)) return 10;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterCpuMaxPct() {
+      const v = parseFloat($("cluster_cpu_max_pct").value);
+      if (!Number.isFinite(v)) return 85;
+      return Math.max(0, Math.min(v, 100));
+    }
+
+    function readClusterMemMaxPct() {
+      return 0;
+    }
+
+    function readPePrismRestPort() {
+      const v = parseInt($("pe_prism_rest_port").value, 10);
+      if (!Number.isFinite(v) || v < 1) return 9440;
+      return Math.min(v, 65535);
+    }
+
+    function syncDiskRunLimitToHidden() {
+      const hidden = $("disk_run_limit");
+      const modeEl = $("disk_limit_mode");
+      if (!hidden || !modeEl) return;
+      const mode = modeEl.value;
+      if (mode === "all") {
+        hidden.value = "";
+      } else if (mode === "count") {
+        const n = parseInt(($("disk_limit_count") && $("disk_limit_count").value) || "1", 10);
+        hidden.value = String(Math.max(1, Number.isFinite(n) ? n : 1));
+      } else {
+        const p = parseInt(($("disk_limit_pct") && $("disk_limit_pct").value) || "50", 10);
+        const pct = Math.max(1, Math.min(100, Number.isFinite(p) ? p : 50));
+        hidden.value = String(pct) + "%";
+      }
+    }
+
+    function refreshDiskLimitModeUi() {
+      const mode = ($("disk_limit_mode") && $("disk_limit_mode").value) || "all";
+      const cw = $("disk-limit-count-wrap");
+      const pw = $("disk-limit-pct-wrap");
+      if (cw) cw.style.display = mode === "count" ? "block" : "none";
+      if (pw) pw.style.display = mode === "percent" ? "block" : "none";
+      syncDiskRunLimitToHidden();
+    }
+
+    function updateDiskPctLabel() {
+      const sl = $("disk_limit_pct");
+      const lb = $("disk_limit_pct_label");
+      if (!sl || !lb) return;
+      const p = Math.max(1, Math.min(100, parseInt(sl.value, 10) || 50));
+      lb.textContent = p + "%";
+    }
+
+    function syncGuestSshParallelPresetSelect() {
+      const sel = $("guest_ssh_parallel_preset");
+      const inp = $("guest_ssh_parallel");
+      if (!sel || !inp) return;
+      const v = String(Math.max(1, Math.min(500, parseInt(inp.value, 10) || 10)));
+      let matched = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        const o = sel.options[i];
+        if (o.value !== "custom" && o.value === v) {
+          matched = true;
+          break;
+        }
+      }
+      sel.value = matched ? v : "custom";
+    }
+
+    function syncBatchSizePresetSelect() {
+      const sel = $("batch_size_preset");
+      const inp = $("batch_size");
+      if (!sel || !inp) return;
+      const n = parseInt(inp.value, 10);
+      const v = Number.isFinite(n) && n > 0 ? String(n) : "";
+      let matched = "";
+      for (let i = 0; i < sel.options.length; i++) {
+        const o = sel.options[i];
+        if (o.value && o.value === v) {
+          matched = o.value;
+          break;
+        }
+      }
+      sel.value = matched;
+    }
+
+    function clearJobConsole() {
+      const o = $("job-console-output");
+      if (o) o.textContent = "";
+      const st = $("job-console-status");
+      if (st) st.textContent = "";
+    }
+
+    function setJobConsoleText(text) {
+      const o = $("job-console-output");
+      if (!o) return;
+      o.textContent = text;
+      const aut = $("job-console-autoscroll");
+      if (aut && aut.checked) o.scrollTop = o.scrollHeight;
+    }
+
+    function stopJobConsolePoll() {
+      if (jobConsoleTimer) {
+        clearInterval(jobConsoleTimer);
+        jobConsoleTimer = null;
+      }
+      jobConsoleActiveRunId = null;
+    }
+
+    async function jobConsolePollTick(runId) {
+      if (jobConsoleActiveRunId !== runId) return;
+      try {
+        const r = await fetch("/api/job/" + encodeURIComponent(runId) + "?console=1", {
+          headers: { Accept: "application/json" },
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (jobConsoleActiveRunId !== runId) return;
+        if (j.error && r.status === 404) return;
+        const st = (j.status || "unknown").toUpperCase();
+        const kind = j.job_kind || "snapshot";
+        let head = "[" + st + "] " + kind + " · " + String(runId).slice(0, 8) + "…";
+        if (j.log_truncated) head += " (tail only)";
+        head += "\n\n";
+        let body = j.log || "";
+        if (j.job_kind === "disk") {
+          const hint = pipelineDiskProgressHint(j);
+          if (hint) body = hint + (body ? "\n\n" + body : "");
+        }
+        setJobConsoleText(head + body);
+        const cs = $("job-console-status");
+        if (cs) cs.textContent = "Updated " + new Date().toLocaleTimeString();
+      } catch (_) {}
+    }
+
+    function startJobConsolePoll(runId) {
+      stopJobConsolePoll();
+      if (!runId) return;
+      jobConsoleActiveRunId = runId;
+      jobConsolePollTick(runId);
+      jobConsoleTimer = setInterval(() => jobConsolePollTick(runId), 2000);
+    }
+
+    function setInventoryDashSkeleton(on) {
+      const sk = $("inventory-dash-skeleton");
+      const st = $("vm-fetch-status");
+      const card = sk && sk.closest(".dash-card");
+      if (sk) {
+        sk.hidden = !on;
+        sk.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+      if (st) st.style.display = on ? "none" : "";
+      if (card) card.setAttribute("aria-busy", on ? "true" : "false");
+    }
+
+    function fillInventoryTableSkeleton(tb, rowCount) {
+      if (!tb) return;
+      const n = Math.max(1, Math.min(rowCount || 8, 50));
+      const cells = 7;
+      let html = "";
+      for (let r = 0; r < n; r++) {
+        html += '<tr class="skel-row">';
+        for (let c = 0; c < cells; c++) html += '<td><span class="skel-cell"></span></td>';
+        html += "</tr>";
+      }
+      tb.innerHTML = html;
+    }
+
+    async function loadInventoryTablePage(goPage) {
+      if (typeof goPage === "number") inventoryTablePage = goPage;
+      const errEl = $("inventory-table-err");
+      const info = $("inventory-page-info");
+      const tb = document.querySelector("#tbl-inventory-vms tbody");
+      if (!inventoryCacheId || !tb) {
+        if (errEl) errEl.style.display = "none";
+        return;
+      }
+      const c = readConn();
+      const q = ($("inventory-search") && $("inventory-search").value) || "";
+      const pageSize = parseInt(($("inventory-page-size") && $("inventory-page-size").value) || "25", 10) || 25;
+      if (errEl) {
+        errEl.style.display = "none";
+        errEl.textContent = "";
+      }
+      fillInventoryTableSkeleton(tb, pageSize);
+      try {
+        const r = await fetch("{{ url_for('api_vm_inventory_table') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            pc_ip: c.pc_ip,
+            inventory_cache_id: inventoryCacheId,
+            q: q.trim(),
+            page: inventoryTablePage,
+            page_size: pageSize,
+          }),
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          if (errEl) {
+            errEl.textContent = j.message || "Table load failed.";
+            errEl.style.display = "block";
+          }
+          tb.innerHTML = "";
+          return;
+        }
+        inventoryTablePage = j.page || 1;
+        inventoryLastTotalPages = j.total_pages || 1;
+        if (info)
+          info.textContent =
+            "Page " + j.page + " / " + j.total_pages + " · " + j.total + " VM(s) match";
+        tb.innerHTML = "";
+        const esc = (v) => String(v ?? "").replace(/</g, "&lt;");
+        const powerBadgeHtml = (raw) => {
+          const low = String(raw || "").toLowerCase();
+          if (low === "on")
+            return '<span class="cell-badge cell-badge-ok">' + esc(raw) + "</span>";
+          if (low === "off")
+            return '<span class="cell-badge cell-badge-fail">' + esc(raw) + "</span>";
+          return '<span class="cell-badge cell-badge-neutral">' + esc(raw) + "</span>";
+        };
+        for (const row of j.rows || []) {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" +
+            esc(row.name) +
+            "</td><td>" +
+            powerBadgeHtml(row.power_state) +
+            "</td><td>" +
+            esc(row.cluster_name) +
+            "</td><td><code>" +
+            esc(row.pe_cvm_ip || "—") +
+            "</code></td><td><code>" +
+            esc(row.ip || "—") +
+            "</code></td><td>" +
+            esc(row.num_vcpus != null ? row.num_vcpus : "—") +
+            "</td><td>" +
+            esc(row.memory_mib != null ? row.memory_mib : "—") +
+            "</td>";
+          tb.appendChild(tr);
+        }
+      } catch (e) {
+        if (errEl) {
+          errEl.textContent = String(e);
+          errEl.style.display = "block";
+        }
+      }
+    }
+
+    /** Body for POST /api/disk_targets_preview. pipelinePreset matches the full-pipeline disk stage (parallel clusters + adaptive SSH on). */
+    function buildDiskTargetsPreviewBody(pipelinePreset) {
+      syncDiskRunLimitToHidden();
+      const c = readConn();
+      const disk_run_limit = $("disk_run_limit").value.trim();
+      const parallel_clusters = pipelinePreset ? true : readParallelClusters();
+      const cluster_adaptive_ssh_parallel = pipelinePreset ? true : readClusterAdaptiveSsh();
+      const body = {
+        ...c,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        disk_run_limit: disk_run_limit,
+        guest_min_memory_mib: readGuestMinMemoryMib(),
+        guest_ssh_parallel: readGuestSshParallel(),
+        parallel_clusters: parallel_clusters,
+        vm_per_cluster: readVmPerCluster(),
+        cluster_pe_top_monitor: readClusterPeTopMonitor(),
+        cluster_adaptive_ssh_parallel: cluster_adaptive_ssh_parallel,
+        cluster_adaptive_cpu_threshold_pct: readClusterAdaptiveCpuThresholdPct(),
+        cluster_adaptive_ssh_ceiling: readClusterAdaptiveSshCeiling(),
+        cluster_adaptive_cpu_spike_delta_pct: readClusterAdaptiveCpuSpikeDeltaPct(),
+        cluster_adaptive_ramp: readClusterAdaptiveRamp(),
+        cluster_adaptive_overload_pause_sec: readClusterAdaptiveOverloadPauseSec(),
+        cluster_adaptive_cooldown_sec: readClusterAdaptiveCooldownSec(),
+        cluster_cpu_max_pct: readClusterCpuMaxPct(),
+        cluster_mem_max_pct: readClusterMemMaxPct(),
+        pe_prism_rest_port: readPePrismRestPort(),
+      };
+      if (inventoryCacheId) {
+        body.inventory_cache_id = inventoryCacheId;
+      }
+      return body;
+    }
+
+    function diskTargetsPreviewFingerprint(pipelinePreset) {
+      return JSON.stringify(buildDiskTargetsPreviewBody(pipelinePreset));
+    }
+
+    function syncImpactActionButtons() {
+      syncDiskRunLimitToHidden();
+      const c = readConn();
+      const btnDisk = $("btn-start-disk-job");
+      const btnPipe = $("btn-run-full-pipeline");
+      if (!btnDisk || !btnPipe) return;
+      const pcTrim = (c.pc_ip || "").trim();
+      const diskBusy =
+        serverActiveDiskJob &&
+        serverActiveDiskJob.busy &&
+        serverActiveDiskJob.for_pc_ip === pcTrim &&
+        !!pcTrim;
+      const fpN = diskTargetsPreviewFingerprint(false);
+      const fpP = diskTargetsPreviewFingerprint(true);
+      const guestPw = ($("guest_ssh_password").value || "").trim();
+      const needConn = "Enter Prism Central address and username.";
+      const needInv = "Wait for inventory to finish loading.";
+      const needCounts =
+        "Guest SSH target counts are updating to match the form (see line below), or fix any error shown there.";
+      const needGuestPw = "Guest SSH password is required for the pipeline disk stage.";
+      const needDiskBusy =
+        "A disk job is already running or queued for this Prism Central. Finish it before starting another disk job or pipeline.";
+      const baseDisk =
+        !c.pc_ip ||
+        !c.pc_user ||
+        !inventoryCacheId ||
+        !lastDiskPreviewNorm ||
+        fpN !== lastStoredNormFp;
+      const basePipe =
+        !c.pc_ip ||
+        !c.pc_user ||
+        !inventoryCacheId ||
+        !lastDiskPreviewPipe ||
+        fpP !== lastStoredPipeFp ||
+        !guestPw;
+      btnDisk.disabled = baseDisk || diskBusy;
+      btnPipe.disabled = basePipe || diskBusy;
+      if (!c.pc_ip || !c.pc_user) {
+        btnDisk.title = needConn;
+        btnPipe.title = needConn;
+      } else if (diskBusy) {
+        btnDisk.title = needDiskBusy;
+        btnPipe.title = needDiskBusy;
+      } else if (!inventoryCacheId) {
+        btnDisk.title = needInv;
+        btnPipe.title = needInv;
+      } else {
+        if (btnDisk.disabled) btnDisk.title = needCounts;
+        if (btnPipe.disabled) {
+          btnPipe.title =
+            !guestPw && fpP === lastStoredPipeFp && lastDiskPreviewPipe ? needGuestPw : needCounts;
+        }
+      }
+      updateActiveDiskJobHint();
+    }
+
+    function clearDiskPreviewState() {
+      lastDiskPreviewNorm = null;
+      lastStoredNormFp = "";
+      lastDiskPreviewPipe = null;
+      lastStoredPipeFp = "";
+      syncImpactActionButtons();
+    }
+
+    const DISK_PREVIEW_DEBOUNCE_MS = 420;
+    let diskTargetsPreviewDebounce = null;
+    let diskPreviewRequestId = 0;
+    const diskTargetsPreviewUrl = "{{ url_for('api_disk_targets_preview') }}";
+
+    /** Fetches normal + pipeline disk target previews (same as former “Preview targets” button). */
+    async function runDiskTargetsPreviewFromForm() {
+      const myId = ++diskPreviewRequestId;
+      const el = $("disk-preview-line");
+      const c = readConn();
+      if (!c.pc_ip || !c.pc_user || !inventoryCacheId) {
+        clearDiskPreviewState();
+        if (myId !== diskPreviewRequestId) return false;
+        return false;
+      }
+      if (el) el.textContent = "Updating guest SSH target counts…";
+      lastDiskPreviewNorm = null;
+      lastDiskPreviewPipe = null;
+      lastStoredNormFp = "";
+      lastStoredPipeFp = "";
+      syncImpactActionButtons();
+      try {
+        const bodyNorm = buildDiskTargetsPreviewBody(false);
+        const r1 = await fetch(diskTargetsPreviewUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(bodyNorm),
+        });
+        const j1 = await r1.json();
+        if (myId !== diskPreviewRequestId) return false;
+        if (!j1.ok) {
+          if (el) el.textContent = j1.message || "Guest SSH count preview failed.";
+          syncImpactActionButtons();
+          return false;
+        }
+        lastDiskPreviewNorm = j1;
+        lastStoredNormFp = JSON.stringify(bodyNorm);
+        if (el) el.textContent = formatDiskPreviewDetailText(j1) + " — pipeline preset…";
+        const bodyPipe = buildDiskTargetsPreviewBody(true);
+        const r2 = await fetch(diskTargetsPreviewUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(bodyPipe),
+        });
+        const j2 = await r2.json();
+        if (myId !== diskPreviewRequestId) return false;
+        if (!j2.ok) {
+          if (el)
+            el.textContent =
+              formatDiskPreviewDetailText(j1) + " Pipeline preset failed: " + (j2.message || "error");
+          lastDiskPreviewPipe = null;
+          lastStoredPipeFp = "";
+          syncImpactActionButtons();
+          return false;
+        }
+        lastDiskPreviewPipe = j2;
+        lastStoredPipeFp = JSON.stringify(bodyPipe);
+        if (el)
+          el.textContent =
+            formatDiskPreviewDetailText(j1) +
+            " — Pipeline disk stage: " +
+            (j2.planned_guest_ssh_runs != null ? j2.planned_guest_ssh_runs : "—") +
+            " planned SSH run(s), " +
+            (j2.clusters_in_inventory != null ? j2.clusters_in_inventory + " cluster(s)." : "clusters —.");
+        syncImpactActionButtons();
+        return true;
+      } catch (e) {
+        if (myId !== diskPreviewRequestId) return false;
+        if (el) el.textContent = String(e);
+        syncImpactActionButtons();
+        return false;
+      }
+    }
+
+    function scheduleDiskTargetsPreviewRefresh() {
+      if (diskTargetsPreviewDebounce) clearTimeout(diskTargetsPreviewDebounce);
+      diskTargetsPreviewDebounce = setTimeout(() => {
+        diskTargetsPreviewDebounce = null;
+        runDiskTargetsPreviewFromForm();
+      }, DISK_PREVIEW_DEBOUNCE_MS);
+    }
+
+    function formatDiskPreviewDetailText(j) {
+      const src = j.inventory_from_cache ? "Using cached inventory (no Prism refetch)." : "Inventory from live Prism fetch.";
+      const lim = (j.disk_run_limit || "").toString();
+      const minM = j.guest_min_memory_mib;
+      const ramPart =
+        typeof minM === "number" && minM > 0
+          ? ". RAM≤" + minM + "/unknown: " + j.skipped_below_min_memory
+          : "";
+      return (
+        src +
+        " Eligible (IP + powered on + name rules): " +
+        j.eligible_for_guest_ssh +
+        ". Skipped by name: " +
+        j.skipped_by_name_rules +
+        ". No IP: " +
+        j.no_ip_in_pc_inventory +
+        ". Powered off: " +
+        j.skipped_powered_off +
+        ramPart +
+        ". Distinct VMs (non-CVM): " +
+        j.inventory_distinct_vms +
+        ". Planned SSH runs: " +
+        j.planned_guest_ssh_runs +
+        (lim ? " (limit " + lim + ")." : " (all eligible).") +
+        " Concurrent SSH: " +
+        (j.guest_ssh_parallel != null ? j.guest_ssh_parallel : "—") +
+        (j.parallel_clusters
+          ? " (per cluster). Parallel clusters: " +
+            (j.clusters_in_inventory != null ? j.clusters_in_inventory : "—") +
+            " in inventory; " +
+            (j.vm_per_cluster_cap != null
+              ? "at most " + j.vm_per_cluster_cap + " VM(s)/cluster."
+              : "all eligible VM(s) per cluster (no per-cluster cap).")
+          : ".") +
+        ((j.cluster_pe_top_monitor || j.cluster_adaptive_ssh_parallel) && j.pe_top_cluster_order && j.pe_top_cluster_order.length
+          ? " PE stats order: " + j.pe_top_cluster_order.join(" → ") + "."
+          : "") +
+        (j.cluster_adaptive_ssh_parallel
+          ? " Adaptive SSH: CPU≥" +
+            (j.cluster_adaptive_cpu_threshold_pct != null ? j.cluster_adaptive_cpu_threshold_pct : "—") +
+            "% resets; ramp " +
+            (j.cluster_adaptive_ramp != null && j.cluster_adaptive_ramp !== "" ? j.cluster_adaptive_ramp : "180/5,300/3") +
+            "." +
+            (j.cluster_adaptive_cpu_spike_delta_pct != null && j.cluster_adaptive_cpu_spike_delta_pct > 0
+              ? " Spike Δ≥" + j.cluster_adaptive_cpu_spike_delta_pct + " resets."
+              : "")
+          : "")
+      );
+    }
+
+    function escHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function diskOpModeLabel() {
+      const v = document.querySelector("input[name='disk_op_mode']:checked");
+      const val = v ? v.value : "update";
+      const map = {
+        create: "Create (new dummy file)",
+        add: "Add (append)",
+        update: "Update (overwrite)",
+        delete: "Delete (rm glob)",
+        random_mix: "Random mix per VM",
+      };
+      return map[val] || val;
+    }
+
+    let diskConfirmAction = null;
+    let diskConfirmCancelHandler = null;
+
+    function closeDiskConfirmModal(fromOk) {
+      if (!fromOk && typeof diskConfirmCancelHandler === "function") {
+        try {
+          diskConfirmCancelHandler();
+        } catch (e) {}
+      }
+      diskConfirmCancelHandler = null;
+      const ov = $("disk-confirm-modal");
+      if (ov) ov.style.display = "none";
+      diskConfirmAction = null;
+    }
+
+    function openDiskConfirmModal(title, html, okText, okIsDangerous, onConfirm, onCancel) {
+      $("disk-confirm-title").textContent = title;
+      $("disk-confirm-body").innerHTML = html;
+      const okBtn = $("disk-confirm-ok");
+      okBtn.textContent = okText;
+      okBtn.className = okIsDangerous ? "btn-confirm-danger" : "btn-impact-cta";
+      diskConfirmAction = typeof onConfirm === "function" ? onConfirm : null;
+      diskConfirmCancelHandler = typeof onCancel === "function" ? onCancel : null;
+      $("disk-confirm-modal").style.display = "flex";
+      okBtn.focus();
+    }
+
+    function formatStartDiskConfirmHtml() {
+      const j = lastDiskPreviewNorm;
+      const runs = j && j.planned_guest_ssh_runs != null ? String(j.planned_guest_ssh_runs) : "—";
+      const clusters = j && j.clusters_in_inventory != null ? String(j.clusters_in_inventory) : "—";
+      const distinct = j && j.inventory_distinct_vms != null ? String(j.inventory_distinct_vms) : "—";
+      const op = diskOpModeLabel();
+      return (
+        "<p><strong>Guest SSH disk work will run</strong> against the current Prism Central connection and limits.</p>" +
+        "<ul>" +
+        "<li><strong>Operation:</strong> " +
+        escHtml(op) +
+        "</li>" +
+        "<li><strong>Planned SSH runs:</strong> " +
+        escHtml(runs) +
+        "</li>" +
+        "<li><strong>Clusters in inventory:</strong> " +
+        escHtml(clusters) +
+        "</li>" +
+        "<li><strong>Distinct VMs (non-CVM) in inventory:</strong> " +
+        escHtml(distinct) +
+        "</li>" +
+        "</ul>" +
+        "<p class=\"muted\" style=\"margin:0;font-size:0.88rem;\">Figures reflect the current form and inventory cache (refreshed automatically after load and when you change disk settings).</p>"
+      );
+    }
+
+    function formatPipelineConfirmHtml() {
+      const j = lastDiskPreviewPipe;
+      const runs = j && j.planned_guest_ssh_runs != null ? String(j.planned_guest_ssh_runs) : "—";
+      const clusters = j && j.clusters_in_inventory != null ? String(j.clusters_in_inventory) : "—";
+      return (
+        "<p><strong>Full pipeline</strong> refreshes inventory, runs a disk job (forced to <strong>Update</strong>, parallel clusters, adaptive SSH), waits for it, runs a snapshot job, waits, then runs Curator on PEs.</p>" +
+        "<ul>" +
+        "<li><strong>Disk stage — planned SSH runs (pipeline preset):</strong> " +
+        escHtml(runs) +
+        "</li>" +
+        "<li><strong>Clusters in inventory:</strong> " +
+        escHtml(clusters) +
+        "</li>" +
+        "</ul>" +
+        "<p class=\"muted\" style=\"margin:0;font-size:0.88rem;\">This is high load on Prism Central, guests, and PEs. Confirm only if the numbers match what you intend.</p>"
+      );
+    }
+
+    const GUEST_DD_BS_MULT = Object.freeze({
+      "": 1,
+      c: 1,
+      w: 2,
+      b: 512,
+      kb: 1000,
+      k: 1024,
+      mb: 1e6,
+      m: 1024 * 1024,
+      gb: 1e9,
+      g: Math.pow(1024, 3),
+      tb: 1e12,
+      t: Math.pow(1024, 4),
+    });
+
+    function guestDdBsToBytes(spec) {
+      const s = String(spec == null ? "" : spec).trim();
+      const m = s.match(/^([1-9]\d*)([a-zA-Z]*)$/);
+      if (!m) return null;
+      const num = parseInt(m[1], 10);
+      const suf = (m[2] || "").toLowerCase();
+      const mult = GUEST_DD_BS_MULT[suf];
+      if (mult === undefined) return null;
+      return num * mult;
+    }
+
+    function formatDiskDdSizeLine(label, bsSpec, countVal) {
+      const cnt = Math.max(1, parseInt(countVal, 10) || 0);
+      const bpb = guestDdBsToBytes(bsSpec);
+      const bsDisp = String(bsSpec || "").trim() || "1M";
+      if (bpb === null || !Number.isFinite(bpb) || !Number.isFinite(cnt)) {
+        return label + ": (enter a valid bs, e.g. 1M or 10MB)";
+      }
+      const total = bpb * cnt;
+      const mbDec = total / 1e6;
+      const mib = total / (1024 * 1024);
+      const mbTxt =
+        Math.abs(mbDec - Math.round(mbDec)) < 1e-9
+          ? String(Math.round(mbDec))
+          : mbDec.toLocaleString(undefined, { maximumFractionDigits: 3 });
+      const mibTxt = mib.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      return (
+        label +
+        ": bs " +
+        bsDisp +
+        " × count " +
+        cnt +
+        " = " +
+        mbTxt +
+        " MB (~" +
+        mibTxt +
+        " MiB)"
+      );
+    }
+
+    function updateDiskDdSizePreview() {
+      const el = $("disk-dd-size-preview");
+      if (!el) return;
+      const bs = $("guest_dd_bs").value;
+      const c1 = $("create_count_mib").value;
+      const c2 = $("churn_count_mib").value;
+      el.textContent =
+        formatDiskDdSizeLine("Create", bs, c1) +
+        " · " +
+        formatDiskDdSizeLine("Add/update", bs, c2);
+    }
+
+    function buildDiskJobBody() {
+      syncDiskRunLimitToHidden();
+      const c = readConn();
+      const modeEl = document.querySelector("input[name='disk_op_mode']:checked");
+      const disk_op_mode = modeEl ? modeEl.value : "update";
+      const disk_run_limit = $("disk_run_limit").value.trim();
+      const body = {
+        ...c,
+        disk_op_mode: disk_op_mode,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        disk_run_limit: disk_run_limit,
+        guest_min_memory_mib: readGuestMinMemoryMib(),
+        guest_ssh_parallel: readGuestSshParallel(),
+        parallel_clusters: readParallelClusters(),
+        vm_per_cluster: readVmPerCluster(),
+        cluster_pe_top_monitor: readClusterPeTopMonitor(),
+        cluster_adaptive_ssh_parallel: readClusterAdaptiveSsh(),
+        cluster_adaptive_cpu_threshold_pct: readClusterAdaptiveCpuThresholdPct(),
+        cluster_adaptive_ssh_ceiling: readClusterAdaptiveSshCeiling(),
+        cluster_adaptive_cpu_spike_delta_pct: readClusterAdaptiveCpuSpikeDeltaPct(),
+        cluster_adaptive_ramp: readClusterAdaptiveRamp(),
+        cluster_adaptive_overload_pause_sec: readClusterAdaptiveOverloadPauseSec(),
+        cluster_adaptive_cooldown_sec: readClusterAdaptiveCooldownSec(),
+        cluster_cpu_max_pct: readClusterCpuMaxPct(),
+        cluster_mem_max_pct: readClusterMemMaxPct(),
+        pe_prism_rest_port: readPePrismRestPort(),
+        pe_cvm_ssh_user: $("pe_cvm_ssh_user").value.trim(),
+        pe_cvm_ssh_port: parseInt($("pe_cvm_ssh_port").value, 10) || 22,
+        pe_cvm_ssh_password: $("pe_cvm_ssh_password").value,
+        guest_ssh_user: $("guest_ssh_user").value.trim(),
+        guest_ssh_password: $("guest_ssh_password").value,
+        guest_ssh_port: parseInt($("guest_ssh_port").value, 10),
+        guest_target_file: $("guest_target_file").value.trim(),
+        guest_delete_glob: $("guest_delete_glob").value.trim(),
+        guest_dd_bs: $("guest_dd_bs").value.trim(),
+        create_count_mib: parseInt($("create_count_mib").value, 10),
+        churn_count_mib: parseInt($("churn_count_mib").value, 10),
+        guest_ssh_connect_timeout: parseFloat($("guest_ssh_connect_timeout").value),
+        guest_ssh_command_timeout: parseFloat($("guest_ssh_command_timeout").value),
+      };
+      if (inventoryCacheId) {
+        body.inventory_cache_id = inventoryCacheId;
+      }
+      const rs = $("disk_random_seed").value.trim();
+      if (rs !== "") {
+        const s = parseInt(rs, 10);
+        if (!Number.isNaN(s)) body.random_seed = s;
+      }
+      return body;
+    }
+
+    function buildSnapshotStartPayload() {
+      const c = readConn();
+      return {
+        pc_ip: c.pc_ip,
+        pc_user: c.pc_user,
+        pc_password: c.pc_password,
+        skip_substrings: $("skip_substrings").value,
+        skip_regexes: $("skip_regexes").value,
+        batch_size: parseInt($("batch_size").value, 10) || 10,
+        expiration_days: parseInt($("expiration_days").value, 10) || 30,
+        task_timeout_sec: parseInt($("task_timeout_sec").value, 10) || 300,
+        group_member_page: parseInt($("group_member_page").value, 10) || 500,
+        poll_interval: parseFloat($("poll_interval").value) || 4,
+        sleep_before_task_poll_sec: parseFloat($("sleep_before_task_poll_sec").value) || 0,
+        snapshot_trigger_mode: $("snapshot_trigger_mode").value,
+        recovery_point_type: $("recovery_point_type").value,
+      };
+    }
+
+    function absAppUrl(pathOrUrl) {
+      try {
+        return new URL(pathOrUrl, window.location.origin).href;
+      } catch (e) {
+        return String(pathOrUrl || "");
+      }
+    }
+
+    function tryOpenJobInNewTab(url) {
+      const u = (url || "").trim();
+      if (!u) return;
+      try {
+        window.open(absAppUrl(u), "_blank", "noopener,noreferrer");
+      } catch (e) {}
+    }
+
+    function updateLiveProgressForStage(stageIdx, done, total) {
+      const row = document.querySelector('#pipeline-stages [data-stage="' + stageIdx + '"]');
+      if (!row) return;
+      const wrap = row.querySelector(".st-progress-wrap");
+      const fill = row.querySelector(".live-progress-fill");
+      const lab = row.querySelector(".st-progress-label");
+      const track = fill ? fill.parentElement : null;
+      if (!wrap || !fill) return;
+      if (done == null || total == null || total < 1 || !Number.isFinite(Number(done))) {
+        wrap.hidden = true;
+        fill.style.width = "0%";
+        if (lab) lab.textContent = "";
+        if (track) track.setAttribute("aria-valuenow", "0");
+        return;
+      }
+      wrap.hidden = false;
+      const d = Math.max(0, Math.min(Number(done), Number(total)));
+      const t = Number(total);
+      const pct = Math.min(100, Math.round((d / t) * 100));
+      fill.style.width = pct + "%";
+      if (track) track.setAttribute("aria-valuenow", String(pct));
+      if (lab) lab.textContent = d + " / " + t + " VMs";
+    }
+
+    function diskProgressPairFromJob(j) {
+      const dp = j && j.disk_progress;
+      if (!dp || typeof dp.overall_total !== "number" || dp.overall_total < 1) return null;
+      const done = typeof dp.overall_done === "number" ? dp.overall_done : 0;
+      return { done: done, total: dp.overall_total };
+    }
+
+    function snapshotProgressPairFromJob(j) {
+      const sp = j && j.snapshot_progress;
+      if (sp && typeof sp.overall_total === "number" && sp.overall_total >= 1) {
+        const done = typeof sp.overall_done === "number" ? sp.overall_done : 0;
+        return { done: done, total: sp.overall_total };
+      }
+      const st = ((j && j.status) || "").toLowerCase();
+      const summ = j && j.summary;
+      if (st === "complete" && summ && typeof summ.n_vms === "number" && summ.n_vms >= 1) {
+        const done =
+          (typeof summ.succeeded === "number" ? summ.succeeded : 0) +
+          (typeof summ.failed === "number" ? summ.failed : 0) +
+          (typeof summ.other === "number" ? summ.other : 0);
+        return { done: Math.min(done, summ.n_vms), total: summ.n_vms };
+      }
+      return null;
+    }
+
+    /** Optional jobUrl: omit to leave link unchanged; "" hides link (disk + snapshot stages only). */
+    function setPipelineStage(idx, state, statusText, detail, jobUrl) {
+      const el = document.querySelector('#pipeline-stages [data-stage="' + idx + '"]');
+      if (!el) return;
+      el.className = "pipeline-stage st-" + state;
+      const st = el.querySelector(".st-status");
+      const det = el.querySelector(".st-detail");
+      if (st) st.textContent = statusText || "";
+      if (det) det.textContent = detail || "";
+      if (jobUrl !== undefined) {
+        const linkWrap = el.querySelector(".st-link-wrap");
+        const link = el.querySelector(".st-job-link");
+        if (linkWrap && link) {
+          const u = (jobUrl || "").trim();
+          if (u) {
+            try {
+              link.href = new URL(u, window.location.origin).href;
+            } catch (e) {
+              link.href = u;
+            }
+            link.title = link.href;
+            linkWrap.style.display = "block";
+          } else {
+            link.removeAttribute("href");
+            link.removeAttribute("title");
+            linkWrap.style.display = "none";
+          }
+        }
+      }
+      if (state === "pending" || state === "done" || state === "err") {
+        updateLiveProgressForStage(idx, null, null);
+      }
+    }
+
+    function resetPipelineStages() {
+      for (let i = 0; i < 4; i++) {
+        const clearJob = i === 1 || i === 2 ? "" : undefined;
+        setPipelineStage(i, "pending", "Pending", "", clearJob);
+      }
+    }
+
+    function renderPeCvmIpsFromInventory(data) {
+      const pre = $("pe-cvm-ips-display");
+      const errP = $("pe-cvm-ips-err");
+      if (!pre || !errP) return;
+      if (!data || !data.ok) {
+        pre.textContent = "—";
+        errP.style.display = data && data.message ? "block" : "none";
+        errP.textContent = data && data.message ? String(data.message) : "";
+        return;
+      }
+      errP.style.display = data.pe_cvm_ip_discovery_error ? "block" : "none";
+      errP.textContent = data.pe_cvm_ip_discovery_error ? String(data.pe_cvm_ip_discovery_error) : "";
+      const ips = data.pe_cvm_ips_ordered;
+      if (Array.isArray(ips) && ips.length) {
+        pre.textContent = ips.join("\n");
+      } else if (data.pe_cvm_ip_discovery_error) {
+        pre.textContent = "—";
+      } else {
+        pre.textContent = "— (no controller VM IPs in ncli output)";
+      }
+    }
+
+    async function fetchVmInventoryAndRender() {
+      const c = readConn();
+      $("vm-fetch-err").style.display = "none";
+      $("vm-summary").style.display = "none";
+      if (!c.pc_ip || !c.pc_user) {
+        $("vm-fetch-status").textContent = "Enter Prism Central address and username to load inventory.";
+        renderPeCvmIpsFromInventory({ ok: false, message: "Enter Prism Central address and username to resolve PE CVM IPs." });
+        clearDiskPreviewState();
+        return { ok: false, message: "Enter Prism Central address and username first." };
+      }
+      setInventoryDashSkeleton(true);
+      const prePe = $("pe-cvm-ips-display");
+      if (prePe) prePe.textContent = "Loading inventory and resolving PE CVM IPs…";
+      $("pe-cvm-ips-err").style.display = "none";
+      $("pe-cvm-ips-err").textContent = "";
+      try {
+        const r = await fetch("{{ url_for('api_vm_inventory') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({
+            ...c,
+            skip_substrings: $("skip_substrings").value,
+            skip_regexes: $("skip_regexes").value,
+            guest_min_memory_mib: readGuestMinMemoryMib(),
+          }),
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          inventoryCacheId = null;
+          clearDiskPreviewState();
+          setInventoryDashSkeleton(false);
+          $("vm-fetch-err").textContent = data.message || "Request failed.";
+          $("vm-fetch-err").style.display = "block";
+          $("vm-fetch-status").textContent = "";
+          renderPeCvmIpsFromInventory({ ok: false, message: data.message || "Request failed." });
+          return { ok: false, message: data.message || "Request failed." };
+        }
+        inventoryCacheId = data.inventory_cache_id || null;
+        const dplInv = $("disk-preview-line");
+        if (dplInv) dplInv.textContent = "Inventory loaded — updating guest SSH target counts…";
+        setInventoryDashSkeleton(false);
+        $("vm-fetch-status").textContent = "Done (" + data.total_vms + " VMs).";
+        const cards = $("vm-stat-cards");
+        cards.innerHTML = "";
+        const addCard = (label, val) => {
+          const d = document.createElement("div");
+          d.className = "stat-card";
+          d.innerHTML = "<strong>" + val + "</strong>" + label;
+          cards.appendChild(d);
+        };
+        addCard("Total VMs (non-CVM)", data.total_vms);
+        addCard("With IP", data.with_ip);
+        addCard("Without IP", data.without_ip);
+        if (typeof data.guest_disk_eligible === "number") {
+          const m = data.guest_disk_min_memory_mib;
+          const slab = (typeof m === "number" && m > 0)
+            ? "Disk churn eligible (IP + on + skips + RAM>" + m + " MiB)"
+            : "Disk churn eligible (IP + on + skips, no RAM floor)";
+          addCard(slab, data.guest_disk_eligible);
+        }
+        if (typeof data.guest_disk_skipped_power_off === "number")
+          addCard("…skipped (powered off)", data.guest_disk_skipped_power_off);
+        if (typeof data.guest_disk_skipped_below_min_memory === "number" && (data.guest_disk_min_memory_mib || 0) > 0)
+          addCard("…skipped (RAM ≤ min or unknown)", data.guest_disk_skipped_below_min_memory);
+        if (data.duplicate_rows_skipped)
+          addCard("Duplicate rows skipped", data.duplicate_rows_skipped);
+
+        inventoryTablePage = 1;
+        if ($("inventory-search")) $("inventory-search").value = "";
+        const cpe = $("cluster-pe-ip-hint");
+        if (cpe) {
+          if (data.pe_cvm_ip_discovery_error) {
+            cpe.style.display = "block";
+            cpe.textContent = "PE CVM IP discovery: " + data.pe_cvm_ip_discovery_error;
+          } else {
+            cpe.style.display = "none";
+            cpe.textContent = "";
+          }
+        }
+        $("vm-summary").style.display = "block";
+        renderPeCvmIpsFromInventory(data);
+        loadInventoryTablePage(1);
+        await runDiskTargetsPreviewFromForm();
+        scheduleActiveDiskJobRefresh();
+        return { ok: true, message: "Done (" + data.total_vms + " VMs)." };
+      } catch (e) {
+        inventoryCacheId = null;
+        clearDiskPreviewState();
+        setInventoryDashSkeleton(false);
+        $("vm-fetch-err").textContent = String(e);
+        $("vm-fetch-err").style.display = "block";
+        $("vm-fetch-status").textContent = "";
+        renderPeCvmIpsFromInventory({ ok: false, message: String(e) });
+        return { ok: false, message: String(e) };
+      }
+    }
+
+    /** Poll GET /api/job/... until status is complete, error, or aborted (same as job page). */
+    async function waitForBulkJob(runId, pollMs, onTick) {
+      const ms = pollMs || 2000;
+      const path = "/api/job/" + encodeURIComponent(runId);
+      while (true) {
+        const r = await fetch(path, { headers: { Accept: "application/json" } });
+        if (!r.ok) {
+          return { ok: false, status: "error", error: "Job poll failed (" + r.status + ")." };
+        }
+        const j = await r.json();
+        if (typeof onTick === "function") onTick(j);
+        const st = (j.status || "").toLowerCase();
+        if (st === "complete") return { ok: true, status: st, error: "" };
+        if (st === "error" || st === "aborted") {
+          return { ok: false, status: st, error: (j.error || st).toString() };
+        }
+        await new Promise((res) => setTimeout(res, ms));
+      }
+    }
+
+    function pipelineDiskProgressHint(j) {
+      const dp = j && j.disk_progress;
+      if (!dp) return "";
+      const od = dp.overall_done;
+      const ot = dp.overall_total;
+      if (typeof od === "number" && typeof ot === "number") return "Progress " + od + "/" + ot + " VMs";
+      return "";
+    }
+
+    async function runCuratorOnPesAsync() {
+      const c = readConn();
+      if (!c.pc_ip.trim()) {
+        $("curator-run-status").textContent = "Enter Prism Central address first.";
+        return { ok: false, message: "pc_ip required." };
+      }
+      $("curator-out").style.display = "none";
+      $("curator-run-status").textContent = "Starting…";
+      const curatorStatusUrl = "{{ url_for('api_curator_run_status') }}";
+      try {
+        const r = await fetch("{{ url_for('api_curator_run_scans') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ pc_ip: c.pc_ip.trim() }),
+        });
+        const j = await r.json();
+        if (r.status === 409) {
+          $("curator-run-status").textContent = j.message || "Already in progress.";
+          $("curator-out").style.display = "block";
+          $("curator-out").textContent = JSON.stringify(j, null, 2);
+          return { ok: false, message: j.message || "Already in progress." };
+        }
+        if (!j.ok && j.async) {
+          $("curator-run-status").textContent = j.message || "Failed.";
+          $("curator-out").style.display = "block";
+          $("curator-out").textContent = JSON.stringify(j, null, 2);
+          return { ok: false, message: j.message || "Failed." };
+        }
+        if (j.async && j.ok) {
+          $("curator-run-status").textContent = "Running on PEs…";
+          const pollMs = 2000;
+          while (true) {
+            const sr = await fetch(curatorStatusUrl, { headers: { Accept: "application/json" } });
+            const st = await sr.json();
+            if (st.status === "complete" || st.status === "error") {
+              const line =
+                st.status === "error"
+                  ? st.message || "Error."
+                  : st.top_level_ok
+                    ? "Done."
+                    : "Finished with some failures.";
+              $("curator-run-status").textContent = line;
+              $("curator-out").style.display = "block";
+              $("curator-out").textContent = JSON.stringify(
+                { ok: st.top_level_ok, status: st.status, message: st.message, results: st.results },
+                null,
+                2,
+              );
+              return {
+                ok: st.status !== "error" && st.top_level_ok,
+                message: line,
+              };
+            }
+            await new Promise((res) => setTimeout(res, pollMs));
+          }
+        }
+        $("curator-run-status").textContent = j.ok ? "Done." : (j.message || "Some steps failed.");
+        $("curator-out").style.display = "block";
+        $("curator-out").textContent = JSON.stringify(j.results || j, null, 2);
+        return { ok: !!j.ok, message: $("curator-run-status").textContent };
+      } catch (e) {
+        $("curator-run-status").textContent = String(e);
+        return { ok: false, message: String(e) };
+      }
+    }
+
+    function syncPeTopThrottleUi() {
+      const mon = $("cluster_pe_top_monitor");
+      const adapt = $("cluster_adaptive_ssh_parallel");
+      mon.checked = true;
+      mon.disabled = true;
+      adapt.disabled = false;
+      [
+        "cluster_cpu_max_pct",
+        "pe_prism_rest_port",
+        "pe_cvm_ssh_user",
+        "pe_cvm_ssh_port",
+        "pe_cvm_ssh_password",
+      ].forEach((id) => {
+        $(id).disabled = false;
+      });
+      const adaptOn = adapt.checked;
+      $("cluster_adaptive_cpu_threshold_pct").disabled = !adaptOn;
+      $("cluster_adaptive_ssh_ceiling").disabled = !adaptOn;
+      $("cluster_adaptive_cpu_spike_delta_pct").disabled = !adaptOn;
+      $("cluster_adaptive_ramp").disabled = !adaptOn;
+      $("cluster_adaptive_overload_pause_sec").disabled = !adaptOn;
+      $("cluster_adaptive_cooldown_sec").disabled = !adaptOn;
+      syncImpactActionButtons();
+      scheduleDiskTargetsPreviewRefresh();
+    }
+
+    $("parallel_clusters").addEventListener("change", syncPeTopThrottleUi);
+    $("cluster_pe_top_monitor").addEventListener("change", syncPeTopThrottleUi);
+    $("cluster_adaptive_ssh_parallel").addEventListener("change", syncPeTopThrottleUi);
+    syncPeTopThrottleUi();
+
+    $("disk-confirm-cancel").addEventListener("click", () => closeDiskConfirmModal(false));
+    $("disk-confirm-ok").addEventListener("click", async () => {
+      const fn = diskConfirmAction;
+      closeDiskConfirmModal(true);
+      if (typeof fn === "function") await fn();
+    });
+    $("disk-confirm-modal").addEventListener("click", (ev) => {
+      if (ev.target === $("disk-confirm-modal")) closeDiskConfirmModal(false);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape") return;
+      const ov = $("disk-confirm-modal");
+      if (ov && ov.style.display === "flex") {
+        ev.preventDefault();
+        closeDiskConfirmModal(false);
+      }
+    });
+    const mainFormEl = $("main-form");
+    if (mainFormEl) {
+      mainFormEl.addEventListener("input", () => {
+        syncImpactActionButtons();
+        scheduleDiskTargetsPreviewRefresh();
+      });
+      mainFormEl.addEventListener("change", () => {
+        syncImpactActionButtons();
+        scheduleDiskTargetsPreviewRefresh();
+      });
+    }
+
+    let pcReachTimer = null;
+    let regexValidateTimer = null;
+
+    async function validatePcReachable() {
+      const fb = $("pc-ip-feedback");
+      if (!fb) return;
+      const c = readConn();
+      if (!c.pc_ip.trim()) {
+        fb.textContent = "";
+        fb.className = "field-feedback-icon";
+        fb.title = "";
+        return;
+      }
+      fb.className = "field-feedback-icon wait";
+      fb.textContent = "…";
+      fb.title = "Checking…";
+      try {
+        const r = await fetch("{{ url_for('api_pc_reachable') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            pc_ip: c.pc_ip,
+            pc_user: c.pc_user,
+            pc_password: c.pc_password,
+          }),
+        });
+        const j = await r.json();
+        if (j.reachable) {
+          fb.textContent = "✓";
+          fb.className = "field-feedback-icon ok";
+          fb.title =
+            "Prism Central responded over HTTPS (HTTP " + (j.http_status != null ? j.http_status : "?") + ").";
+        } else {
+          fb.textContent = "✗";
+          fb.className = "field-feedback-icon err";
+          fb.title = j.message || "Could not reach Prism Central.";
+        }
+      } catch (e) {
+        fb.textContent = "?";
+        fb.className = "field-feedback-icon err";
+        fb.title = String(e);
+      }
+    }
+
+    function schedulePcReachableCheck() {
+      if (pcReachTimer) clearTimeout(pcReachTimer);
+      pcReachTimer = setTimeout(validatePcReachable, 480);
+    }
+
+    function validateSkipRegexesField() {
+      const el = $("skip-regex-validation");
+      if (!el) return;
+      const raw = ($("skip_regexes").value || "").trim();
+      if (!raw) {
+        el.textContent = "";
+        el.style.color = "";
+        return;
+      }
+      const lines = raw
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const bad = [];
+      for (let i = 0; i < lines.length; i++) {
+        try {
+          new RegExp(lines[i], "i");
+        } catch (e) {
+          bad.push(lines[i] + ": " + (e.message || "invalid"));
+        }
+      }
+      if (bad.length) {
+        el.textContent = "✗ " + bad.join("; ");
+        el.style.color = "#f28b82";
+      } else {
+        el.textContent = "✓ " + lines.length + " pattern(s) compile";
+        el.style.color = "#81c995";
+      }
+    }
+
+    function scheduleSkipRegexValidate() {
+      if (regexValidateTimer) clearTimeout(regexValidateTimer);
+      regexValidateTimer = setTimeout(validateSkipRegexesField, 200);
+    }
+
+    ["pc_ip", "pc_user", "pc_password"].forEach((id) => {
+      const n = $(id);
+      if (n) {
+        n.addEventListener("input", () => {
+          schedulePcReachableCheck();
+          scheduleActiveDiskJobRefresh();
+        });
+        n.addEventListener("change", () => {
+          schedulePcReachableCheck();
+          scheduleActiveDiskJobRefresh();
+        });
+      }
+    });
+    const skipRxEl = $("skip_regexes");
+    if (skipRxEl) {
+      skipRxEl.addEventListener("input", scheduleSkipRegexValidate);
+      skipRxEl.addEventListener("change", validateSkipRegexesField);
+    }
+
+    syncImpactActionButtons();
+    schedulePcReachableCheck();
+    validateSkipRegexesField();
+    scheduleActiveDiskJobRefresh();
+    setInterval(refreshActiveDiskJobState, 6000);
+
+    (function bootAutoFetchVmInventory() {
+      function go() {
+        fetchVmInventoryAndRender().then((r) => {
+          if (!r.ok && r.message && !$("vm-fetch-err").textContent) {
+            $("vm-fetch-err").textContent = r.message;
+            $("vm-fetch-err").style.display = "block";
+          }
+        });
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", go);
+      } else {
+        go();
+      }
+    })();
+
+    async function refreshEstimate() {
+      const mode = $("snapshot_trigger_mode").value;
+      const batch = $("batch_size").value;
+      const rpt = $("recovery_point_type").value;
+      const el = $("estimate-line");
+      el.textContent = "";
+      try {
+        const u = new URL("{{ url_for('api_estimate') }}", window.location.origin);
+        u.searchParams.set("snapshot_trigger_mode", mode);
+        u.searchParams.set("batch_size", batch);
+        u.searchParams.set("recovery_point_type", rpt);
+        const res = await fetch(u);
+        const j = await res.json();
+        if (!j.ok) {
+          el.textContent = j.message || "";
+          return;
+        }
+        const ex = j.examples || {};
+        el.textContent = "From history (median per VM ≈ " + j.per_vm_human + ", match=" + j.match + ", n=" +
+          j.sample_count + "). Examples: 10 VMs ≈ " + (ex["10_vms"] || "—") + ", 100 VMs ≈ " + (ex["100_vms"] || "—") + ".";
+      } catch (_) { /* ignore */ }
+    }
+    ["snapshot_trigger_mode", "batch_size", "recovery_point_type"].forEach((id) => {
+      $(id).addEventListener("change", refreshEstimate);
+    });
+    refreshEstimate();
+
+    (function initLayoutControls() {
+      updateDiskPctLabel();
+      refreshDiskLimitModeUi();
+      syncGuestSshParallelPresetSelect();
+      syncBatchSizePresetSelect();
+
+      const invSearch = $("inventory-search");
+      if (invSearch) {
+        invSearch.addEventListener("input", () => {
+          if (inventorySearchDebounce) clearTimeout(inventorySearchDebounce);
+          inventorySearchDebounce = setTimeout(() => {
+            inventorySearchDebounce = null;
+            loadInventoryTablePage(1);
+          }, 280);
+        });
+      }
+      const invPs = $("inventory-page-size");
+      if (invPs) invPs.addEventListener("change", () => loadInventoryTablePage(1));
+      const invPr = $("inventory-prev");
+      if (invPr)
+        invPr.addEventListener("click", () =>
+          loadInventoryTablePage(Math.max(1, (inventoryTablePage || 1) - 1)),
+        );
+      const invNx = $("inventory-next");
+      if (invNx)
+        invNx.addEventListener("click", () =>
+          loadInventoryTablePage(
+            Math.min(inventoryLastTotalPages || 1, (inventoryTablePage || 1) + 1),
+          ),
+        );
+
+      const dlm = $("disk_limit_mode");
+      if (dlm) {
+        dlm.addEventListener("change", () => {
+          refreshDiskLimitModeUi();
+          syncImpactActionButtons();
+        });
+      }
+      const dlc = $("disk_limit_count");
+      if (dlc) {
+        dlc.addEventListener("input", () => {
+          syncDiskRunLimitToHidden();
+          syncImpactActionButtons();
+        });
+      }
+      const dlp = $("disk_limit_pct");
+      if (dlp) {
+        dlp.addEventListener("input", () => {
+          updateDiskPctLabel();
+          syncDiskRunLimitToHidden();
+          syncImpactActionButtons();
+        });
+      }
+
+      const gssp = $("guest_ssh_parallel_preset");
+      if (gssp) {
+        gssp.addEventListener("change", () => {
+          if (gssp.value !== "custom") {
+            const inp = $("guest_ssh_parallel");
+            if (inp) inp.value = gssp.value;
+          }
+          syncImpactActionButtons();
+        });
+      }
+      const gssi = $("guest_ssh_parallel");
+      if (gssi) {
+        gssi.addEventListener("input", () => {
+          syncGuestSshParallelPresetSelect();
+          syncImpactActionButtons();
+        });
+      }
+
+      const bsp = $("batch_size_preset");
+      if (bsp) {
+        bsp.addEventListener("change", () => {
+          if (bsp.value) {
+            const inp = $("batch_size");
+            if (inp) inp.value = bsp.value;
+            refreshEstimate();
+          }
+        });
+      }
+      const bsi = $("batch_size");
+      if (bsi) {
+        bsi.addEventListener("input", () => {
+          syncBatchSizePresetSelect();
+        });
+      }
+
+      const jcc = $("job-console-clear");
+      if (jcc) jcc.addEventListener("click", () => clearJobConsole());
+    })();
+
+    async function runFullPipelineAfterConfirm(gs, btn) {
+      try {
+        clearJobConsole();
+        const jcst0 = $("job-console-status");
+        if (jcst0) jcst0.textContent = "Starting pipeline…";
+        if (gs) gs.textContent = "Pipeline running — stages update below.";
+        setPipelineStage(0, "run", "Running…", "");
+        const vm = await fetchVmInventoryAndRender();
+        if (!vm.ok) {
+          setPipelineStage(0, "err", "Failed", vm.message || "");
+          gs.textContent = "Stopped at stage 1.";
+          return;
+        }
+        setPipelineStage(0, "done", "Done", vm.message || "");
+
+        setPipelineStage(1, "run", "Starting…", "");
+        const upd = document.querySelector('input[name="disk_op_mode"][value="update"]');
+        if (upd) upd.checked = true;
+        $("parallel_clusters").checked = true;
+        $("cluster_pe_top_monitor").checked = true;
+        $("cluster_adaptive_ssh_parallel").checked = true;
+        syncPeTopThrottleUi();
+
+        const r2 = await fetch("{{ url_for('api_start_disk_ops') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(buildDiskJobBody()),
+        });
+        const j2 = await r2.json();
+        if (!j2.ok) {
+          setPipelineStage(1, "err", "Failed", j2.message || "");
+          gs.textContent = "Stopped at stage 2.";
+          return;
+        }
+        const diskJobHref = absAppUrl(j2.job_url);
+        tryOpenJobInNewTab(j2.job_url);
+        scheduleActiveDiskJobRefresh();
+        startJobConsolePoll(j2.run_id);
+        setPipelineStage(1, "run", "Waiting for job…", "", diskJobHref);
+        const diskWait = await waitForBulkJob(j2.run_id, 2000, (jj) => {
+          const hint = pipelineDiskProgressHint(jj);
+          setPipelineStage(1, "run", "Waiting for job…", hint, diskJobHref);
+          const pr = diskProgressPairFromJob(jj);
+          if (pr) updateLiveProgressForStage(1, pr.done, pr.total);
+        });
+        stopJobConsolePoll();
+        if (!diskWait.ok) {
+          setPipelineStage(1, "err", "Failed", diskWait.error || diskWait.status || "", diskJobHref);
+          gs.textContent = "Stopped at stage 2 (disk job did not complete).";
+          return;
+        }
+        setPipelineStage(1, "done", "Done", "Disk job finished.", diskJobHref);
+        scheduleActiveDiskJobRefresh();
+
+        setPipelineStage(2, "run", "Starting…", "");
+        const r3 = await fetch("{{ url_for('api_start_snapshot_run') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(buildSnapshotStartPayload()),
+        });
+        const j3 = await r3.json();
+        if (!j3.ok) {
+          setPipelineStage(2, "err", "Failed", j3.message || "");
+          gs.textContent = "Stopped at stage 3.";
+          return;
+        }
+        const snapJobHref = absAppUrl(j3.job_url);
+        tryOpenJobInNewTab(j3.job_url);
+        startJobConsolePoll(j3.run_id);
+        setPipelineStage(2, "run", "Waiting for job…", "", snapJobHref);
+        const snapWait = await waitForBulkJob(j3.run_id, 2000, (jj) => {
+          const pr = snapshotProgressPairFromJob(jj);
+          const summ = jj && jj.summary;
+          const tail = pr
+            ? pr.done + "/" + pr.total + " VMs"
+            : summ && typeof summ === "object" && summ.n_vms != null
+              ? "VMs " + String(summ.n_vms)
+              : "";
+          setPipelineStage(2, "run", "Waiting for job…", tail, snapJobHref);
+          if (pr) updateLiveProgressForStage(2, pr.done, pr.total);
+        });
+        stopJobConsolePoll();
+        if (!snapWait.ok) {
+          setPipelineStage(2, "err", "Failed", snapWait.error || snapWait.status || "", snapJobHref);
+          gs.textContent = "Stopped at stage 3 (snapshot run did not complete).";
+          return;
+        }
+        setPipelineStage(2, "done", "Done", "Snapshot run finished.", snapJobHref);
+
+        setPipelineStage(3, "run", "Running…", "");
+        const cur = await runCuratorOnPesAsync();
+        if (!cur.ok) {
+          setPipelineStage(3, "err", "Failed", cur.message || "");
+          gs.textContent = "Pipeline finished with curator error.";
+          return;
+        }
+        setPipelineStage(3, "done", "Done", cur.message || "");
+        gs.textContent = "Pipeline complete.";
+      } finally {
+        stopJobConsolePoll();
+        btn.disabled = false;
+        scheduleActiveDiskJobRefresh();
+      }
+    }
+
+    $("btn-start-disk-job").addEventListener("click", async () => {
+      const c = readConn();
+      $("disk-job-err").style.display = "none";
+      if (!c.pc_ip || !c.pc_user) {
+        $("disk-job-err").textContent = "Enter Prism Central address and username first.";
+        $("disk-job-err").style.display = "block";
+        return;
+      }
+      openDiskConfirmModal(
+        "Start disk job?",
+        formatStartDiskConfirmHtml(),
+        "Start disk job",
+        true,
+        async () => {
+          const body = buildDiskJobBody();
+          $("disk-job-status").textContent = "Starting…";
+          try {
+            const r = await fetch("{{ url_for('api_start_disk_ops') }}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify(body),
+            });
+            const j = await r.json();
+            if (!j.ok) {
+              $("disk-job-err").textContent = j.message || "Failed.";
+              $("disk-job-err").style.display = "block";
+              $("disk-job-status").textContent = "";
+              scheduleActiveDiskJobRefresh();
+              return;
+            }
+            window.location.href = j.job_url;
+          } catch (e) {
+            $("disk-job-err").textContent = String(e);
+            $("disk-job-err").style.display = "block";
+            $("disk-job-status").textContent = "";
+          }
+        },
+      );
+    });
+
+    ["guest_dd_bs", "create_count_mib", "churn_count_mib"].forEach((id) => {
+      const n = $(id);
+      if (n) n.addEventListener("input", updateDiskDdSizePreview);
+    });
+    updateDiskDdSizePreview();
+
+    const btnCuratorRun = document.getElementById("btn-curator-run");
+    btnCuratorRun.addEventListener("click", async () => {
+      $("curator-run-status").textContent = "";
+      $("curator-out").style.display = "none";
+      if (!readConn().pc_ip.trim()) {
+        $("curator-run-status").textContent = "Enter Prism Central address first.";
+        return;
+      }
+      btnCuratorRun.disabled = true;
+      try {
+        await runCuratorOnPesAsync();
+      } finally {
+        btnCuratorRun.disabled = false;
+      }
+    });
+
+    $("btn-run-full-pipeline").addEventListener("click", async () => {
+      const btn = $("btn-run-full-pipeline");
+      const gs = $("pipeline-global-status");
+      const stagesEl = $("pipeline-stages");
+      const dock = $("pipeline-progress-dock");
+      if (btn.disabled) return;
+      const c = readConn();
+      if (!c.pc_ip || !c.pc_user) {
+        gs.textContent = "Enter Prism Central connection first.";
+        return;
+      }
+      if (!(($("guest_ssh_password").value || "").trim())) {
+        gs.textContent = "Guest SSH password is required for the disk job stage.";
+        return;
+      }
+      gs.textContent = "";
+      openDiskConfirmModal(
+        "Run full pipeline?",
+        formatPipelineConfirmHtml(),
+        "Run full pipeline",
+        true,
+        async () => {
+          btn.disabled = true;
+          if (stagesEl) stagesEl.style.display = "block";
+          if (dock) {
+            try {
+              dock.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            } catch (e) {}
+          }
+          resetPipelineStages();
+          try {
+            await runFullPipelineAfterConfirm(gs, btn);
+          } catch (e) {
+            gs.textContent = "Pipeline error: " + String(e);
+          }
+        },
+      );
+    });
+  </script>
+</body>
+</html>

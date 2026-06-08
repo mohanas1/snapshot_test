@@ -1428,6 +1428,9 @@ def _guest_timed_remote_body(op: str, cfg: DiskOpConfig) -> str:
             + "_bs pre_rm; "
             + f"rm -f {g}; "
             + "_bs post_rm; "
+            + "_bs pre_fstrim; "
+            + "fstrim -v / 2>&1 || echo 'fstrim not available or failed'; "
+            + "_bs post_fstrim; "
             + "_bs guest_end; "
             "exit 0"
         )
@@ -2300,6 +2303,12 @@ def run_disk_ops(
                     "guest_cmd_sec": round(guest_cmd_sec, 2)
                     if guest_cmd_sec is not None
                     else None,
+                    # Log command output for debugging
+                    "exit_code": ec,
+                    "remote_cmd": remote,
+                    "stdout": (out or "")[:2000],  # Limit to 2000 chars to avoid excessive data
+                    "stderr": (err or "")[:2000],
+                    "combined_output": combined[:2000] if combined else "",
                     # Same live PE/CVM/stargate fields as Disk job progress, captured after throttle (pre)
                     # and after guest SSH returns (post); for ETA / analysis (concurrent shards may interleave).
                     "pe_cluster_before": pe_b,

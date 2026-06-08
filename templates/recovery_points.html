@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recovery Points Analysis - Nutanix Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --primary-blue: #3B82F6;
+      --bg-light: #F9FAFB;
+      --text-dark: #1F2937;
+      --text-muted: #6B7280;
+      --border-gray: #E5E7EB;
+      --success-green: #10B981;
+      --error-red: #EF4444;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.75;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      letter-spacing: 0.01em;
+    }
+    
+    .body-content {
+      display: flex;
+      flex: 1;
+      margin-top: 4.5rem;
+    }
+    
+    /* Action Center - Top Bar */
+    .action-center {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4.5rem;
+      background: linear-gradient(135deg, #024DA1 0%, #1A1A40 100%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+    }
+    
+    .action-center-brand {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: white;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--sidebar-bg);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: calc(100vh - 4.5rem);
+      left: 0;
+      top: 4.5rem;
+    }
+    
+    .sidebar-brand {
+      padding: 1.5rem 1.25rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0;
+    }
+    
+    .nav-group-title {
+      padding: 0.75rem 1.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .nav-item {
+      display: block;
+      padding: 0.75rem 1.25rem;
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+    
+    .nav-item.active {
+      background: var(--sidebar-active);
+      border-left-color: var(--primary-blue);
+      color: white;
+      font-weight: 500;
+    }
+    
+    /* Main Content */
+    .main-content {
+      margin-left: 240px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-header {
+      background: white;
+      border-bottom: 1px solid var(--border-gray);
+      padding: 2rem 2.5rem;
+    }
+    
+    .breadcrumb {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
+    
+    .content-area {
+      padding: 2.5rem 3rem;
+      flex: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .config-card {
+      display: block;
+      width: 100%;
+      background: white;
+      border: 1px solid var(--border-gray);
+      border-radius: 12px;
+      padding: 0;
+      margin: 2.5rem 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+      transition: box-shadow 0.2s ease;
+      overflow: hidden;
+    }
+    
+    .config-card:first-child {
+      margin-top: 0;
+    }
+    
+    .config-card:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    
+    .card-header {
+      background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+      border-bottom: 1px solid var(--border-gray);
+      padding: 1.5rem 2rem;
+    }
+    
+    .card-header-title h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .card-header-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+    
+    .card-body {
+      padding: 2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 2rem;
+    }
+    
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-dark);
+    }
+    
+    input[type="text"],
+    input[type="password"],
+    input[type="number"] {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-gray);
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      background: white;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      font-family: var(--font-mono);
+    }
+    
+    input[type="number"] {
+      max-width: 120px;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .btn {
+      padding: 0.875rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-blue) 0%, #2563EB 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    
+    .loading.active {
+      display: block;
+    }
+    
+    .spinner {
+      border: 3px solid var(--border-gray);
+      border-top: 3px solid var(--primary-blue);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+      display: none;
+      background: #FEE2E2;
+      border: 1px solid var(--error-red);
+      color: #991B1B;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      font-weight: 500;
+    }
+    
+    .error-message.active {
+      display: block;
+    }
+    
+    .results {
+      display: none;
+    }
+    
+    .results.active {
+      display: block;
+    }
+    
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    
+    .summary-card {
+      background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+      padding: 1.5rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-gray);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .summary-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .summary-label {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    
+    .summary-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      font-family: var(--font-mono);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th {
+      background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+      padding: 1rem 1.25rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid var(--border-gray);
+      color: var(--text-dark);
+    }
+    
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-gray);
+      font-size: 0.9375rem;
+    }
+    
+    tr:hover {
+      background: rgba(59, 130, 246, 0.02);
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      margin-top: 2rem;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .processing {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    /* Pagination styles */
+    .pagination-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-gray);
+      background: white;
+      color: var(--text-dark);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+      background: var(--bg-light);
+      border-color: var(--primary-blue);
+    }
+    
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .page-number {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border-gray);
+      background: white;
+      color: var(--text-dark);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      min-width: 40px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    
+    .page-number:hover {
+      background: var(--bg-light);
+      border-color: var(--primary-blue);
+    }
+    
+    .page-number.active {
+      background: var(--primary-blue);
+      color: white;
+      border-color: var(--primary-blue);
+      font-weight: 600;
+    }
+    
+    /* Action buttons in table */
+    .action-btn {
+      padding: 0.4rem 0.75rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    
+    .action-btn-snapshot {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      color: white;
+    }
+    
+    .action-btn-snapshot:hover {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    }
+    
+    .action-btn-disk {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+    
+    .action-btn-disk:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+    
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+    }
+    
+    .modal-container {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0.25rem 0.5rem;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    
+    .modal-close:hover {
+      color: var(--text-dark);
+    }
+    
+    .modal-body {
+      padding: 1.5rem;
+    }
+    
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-gray);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+    
+    .modal-btn {
+      padding: 0.65rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .modal-btn-cancel {
+      background: var(--bg-light);
+      color: var(--text-dark);
+      border: 1px solid var(--border-gray);
+    }
+    
+    .modal-btn-cancel:hover {
+      background: #E5E7EB;
+    }
+    
+    .modal-btn-primary {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      color: white;
+    }
+    
+    .modal-btn-primary:hover {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .modal-btn-success {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+    
+    .modal-btn-success:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .modal-vm-info {
+      background: #F9FAFB;
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 3px solid var(--primary-blue);
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-vm-info strong {
+      color: var(--text-dark);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    
+    .modal-vm-info code {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    
+    .modal-progress {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #F9FAFB;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    
+    .modal-progress.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Action Center -->
+  <div class="action-center">
+    <a href="{{ url_for('index') }}" class="action-center-brand">
+      ⚡ Nutanix Operations
+    </a>
+  </div>
+
+  <div class="body-content">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        Nutanix Operations
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="nav-item">Bulk Snapshots</a>
+        <a href="#" class="nav-item">Snapshot History</a>
+        <a href="#" class="nav-item">Disk Operations</a>
+        <a href="{{ url_for('recovery_points') }}" class="nav-item active">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="main-header">
+        <div class="breadcrumb">VM MANAGEMENT</div>
+        <h1 class="page-title">Recovery Points Analysis</h1>
+      </div>
+      
+      <div class="content-area">
+        <div class="config-card">
+          <div class="card-header">
+            <div class="card-header-title">
+              <h2>🔌 Connection</h2>
+            </div>
+            <div class="card-header-subtitle">
+              Configure Prism Central connection to analyze recovery points across your cluster
+            </div>
+          </div>
+          <div class="card-body">
+            <form id="analysisForm">
+              <div class="form-group">
+                <label for="pc_ip">Prism Central IP / Hostname</label>
+                <input type="text" id="pc_ip" name="pc_ip" required placeholder="10.0.0.1">
+              </div>
+              
+              <div class="form-group">
+                <label for="pc_user">Username</label>
+                <input type="text" id="pc_user" name="pc_user" required placeholder="admin" value="admin">
+              </div>
+              
+              <div class="form-group">
+                <label for="pc_password">Password</label>
+                <input type="text" id="pc_password" name="pc_password" required value="Nutanix.123">
+              </div>
+              
+              <div class="form-group">
+                <label for="concurrency">Concurrent Workers (1-20)</label>
+                <input type="number" id="concurrency" name="concurrency" min="1" max="20" value="5" required style="max-width: 120px;">
+              </div>
+              
+              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="fetch_latest" name="fetch_latest" style="width: auto;">
+                <label for="fetch_latest" style="margin: 0; cursor: pointer;">
+                  🔄 Fetch Latest Recovery Points (bypass cache)
+                </label>
+              </div>
+              
+              <div id="cacheInfo" style="font-size: 0.875rem; color: var(--text-muted); padding: 0.75rem; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; margin-bottom: 1rem; display: none;">
+                <strong>ℹ️ Cache Available:</strong> <span id="cacheTimestamp"></span>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" id="analyzeBtn">Analyze Recovery Points</button>
+            </form>
+          </div>
+        </div>
+        
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p><strong>Analyzing recovery points...</strong><br>This may take a few minutes depending on the number of VMs.</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="config-card" id="statsCard" style="display: none;">
+          <div class="card-header">
+            <div class="card-header-title">
+              <h2>📊 VM Analysis Progress</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">TOTAL VMS</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono);" id="statTotalVMs">-</div>
+              </div>
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);" id="processedCard">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">PROCESSED</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: #10B981;" id="statProcessed">0</div>
+              </div>
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">SKIPPED</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: #F59E0B;" id="statSkipped">0</div>
+              </div>
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">FAILED</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: #EF4444;" id="statFailed">0</div>
+              </div>
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">AVG/VM</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono);" id="statAvgTime">N/A</div>
+              </div>
+              <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-gray);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">WORKERS</div>
+                <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: #3B82F6;" id="statWorkers">-</div>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-weight: 600;">Progress</span>
+                <span style="font-family: var(--font-mono); font-weight: 600;" id="progressPercent">0%</span>
+              </div>
+              <div style="width: 100%; height: 24px; background: #E5E7EB; border-radius: 8px; overflow: hidden;">
+                <div id="progressBar" style="height: 100%; background: linear-gradient(90deg, #10B981 0%, #059669 100%); width: 0%; transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="config-card" id="logCard" style="display: none;">
+          <div class="card-header">
+            <div class="card-header-title">
+              <h2>📝 Live Analysis Logs</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="liveLogsContainer" style="background: #1F2937; color: #E5E7EB; padding: 1.5rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.875rem; max-height: 400px; overflow-y: auto; line-height: 1.6;"></div>
+          </div>
+        </div>
+        
+        <div class="results" id="results">
+          <div class="config-card">
+            <div class="card-header">
+              <div class="card-header-title">
+                <h2>📊 Cluster Summary</h2>
+                <span id="cacheBadge" style="display: none; margin-left: 1rem; padding: 0.25rem 0.75rem; background: #FEF3C7; color: #92400E; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">💾 CACHED DATA</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="summary-grid">
+                <div class="summary-card">
+                  <div class="summary-label">Total VMs</div>
+                  <div class="summary-value" id="totalVms">-</div>
+                </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">Total Recovery Points</div>
+                  <div class="summary-value" id="totalRecoveryPoints">-</div>
+                </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">Total Reclaimable Space</div>
+                  <div class="summary-value" id="totalReclaimable">-</div>
+                </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">Analysis Time</div>
+                  <div class="summary-value" id="analysisTime">-</div>
+                </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">Total Time Taken</div>
+                  <div class="summary-value" id="totalTimeTaken">-</div>
+                </div>
+              </div>
+              
+              <h3>VMs by Reclaimable Space</h3>
+              
+              <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="color: var(--text-muted); font-size: 0.875rem;">
+                  Showing <span id="showingStart">0</span>-<span id="showingEnd">0</span> of <span id="totalVmsCount">0</span> VMs
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <label style="font-size: 0.875rem; color: var(--text-muted);">Per page:</label>
+                  <select id="perPageSelect" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px;">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="all">All</option>
+                  </select>
+                </div>
+              </div>
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th>VM Name</th>
+                    <th>VM UUID</th>
+                    <th>Recovery Points</th>
+                    <th>Reclaimable Space</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="vmTableBody">
+                </tbody>
+              </table>
+              
+              <div id="paginationControls" style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+                <button id="firstPageBtn" class="pagination-btn" onclick="goToPage(1)">&laquo; First</button>
+                <button id="prevPageBtn" class="pagination-btn" onclick="previousPage()">&lsaquo; Previous</button>
+                <div id="pageNumbers" style="display: flex; gap: 0.25rem;"></div>
+                <button id="nextPageBtn" class="pagination-btn" onclick="nextPage()">Next &rsaquo;</button>
+                <button id="lastPageBtn" class="pagination-btn" onclick="goToLastPage()">Last &raquo;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const form = document.getElementById('analysisForm');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const loading = document.getElementById('loading');
+    const errorMessage = document.getElementById('errorMessage');
+    const results = document.getElementById('results');
+    const statsCard = document.getElementById('statsCard');
+    const logCard = document.getElementById('logCard');
+    const liveLogsContainer = document.getElementById('liveLogsContainer');
+    
+    let eventSource = null;
+    let stats = {
+      totalVMs: 0,
+      processed: 0,
+      skipped: 0,
+      failed: 0,
+      workers: 0,
+      startTime: null,
+      processedVMs: []
+    };
+    
+    // Pagination variables
+    let allVMs = [];
+    let currentPage = 1;
+    let perPage = 20;
+    let totalPages = 1;
+    
+    function updateStats() {
+      document.getElementById('statTotalVMs').textContent = stats.totalVMs || '-';
+      document.getElementById('statProcessed').textContent = stats.processed;
+      document.getElementById('statSkipped').textContent = stats.skipped;
+      document.getElementById('statFailed').textContent = stats.failed;
+      document.getElementById('statWorkers').textContent = stats.workers || '-';
+      
+      // Add pulsing effect when processing
+      const processedCard = document.getElementById('processedCard');
+      if (stats.totalVMs > 0 && stats.processed < stats.totalVMs) {
+        processedCard.classList.add('processing');
+      } else {
+        processedCard.classList.remove('processing');
+      }
+      
+      // Calculate average time
+      if (stats.processed > 0 && stats.startTime) {
+        const elapsed = (Date.now() - stats.startTime) / 1000;
+        const avgTime = elapsed / stats.processed;
+        document.getElementById('statAvgTime').textContent = `${avgTime.toFixed(2)}s`;
+      } else {
+        document.getElementById('statAvgTime').textContent = 'N/A';
+      }
+      
+      // Update progress bar
+      if (stats.totalVMs > 0) {
+        const percent = Math.round((stats.processed / stats.totalVMs) * 100);
+        document.getElementById('progressPercent').textContent = `${percent}%`;
+        document.getElementById('progressBar').style.width = `${percent}%`;
+      }
+    }
+    
+    function parseLogMessage(message) {
+      // Parse "Found X VMs with recovery points"
+      if (message.includes('Found') && message.includes('VMs with recovery points')) {
+        const match = message.match(/Found (\d+) VMs/);
+        if (match) {
+          stats.totalVMs = parseInt(match[1]);
+          stats.startTime = Date.now();
+        }
+      }
+      
+      // Parse "Starting X concurrent workers"
+      if (message.includes('concurrent workers')) {
+        const match = message.match(/Starting (\d+) concurrent/);
+        if (match) {
+          stats.workers = parseInt(match[1]);
+        }
+      }
+      
+      // Parse "✓ VM: vmname" to count processed
+      if (message.includes('✓ VM:')) {
+        stats.processed++;
+      }
+      
+      // Parse errors
+      if (message.includes('❌') || message.includes('Error')) {
+        stats.failed++;
+      }
+      
+      updateStats();
+    }
+    
+    function addLog(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logLine = document.createElement('div');
+      logLine.textContent = `[${timestamp}] ${message}`;
+      logLine.style.marginBottom = '0.5rem';
+      liveLogsContainer.appendChild(logLine);
+      liveLogsContainer.scrollTop = liveLogsContainer.scrollHeight;
+      
+      // Parse message for statistics
+      parseLogMessage(message);
+    }
+    
+    function displayResults(summary, fromCache = false) {
+      document.getElementById('totalVms').textContent = summary.total_vms;
+      document.getElementById('totalRecoveryPoints').textContent = summary.total_recovery_points;
+      document.getElementById('totalReclaimable').textContent = summary.total_reclaimable_formatted;
+      document.getElementById('analysisTime').textContent = `${summary.duration_seconds.toFixed(1)}s`;
+      
+      // Calculate and display total time from stats
+      if (stats.startTime) {
+        const totalSeconds = (Date.now() - stats.startTime) / 1000;
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        document.getElementById('totalTimeTaken').textContent = 
+          minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+      } else {
+        document.getElementById('totalTimeTaken').textContent = `${summary.duration_seconds.toFixed(1)}s`;
+      }
+      
+      // Show cache badge if applicable
+      const cacheBadge = document.getElementById('cacheBadge');
+      if (fromCache) {
+        cacheBadge.style.display = 'inline-block';
+      } else {
+        cacheBadge.style.display = 'none';
+      }
+      
+      // Store all VMs for pagination
+      allVMs = summary.vms || [];
+      currentPage = 1;
+      
+      // Display first page
+      renderPage();
+      
+      results.classList.add('active');
+    }
+    
+    function renderPage() {
+      const tbody = document.getElementById('vmTableBody');
+      tbody.innerHTML = '';
+      
+      // Calculate pagination
+      const perPageSelect = document.getElementById('perPageSelect');
+      perPage = perPageSelect.value === 'all' ? allVMs.length : parseInt(perPageSelect.value);
+      totalPages = Math.ceil(allVMs.length / perPage);
+      
+      // Ensure current page is valid
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+      
+      // Calculate start and end indices
+      const startIdx = (currentPage - 1) * perPage;
+      const endIdx = Math.min(startIdx + perPage, allVMs.length);
+      
+      // Get VMs for current page
+      const pageVMs = allVMs.slice(startIdx, endIdx);
+      
+      // Populate table with current page VMs
+      pageVMs.forEach(vm => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${vm.vm_name}</td>
+          <td><code style="font-size: 0.75rem; color: var(--text-muted);">${vm.vm_uuid || 'N/A'}</code></td>
+          <td>${vm.recovery_point_count}</td>
+          <td>${vm.reclaimable_formatted}</td>
+          <td>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="action-btn action-btn-snapshot" onclick="openSnapshotModal('${vm.vm_uuid}', '${vm.vm_name.replace(/'/g, "\\'")}')" title="Take Snapshot">
+                📸 Snapshot
+              </button>
+              <button class="action-btn action-btn-disk" onclick="openDiskUpdateModal('${vm.vm_uuid}', '${vm.vm_name.replace(/'/g, "\\'")}')" title="Update Disk">
+                💾 Disk Update
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // Update pagination info
+      document.getElementById('showingStart').textContent = allVMs.length > 0 ? startIdx + 1 : 0;
+      document.getElementById('showingEnd').textContent = endIdx;
+      document.getElementById('totalVmsCount').textContent = allVMs.length;
+      
+      // Update pagination controls
+      renderPaginationControls();
+    }
+    
+    function renderPaginationControls() {
+      const pageNumbers = document.getElementById('pageNumbers');
+      pageNumbers.innerHTML = '';
+      
+      // Disable/enable navigation buttons
+      document.getElementById('firstPageBtn').disabled = currentPage === 1;
+      document.getElementById('prevPageBtn').disabled = currentPage === 1;
+      document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+      document.getElementById('lastPageBtn').disabled = currentPage === totalPages;
+      
+      // Show page numbers (max 7 pages visible)
+      const maxVisible = 7;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      
+      if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = 'page-number' + (i === currentPage ? ' active' : '');
+        pageBtn.textContent = i;
+        pageBtn.onclick = () => goToPage(i);
+        pageNumbers.appendChild(pageBtn);
+      }
+      
+      // Hide pagination if only 1 page
+      const paginationControls = document.getElementById('paginationControls');
+      if (totalPages <= 1) {
+        paginationControls.style.display = 'none';
+      } else {
+        paginationControls.style.display = 'flex';
+      }
+    }
+    
+    function goToPage(page) {
+      currentPage = page;
+      renderPage();
+      // Scroll to top of results
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    function previousPage() {
+      if (currentPage > 1) {
+        goToPage(currentPage - 1);
+      }
+    }
+    
+    function nextPage() {
+      if (currentPage < totalPages) {
+        goToPage(currentPage + 1);
+      }
+    }
+    
+    function goToLastPage() {
+      goToPage(totalPages);
+    }
+    
+    // Per page selector change handler
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('perPageSelect').addEventListener('change', () => {
+        currentPage = 1;
+        renderPage();
+      });
+    });
+    
+    async function checkCacheAvailability() {
+      const pcIp = document.getElementById('pc_ip').value.trim();
+      const cacheInfo = document.getElementById('cacheInfo');
+      const fetchLatestCheckbox = document.getElementById('fetch_latest');
+      
+      if (!pcIp) {
+        cacheInfo.style.display = 'none';
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/check_recovery_cache?pc_ip=${encodeURIComponent(pcIp)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.has_cache) {
+            const cacheDate = new Date(data.cached_at);
+            const timeAgo = getTimeAgo(cacheDate);
+            document.getElementById('cacheTimestamp').textContent = 
+              `Last analyzed ${timeAgo} (${cacheDate.toLocaleString()})`;
+            cacheInfo.style.display = 'block';
+            
+            // Auto-uncheck fetch_latest if there's cache
+            fetchLatestCheckbox.checked = false;
+          } else {
+            cacheInfo.style.display = 'none';
+            // Auto-check fetch_latest if no cache
+            fetchLatestCheckbox.checked = true;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking cache:', error);
+      }
+    }
+    
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return `${seconds} seconds ago`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} minutes ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hours ago`;
+      const days = Math.floor(hours / 24);
+      return `${days} days ago`;
+    }
+    
+    // Check cache when PC IP changes
+    document.getElementById('pc_ip').addEventListener('blur', checkCacheAvailability);
+    document.getElementById('pc_ip').addEventListener('change', checkCacheAvailability);
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Reset UI
+      loading.classList.add('active');
+      errorMessage.classList.remove('active');
+      results.classList.remove('active');
+      statsCard.style.display = 'block';
+      logCard.style.display = 'block';
+      liveLogsContainer.innerHTML = '';
+      analyzeBtn.disabled = true;
+      
+      // Reset stats
+      stats = {
+        totalVMs: 0,
+        processed: 0,
+        skipped: 0,
+        failed: 0,
+        workers: 0,
+        startTime: null,
+        processedVMs: []
+      };
+      updateStats();
+      
+      const formData = {
+        pc_ip: document.getElementById('pc_ip').value,
+        pc_user: document.getElementById('pc_user').value,
+        pc_password: document.getElementById('pc_password').value,
+        concurrency: parseInt(document.getElementById('concurrency').value),
+        fetch_latest: document.getElementById('fetch_latest').checked
+      };
+      
+      try {
+        // Send initial request to get streaming endpoint
+        const response = await fetch('/api/analyze_recovery_points', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Analysis failed');
+        }
+        
+        // Use EventSource for streaming logs
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith('data: ')) continue;
+            
+            try {
+              const data = JSON.parse(line.substring(6));
+              
+              if (data.type === 'log') {
+                addLog(data.message);
+              } else if (data.type === 'complete') {
+                loading.classList.remove('active');
+                displayResults(data.summary, data.from_cache);
+                if (data.from_cache) {
+                  addLog('✅ Results loaded from cache!');
+                } else {
+                  addLog('✅ Analysis completed successfully!');
+                }
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+            } catch (parseError) {
+              console.error('Parse error:', parseError);
+            }
+          }
+        }
+        
+      } catch (error) {
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.classList.add('active');
+        loading.classList.remove('active');
+        addLog(`❌ Error: ${error.message}`);
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    });
+  </script>
+  
+  <!-- Snapshot Modal -->
+  <div class="modal-overlay" id="snapshotModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">📸 Take VM Snapshot</div>
+        <button class="modal-close" onclick="closeSnapshotModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-vm-info">
+          <strong>VM Name:</strong>
+          <span id="snapshotVmName"></span><br>
+          <strong>VM UUID:</strong>
+          <code id="snapshotVmUuid"></code>
+        </div>
+        
+        <form id="snapshotForm">
+          <div class="form-group">
+            <label for="snapshot_expiration_days">Expiration Days</label>
+            <input type="number" id="snapshot_expiration_days" value="30" min="1" required style="max-width: 150px;">
+          </div>
+          
+          <div class="form-group">
+            <label for="snapshot_recovery_type">Recovery Point Type</label>
+            <select id="snapshot_recovery_type" style="max-width: 250px;">
+              <option value="CRASH_CONSISTENT">Crash Consistent</option>
+              <option value="APPLICATION_CONSISTENT">Application Consistent</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="snapshot_task_timeout">Task Timeout (seconds)</label>
+            <input type="number" id="snapshot_task_timeout" value="300" min="60" required style="max-width: 150px;">
+          </div>
+        </form>
+        
+        <div class="modal-progress" id="snapshotProgress"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeSnapshotModal()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="snapshotSubmitBtn" onclick="submitSnapshot()">Take Snapshot</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Disk Update Modal -->
+  <div class="modal-overlay" id="diskModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">💾 VM Disk Update</div>
+        <button class="modal-close" onclick="closeDiskUpdateModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-vm-info">
+          <strong>VM Name:</strong>
+          <span id="diskVmName"></span><br>
+          <strong>VM UUID:</strong>
+          <code id="diskVmUuid"></code>
+        </div>
+        
+        <form id="diskForm">
+          <div class="form-group">
+            <label for="disk_op_mode">Operation Mode</label>
+            <select id="disk_op_mode" style="max-width: 200px;">
+              <option value="update" selected>Update (overwrite)</option>
+              <option value="create">Create</option>
+              <option value="add">Add (append)</option>
+              <option value="delete">Delete</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_guest_ssh_user">Guest SSH User</label>
+            <input type="text" id="disk_guest_ssh_user" value="root" required style="max-width: 200px;">
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_guest_ssh_password">Guest SSH Password</label>
+            <input type="text" id="disk_guest_ssh_password" value="nutanix/4u" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_target_file">Target File Path</label>
+            <input type="text" id="disk_target_file" value="/root/dummy_snapshot_data_1.img" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_dd_bs">DD Block Size</label>
+            <input type="text" id="disk_dd_bs" value="1M" required style="max-width: 150px;">
+            <small style="color: var(--text-muted); font-size: 0.85rem;">e.g., 1M, 10MB, 512K</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_churn_count_mib">Size (MiB)</label>
+            <input type="number" id="disk_churn_count_mib" value="500" min="1" required style="max-width: 150px;">
+          </div>
+          
+          <div class="form-group">
+            <label for="disk_ssh_timeout">SSH Command Timeout (seconds)</label>
+            <input type="number" id="disk_ssh_timeout" value="7200" min="60" required style="max-width: 150px;">
+          </div>
+        </form>
+        
+        <div class="modal-progress" id="diskProgress"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeDiskUpdateModal()">Cancel</button>
+        <button class="modal-btn modal-btn-success" id="diskSubmitBtn" onclick="submitDiskUpdate()">Execute Disk Operation</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let currentVmUuid = null;
+    let currentVmName = null;
+    
+    function openSnapshotModal(vmUuid, vmName) {
+      currentVmUuid = vmUuid;
+      currentVmName = vmName;
+      document.getElementById('snapshotVmName').textContent = vmName;
+      document.getElementById('snapshotVmUuid').textContent = vmUuid;
+      document.getElementById('snapshotProgress').innerHTML = '';
+      document.getElementById('snapshotProgress').classList.remove('active');
+      document.getElementById('snapshotModal').classList.add('active');
+    }
+    
+    function closeSnapshotModal() {
+      document.getElementById('snapshotModal').classList.remove('active');
+    }
+    
+    function openDiskUpdateModal(vmUuid, vmName) {
+      currentVmUuid = vmUuid;
+      currentVmName = vmName;
+      document.getElementById('diskVmName').textContent = vmName;
+      document.getElementById('diskVmUuid').textContent = vmUuid;
+      document.getElementById('diskProgress').innerHTML = '';
+      document.getElementById('diskProgress').classList.remove('active');
+      document.getElementById('diskModal').classList.add('active');
+    }
+    
+    function closeDiskUpdateModal() {
+      document.getElementById('diskModal').classList.remove('active');
+    }
+    
+    function addModalLog(containerId, message) {
+      const container = document.getElementById(containerId);
+      const timestamp = new Date().toLocaleTimeString();
+      const logLine = document.createElement('div');
+      logLine.textContent = `[${timestamp}] ${message}`;
+      logLine.style.marginBottom = '0.25rem';
+      container.appendChild(logLine);
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    async function submitSnapshot() {
+      const submitBtn = document.getElementById('snapshotSubmitBtn');
+      const progressContainer = document.getElementById('snapshotProgress');
+      
+      submitBtn.disabled = true;
+      progressContainer.classList.add('active');
+      progressContainer.innerHTML = '';
+      
+      const pcIp = document.getElementById('pc_ip').value;
+      const pcUser = document.getElementById('pc_user').value;
+      const pcPassword = document.getElementById('pc_password').value;
+      
+      const payload = {
+        pc_ip: pcIp,
+        pc_user: pcUser,
+        pc_password: pcPassword,
+        vm_uuid: currentVmUuid,
+        vm_name: currentVmName,
+        expiration_days: parseInt(document.getElementById('snapshot_expiration_days').value),
+        recovery_point_type: document.getElementById('snapshot_recovery_type').value,
+        task_timeout_sec: parseInt(document.getElementById('snapshot_task_timeout').value)
+      };
+      
+      try {
+        addModalLog('snapshotProgress', `📸 Initiating snapshot for ${currentVmName}...`);
+        
+        const response = await fetch('/api/vm_snapshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          addModalLog('snapshotProgress', `✅ Snapshot request submitted successfully!`);
+          addModalLog('snapshotProgress', `Task ID: ${result.task_uuid || 'N/A'}`);
+          setTimeout(() => {
+            closeSnapshotModal();
+            alert('✅ Snapshot initiated successfully!');
+          }, 2000);
+        } else {
+          addModalLog('snapshotProgress', `❌ Error: ${result.error || result.message}`);
+        }
+      } catch (error) {
+        addModalLog('snapshotProgress', `❌ Error: ${error.message}`);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+    
+    async function submitDiskUpdate() {
+      const submitBtn = document.getElementById('diskSubmitBtn');
+      const progressContainer = document.getElementById('diskProgress');
+      
+      submitBtn.disabled = true;
+      progressContainer.classList.add('active');
+      progressContainer.innerHTML = '';
+      
+      const pcIp = document.getElementById('pc_ip').value;
+      const pcUser = document.getElementById('pc_user').value;
+      const pcPassword = document.getElementById('pc_password').value;
+      
+      const payload = {
+        pc_ip: pcIp,
+        pc_user: pcUser,
+        pc_password: pcPassword,
+        vm_uuid: currentVmUuid,
+        vm_name: currentVmName,
+        disk_op_mode: document.getElementById('disk_op_mode').value,
+        guest_ssh_user: document.getElementById('disk_guest_ssh_user').value,
+        guest_ssh_password: document.getElementById('disk_guest_ssh_password').value,
+        guest_target_file: document.getElementById('disk_target_file').value,
+        guest_dd_bs: document.getElementById('disk_dd_bs').value,
+        churn_count_mib: parseInt(document.getElementById('disk_churn_count_mib').value),
+        guest_ssh_command_timeout: parseInt(document.getElementById('disk_ssh_timeout').value)
+      };
+      
+      try {
+        addModalLog('diskProgress', `💾 Initiating disk operation for ${currentVmName}...`);
+        
+        const response = await fetch('/api/vm_disk_operation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          addModalLog('diskProgress', `✅ Disk operation completed successfully!`);
+          if (result.details) {
+            addModalLog('diskProgress', `Details: ${result.details}`);
+          }
+          setTimeout(() => {
+            closeDiskUpdateModal();
+            alert('✅ Disk operation completed successfully!');
+          }, 2000);
+        } else {
+          addModalLog('diskProgress', `❌ Error: ${result.error || result.message}`);
+        }
+      } catch (error) {
+        addModalLog('diskProgress', `❌ Error: ${error.message}`);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+    
+    // Close modal on outside click
+    document.getElementById('snapshotModal').addEventListener('click', (e) => {
+      if (e.target.id === 'snapshotModal') closeSnapshotModal();
+    });
+    
+    document.getElementById('diskModal').addEventListener('click', (e) => {
+      if (e.target.id === 'diskModal') closeDiskUpdateModal();
+    });
+  </script>
+</body>
+</html>

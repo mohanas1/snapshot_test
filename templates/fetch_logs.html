@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fluentd Log Fetcher - Nutanix Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --primary-blue: #3B82F6;
+      --bg-light: #F9FAFB;
+      --text-dark: #1F2937;
+      --text-muted: #6B7280;
+      --border-gray: #E5E7EB;
+      --font-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.75;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .body-content {
+      display: flex;
+      flex: 1;
+      margin-top: 4.5rem;
+    }
+    
+    /* Top Navigation Bar */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #1A1A40 0%, #2D325A 100%);
+      border-bottom: 3px solid var(--primary-blue);
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .top-nav-content {
+      display: flex;
+      align-items: center;
+      padding: 1rem 2rem;
+      gap: 2rem;
+    }
+    
+    .top-nav-title {
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .top-nav-title::before {
+      content: "⚡";
+      font-size: 1.75rem;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 4.5rem;
+      left: 0;
+      width: 240px;
+      background: var(--sidebar-bg);
+      height: calc(100vh - 4.5rem);
+      overflow-y: auto;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 900;
+    }
+    
+    .sidebar-section {
+      padding: 1.5rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-section-title {
+      color: #9CA3AF;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      padding: 0 0.75rem;
+    }
+    
+    .sidebar-link {
+      display: block;
+      padding: 0.625rem 0.75rem;
+      color: #D1D5DB;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-bottom: 0.25rem;
+      transition: all 0.2s;
+      font-size: 0.9375rem;
+    }
+    
+    .sidebar-link:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+    
+    .sidebar-link.active {
+      background: var(--sidebar-active);
+      color: white;
+      font-weight: 600;
+    }
+    
+    /* Main Content */
+    .main-content {
+      margin-left: 240px;
+      flex: 1;
+      padding: 2rem;
+      padding-bottom: 3rem;
+    }
+    
+    .page-header {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .page-title {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 1.0625rem;
+    }
+    
+    /* Form Section */
+    .form-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .form-section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+      font-size: 0.9375rem;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-gray);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      transition: all 0.2s;
+      background: white;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    select.form-input {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%233B82F6' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+    
+    select.form-input.loading {
+      background-image: none;
+      padding-right: 1rem;
+    }
+    
+    select.form-input:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      background-color: #F9FAFB;
+    }
+    
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(59, 130, 246, 0.2);
+      border-radius: 50%;
+      border-top-color: var(--primary-blue);
+      animation: spinner 0.6s linear infinite;
+    }
+    
+    @keyframes spinner {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-indicator {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    
+    .form-group {
+      position: relative;
+    }
+    
+    .form-help-text {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .btn-refresh {
+      background: var(--primary-blue);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      height: 48px;
+    }
+    
+    .btn-refresh:hover:not(:disabled) {
+      background: #2563EB;
+      transform: translateY(-1px);
+    }
+    
+    .btn-refresh:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    .btn-refresh:disabled {
+      background: #D1D5DB;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .path-display {
+      background: #F3F4F6;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 2px solid var(--border-gray);
+      font-family: var(--font-mono);
+      font-size: 0.9375rem;
+      color: var(--text-dark);
+      word-break: break-all;
+    }
+    
+    .path-variable {
+      color: var(--primary-blue);
+      font-weight: 600;
+    }
+    
+    .url-display {
+      background: #ECFDF5;
+      border: 2px solid #10B981;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.9375rem;
+      color: #059669;
+      word-break: break-all;
+      font-weight: 500;
+    }
+    
+    /* Buttons */
+    .btn-primary {
+      background: var(--primary-blue);
+      color: white;
+      padding: 0.875rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #2563EB;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      background: #6B7280;
+      color: white;
+      padding: 0.875rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+      background: #4B5563;
+    }
+    
+    /* Live Logs Section */
+    .logs-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      display: none;
+    }
+    
+    .logs-section.active {
+      display: block;
+    }
+    
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--border-gray);
+    }
+    
+    .logs-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .logs-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #FEF3C7;
+      color: #92400E;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    .logs-status.running::before {
+      content: "⏳";
+    }
+    
+    .logs-status.success {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+    
+    .logs-status.success::before {
+      content: "✅";
+    }
+    
+    .logs-status.error {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+    
+    .logs-status.error::before {
+      content: "❌";
+    }
+    
+    /* Progress Bar */
+    .progress-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    
+    .progress-step {
+      font-size: 0.9375rem;
+      color: var(--text-dark);
+      font-weight: 600;
+    }
+    
+    .progress-percentage {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    
+    .progress-bar-container {
+      width: 100%;
+      height: 24px;
+      background: #E5E7EB;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
+      border-radius: 12px;
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 0.75rem;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-bar-fill::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%
+      );
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+    
+    .progress-bar-text {
+      color: white;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      z-index: 1;
+    }
+    
+    .logs-container {
+      background: #1F2937;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-height: 500px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      line-height: 1.8;
+    }
+    
+    .log-line {
+      color: #D1D5DB;
+      margin-bottom: 0.25rem;
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .log-timestamp {
+      color: #9CA3AF;
+      flex-shrink: 0;
+    }
+    
+    .log-message {
+      flex: 1;
+    }
+    
+    .log-line.info .log-message {
+      color: #D1D5DB;
+    }
+    
+    .log-line.success .log-message {
+      color: #34D399;
+      font-weight: 600;
+    }
+    
+    .log-line.warning .log-message {
+      color: #FBBF24;
+    }
+    
+    .log-line.error .log-message {
+      color: #F87171;
+      font-weight: 600;
+    }
+    
+    /* Info Box */
+    .info-box {
+      background: #EFF6FF;
+      border-left: 4px solid var(--primary-blue);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    
+    .info-box-title {
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .info-box-content {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+    
+    .info-box-content ul {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+    
+    .info-box-content li {
+      margin: 0.25rem 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="top-nav-content">
+      <div class="top-nav-title">Nutanix Operations</div>
+    </div>
+  </nav>
+  
+  <!-- Body Content -->
+  <div class="body-content">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="sidebar-link">Bulk Snapshots</a>
+        <a href="#" class="sidebar-link">Snapshot History</a>
+        <a href="#" class="sidebar-link">Disk Operations</a>
+        <a href="{{ url_for('recovery_points') }}" class="sidebar-link">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="sidebar-link active">Fluentd Log Fetcher</a>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1 class="page-title">Fluentd Log Fetcher</h1>
+        <p class="page-subtitle">Fetch fluentd logs from Prism Central and upload to filer</p>
+      </div>
+      
+      <!-- Info Box -->
+      <div class="info-box">
+        <div class="info-box-title">ℹ️ About This Tool</div>
+        <div class="info-box-content">
+          This tool automates the process of:
+          <ul>
+            <li>Fetching kubeconfig from Prism Central</li>
+            <li>Copying logs from fluentd-aggregator pod</li>
+            <li>Compressing logs for faster transfer</li>
+            <li>Uploading to filer with retry support</li>
+            <li>Verifying successful upload</li>
+          </ul>
+          <strong>Default credentials:</strong> nutanix/4u (can be overridden)
+        </div>
+      </div>
+      
+      <!-- Configuration Form -->
+      <div class="form-section">
+        <h2 class="form-section-title">🔧 Connection Configuration</h2>
+        
+        <form id="fetchLogsForm">
+          <div class="form-group">
+            <label class="form-label" for="pcIp">Prism Central IP / Hostname *</label>
+            <input type="text" id="pcIp" name="pcIp" class="form-input" 
+                   placeholder="10.0.0.1" required>
+            <div class="form-help-text">
+              📍 Enter the IP address or hostname of your Prism Central
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="filerServer">Select Filer Server *</label>
+            <select id="filerServer" name="filerServer" class="form-input" required>
+              <option value="">-- Select Filer Server --</option>
+              <option value="filer1" selected>Filer 1 - 10.46.1.165 (nutanix)</option>
+              <option value="filer2">Filer 2 - 10.117.64.207 (aiops)</option>
+            </select>
+            <div class="form-help-text">
+              🖥️ Choose the destination filer server
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="folderLevel1">Select Folder Level 1</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="folderLevel1" name="folderLevel1" class="form-input loading" disabled required style="flex: 1;">
+                <option value="">⏳ Loading folders...</option>
+              </select>
+              <button type="button" id="refreshLevel1Btn" class="btn-refresh" title="Refresh folders" disabled>
+                🔄
+              </button>
+            </div>
+            <div class="form-help-text">
+              📁 Select first level folder (e.g., MA, EMEA, APJ)
+            </div>
+          </div>
+          
+          <div class="form-group" id="folderLevel2Group" style="display: none;">
+            <label class="form-label" for="folderLevel2">Select Folder Level 2</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="folderLevel2" name="folderLevel2" class="form-input" style="flex: 1;">
+                <option value="">-- Select Level 1 first --</option>
+              </select>
+              <button type="button" id="refreshLevel2Btn" class="btn-refresh" title="Refresh folders" disabled>
+                🔄
+              </button>
+            </div>
+            <div class="form-help-text">
+              📁 Select second level folder (e.g., NCM2_1, NCM2_2)
+            </div>
+          </div>
+          
+          <div class="form-group" id="bugFolderGroup" style="display: none;">
+            <label class="form-label" for="bugFolder">Final Folder Name *</label>
+            <input type="text" id="bugFolder" name="bugFolder" class="form-input" 
+                   placeholder="ENG-123456 or custom-folder-name" required>
+            <div class="form-help-text">
+              📁 Enter the final folder name for organizing logs
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Filer Server Details</label>
+            <div class="path-display" id="filerDetails">
+              <strong>IP:</strong> <span id="filerIp">10.46.1.165</span> &nbsp;&nbsp;|&nbsp;&nbsp; 
+              <strong>User:</strong> <span id="filerUser">nutanix</span>
+            </div>
+            <div class="form-help-text">
+              🖥️ Destination filer server details
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Filer Destination Path</label>
+            <div class="path-display" id="pathDisplay">
+              <span id="pathBase">/home/nutanix/data/bugs</span>/<span class="path-variable" id="pathPreview">[select-folders-above]</span>
+            </div>
+            <div class="form-help-text">
+              📂 SSH path where logs will be stored
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Access URL (After Upload)</label>
+            <div class="url-display">
+              <span id="urlBase">http://10.46.1.165/bugs</span>/<span class="path-variable" style="color: #059669;" id="urlPreview">[select-folders-above]</span>
+            </div>
+            <div class="form-help-text">
+              🌐 Browser link to access uploaded logs
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="filerPassword">Filer SSH Password (Optional)</label>
+            <input type="text" id="filerPassword" name="filerPassword" class="form-input" 
+                   value="nutanix/4u">
+            <div class="form-help-text">
+              🔑 Default: nutanix/4u
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn-primary" id="startBtn" disabled>
+              Start Log Fetch
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">
+              Back to Home
+            </button>
+          </div>
+          <div id="buttonHint" style="margin-top: 0.5rem; color: #DC2626; font-size: 0.875rem; display: none;">
+            ⚠️ Please complete all folder selections and enter final folder name
+          </div>
+        </form>
+      </div>
+      
+      <!-- Live Logs Section -->
+      <div class="logs-section" id="logsSection">
+        <div class="logs-header">
+          <div class="logs-title">📋 Live Progress</div>
+          <div class="logs-status running" id="logsStatus">Running...</div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-section">
+          <div class="progress-info">
+            <div class="progress-step" id="progressStep">Initializing...</div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%">
+              <span class="progress-bar-text" id="progressBarText"></span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="logs-container" id="logsContainer">
+          <!-- Logs will be appended here -->
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script>
+    // Filer server configurations
+    const filerServers = {
+      filer1: {
+        ip: '10.46.1.165',
+        user: 'nutanix',
+        password: 'nutanix/4u',
+        basePath: '/home/nutanix/data/Bugs',
+        urlBase: 'http://10.46.1.165/bugs'
+      },
+      filer2: {
+        ip: '10.117.64.207',
+        user: 'aiops',
+        password: 'Nutanix.123',
+        basePath: '/var/nfs_share',
+        urlBase: 'http://10.117.64.207'
+      }
+    };
+    
+    // Cache management for folder lists
+    const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+    
+    function getCacheKey(filerIp, path) {
+      return `filer_cache_${filerIp}_${path}`;
+    }
+    
+    function getCachedFolders(filerIp, path) {
+      const cacheKey = getCacheKey(filerIp, path);
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (!cached) return null;
+      
+      try {
+        const data = JSON.parse(cached);
+        const age = Date.now() - data.timestamp;
+        
+        if (age > CACHE_DURATION_MS) {
+          localStorage.removeItem(cacheKey);
+          return null;
+        }
+        
+        return data;
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    function setCachedFolders(filerIp, path, folders) {
+      const cacheKey = getCacheKey(filerIp, path);
+      const data = {
+        folders: folders,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+    }
+    
+    function formatCacheAge(timestamp) {
+      const ageMs = Date.now() - timestamp;
+      const minutes = Math.floor(ageMs / 60000);
+      
+      if (minutes < 1) return 'just now';
+      if (minutes === 1) return '1 minute ago';
+      if (minutes < 60) return `${minutes} minutes ago';
+      
+      const hours = Math.floor(minutes / 60);
+      if (hours === 1) return '1 hour ago';
+      return `${hours} hours ago`;
+    }
+    
+    let currentFilerConfig = filerServers.filer1;
+    let currentPath = currentFilerConfig.basePath;
+    
+    // Update filer details in UI
+    function updateFilerDetails(config) {
+      document.getElementById('filerIp').textContent = config.ip;
+      document.getElementById('filerUser').textContent = config.user;
+      document.getElementById('pathBase').textContent = config.basePath;
+      document.getElementById('urlBase').textContent = config.urlBase;
+      document.getElementById('filerPassword').value = config.password;
+      currentPath = config.basePath;
+      currentFilerConfig = config;
+    }
+    
+    // Handle filer server selection change
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('filerServer').addEventListener('change', function() {
+        const selectedFiler = this.value;
+        if (selectedFiler && filerServers[selectedFiler]) {
+          updateFilerDetails(filerServers[selectedFiler]);
+          
+          // Reset folder selections
+          document.getElementById('folderLevel1').innerHTML = '<option value="">⏳ Loading folders...</option>';
+          document.getElementById('folderLevel2').innerHTML = '<option value="">-- Select Level 1 first --</option>';
+          document.getElementById('bugFolder').value = '';
+          document.getElementById('folderLevel2Group').style.display = 'none';
+          document.getElementById('bugFolderGroup').style.display = 'none';
+          
+          // Reload folders for new filer
+          loadFolders(currentFilerConfig.basePath, document.getElementById('folderLevel1'));
+          updatePathPreview();
+        }
+      });
+      
+      // Initialize with default filer (filer1)
+      const level1Group = document.getElementById('folderLevel1').closest('.form-group');
+      const initialSpinner = document.createElement('div');
+      initialSpinner.className = 'loading-indicator';
+      initialSpinner.innerHTML = '<div class="spinner"></div>';
+      level1Group.appendChild(initialSpinner);
+      
+      loadFolders(currentFilerConfig.basePath, document.getElementById('folderLevel1'), 'MA');
+    });
+    
+    // Handle refresh button for Level 1
+    document.getElementById('refreshLevel1Btn').addEventListener('click', function() {
+      const level1Select = document.getElementById('folderLevel1');
+      loadFolders(currentFilerConfig.basePath, level1Select, null, true); // Force refresh
+    });
+    
+    // Handle refresh button for Level 2
+    document.getElementById('refreshLevel2Btn').addEventListener('click', function() {
+      const level1 = document.getElementById('folderLevel1').value;
+      if (level1) {
+        const level2Select = document.getElementById('folderLevel2');
+        loadFolders(`${currentFilerConfig.basePath}/${level1}`, level2Select, null, true); // Force refresh
+      }
+    });
+    
+    // Load initial folders on page load
+    async function loadFolders(path, targetSelect, defaultSelection = null, forceRefresh = false) {
+      // Show loading state
+      targetSelect.innerHTML = '<option value="">⏳ Loading folders...</option>';
+      targetSelect.classList.add('loading');
+      targetSelect.disabled = true;
+      
+      // Disable refresh button
+      const refreshBtn = targetSelect.id === 'folderLevel1' ? 
+        document.getElementById('refreshLevel1Btn') : 
+        document.getElementById('refreshLevel2Btn');
+      if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.title = 'Loading...';
+      }
+      
+      // Add loading spinner
+      const selectGroup = targetSelect.closest('.form-group');
+      let spinner = selectGroup.querySelector('.loading-indicator');
+      if (!spinner) {
+        spinner = document.createElement('div');
+        spinner.className = 'loading-indicator';
+        spinner.innerHTML = '<div class="spinner"></div>';
+        selectGroup.appendChild(spinner);
+      }
+      spinner.style.display = 'block';
+      
+      try {
+        const filerIp = currentFilerConfig.ip;
+        const filerUser = currentFilerConfig.user;
+        
+        // Check cache first (unless force refresh)
+        let folders = [];
+        let fromCache = false;
+        let cacheTimestamp = null;
+        
+        if (!forceRefresh) {
+          const cached = getCachedFolders(filerIp, path);
+          if (cached) {
+            folders = cached.folders;
+            fromCache = true;
+            cacheTimestamp = cached.timestamp;
+          }
+        }
+        
+        // Fetch from server if not in cache
+        if (!fromCache) {
+          const filerPassword = document.getElementById('filerPassword').value.trim();
+          const response = await fetch(`/api/list_filer_folders?path=${encodeURIComponent(path)}&filer_password=${encodeURIComponent(filerPassword)}&filer_ip=${encodeURIComponent(filerIp)}&filer_user=${encodeURIComponent(filerUser)}`);
+          const data = await response.json();
+          
+          if (data.success && data.folders.length > 0) {
+            folders = data.folders;
+            // Cache the results
+            setCachedFolders(filerIp, path, folders);
+            cacheTimestamp = Date.now();
+          }
+        }
+        
+        if (folders.length > 0) {
+          targetSelect.innerHTML = '<option value="">-- Select --</option>';
+          folders.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder;
+            option.textContent = folder;
+            targetSelect.appendChild(option);
+          });
+          
+          // Update refresh button tooltip
+          if (refreshBtn && cacheTimestamp) {
+            const ageText = formatCacheAge(cacheTimestamp);
+            refreshBtn.title = `Last fetched: ${ageText}\nClick to refresh`;
+          }
+          
+          // Auto-select default if provided and exists in folder list
+          if (defaultSelection && folders.includes(defaultSelection)) {
+            targetSelect.value = defaultSelection;
+            // Trigger change event to load next level
+            setTimeout(() => {
+              const event = new Event('change', { bubbles: true });
+              targetSelect.dispatchEvent(event);
+            }, 100);
+          }
+        } else {
+          targetSelect.innerHTML = '<option value="">-- No folders found --</option>';
+        }
+      } catch (error) {
+        console.error('Error loading folders:', error);
+        targetSelect.innerHTML = '<option value="">-- Error loading folders --</option>';
+      } finally {
+        // Remove loading state
+        targetSelect.classList.remove('loading');
+        targetSelect.disabled = false;
+        if (refreshBtn) {
+          refreshBtn.disabled = false;
+        }
+        if (spinner) {
+          spinner.style.display = 'none';
+        }
+      }
+    }
+    
+    // Initialize on page load - moved to after filer server event listener setup
+    
+    // Handle Level 1 folder selection
+    document.getElementById('folderLevel1').addEventListener('change', function() {
+      const level1 = this.value;
+      const level2Group = document.getElementById('folderLevel2Group');
+      const level2Select = document.getElementById('folderLevel2');
+      const bugFolderGroup = document.getElementById('bugFolderGroup');
+      
+      if (level1) {
+        level2Group.style.display = 'block';
+        currentPath = `${currentFilerConfig.basePath}/${level1}`;
+        // Auto-select NCM2_1 if this is MA folder
+        const defaultLevel2 = (level1 === 'MA') ? 'NCM2_1' : null;
+        loadFolders(currentPath, level2Select, defaultLevel2);
+        updatePathPreview();
+      } else {
+        level2Group.style.display = 'none';
+        bugFolderGroup.style.display = 'none';
+        currentPath = currentFilerConfig.basePath;
+        updatePathPreview();
+      }
+    });
+    
+    // Handle Level 2 folder selection
+    document.getElementById('folderLevel2').addEventListener('change', function() {
+      const level1 = document.getElementById('folderLevel1').value;
+      const level2 = this.value;
+      const bugFolderGroup = document.getElementById('bugFolderGroup');
+      
+      if (level2) {
+        bugFolderGroup.style.display = 'block';
+        currentPath = `${currentFilerConfig.basePath}/${level1}/${level2}`;
+      } else {
+        bugFolderGroup.style.display = 'none';
+        currentPath = `${currentFilerConfig.basePath}/${level1}`;
+      }
+      updatePathPreview();
+    });
+    
+    // Update path preview when bug folder changes
+    document.getElementById('bugFolder').addEventListener('input', function() {
+      updatePathPreview();
+    });
+    
+    // Add validation listeners to all relevant fields
+    document.getElementById('pcIp').addEventListener('input', validateFormAndUpdateButton);
+    document.getElementById('folderLevel1').addEventListener('change', validateFormAndUpdateButton);
+    document.getElementById('folderLevel2').addEventListener('change', validateFormAndUpdateButton);
+    document.getElementById('bugFolder').addEventListener('input', validateFormAndUpdateButton);
+    
+    // Initial validation check
+    validateFormAndUpdateButton();
+    
+    function updatePathPreview() {
+      const level1 = document.getElementById('folderLevel1').value;
+      const level2 = document.getElementById('folderLevel2').value;
+      const bugFolder = document.getElementById('bugFolder').value.trim();
+      
+      let pathParts = [];
+      if (level1) pathParts.push(level1);
+      if (level2) pathParts.push(level2);
+      if (bugFolder) pathParts.push(bugFolder);
+      
+      const preview = pathParts.length > 0 ? pathParts.join('/') : '[select-folders-above]';
+      document.getElementById('pathPreview').textContent = preview;
+      document.getElementById('urlPreview').textContent = preview;
+      
+      // Update button state
+      validateFormAndUpdateButton();
+    }
+    
+    function validateFormAndUpdateButton() {
+      const pcIp = document.getElementById('pcIp').value.trim();
+      const level1 = document.getElementById('folderLevel1').value;
+      const level2 = document.getElementById('folderLevel2').value;
+      const bugFolder = document.getElementById('bugFolder').value.trim();
+      const startBtn = document.getElementById('startBtn');
+      const buttonHint = document.getElementById('buttonHint');
+      
+      // Check if all required fields are filled
+      const isFormComplete = pcIp && level1 && level2 && bugFolder;
+      
+      if (startBtn) {
+        startBtn.disabled = !isFormComplete;
+      }
+      
+      if (buttonHint) {
+        buttonHint.style.display = isFormComplete ? 'none' : 'block';
+      }
+    }
+    
+    function getFullBugFolder() {
+      const level1 = document.getElementById('folderLevel1').value;
+      const level2 = document.getElementById('folderLevel2').value;
+      const bugFolder = document.getElementById('bugFolder').value.trim();
+      
+      let parts = [];
+      if (level1) parts.push(level1);
+      if (level2) parts.push(level2);
+      if (bugFolder) parts.push(bugFolder);
+      
+      return parts.join('/');
+    }
+    
+    // Handle form submission
+    document.getElementById('fetchLogsForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const pcIp = document.getElementById('pcIp').value.trim();
+      const fullBugFolder = getFullBugFolder();
+      const filerPassword = document.getElementById('filerPassword').value.trim();
+      
+      if (!pcIp) {
+        alert('Please enter PC IP address');
+        return;
+      }
+      
+      if (!fullBugFolder) {
+        alert('Please select folders and enter final folder name');
+        return;
+      }
+      
+      // Disable form and show logs section
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('logsSection').classList.add('active');
+      document.getElementById('logsContainer').innerHTML = '';
+      document.getElementById('logsStatus').className = 'logs-status running';
+      document.getElementById('logsStatus').textContent = 'Running...';
+      
+      // Reset progress bar
+      updateProgress(0, 'Initializing...');
+      
+      // Scroll to logs
+      document.getElementById('logsSection').scrollIntoView({ behavior: 'smooth' });
+      
+      // Send POST request
+      fetch('/api/fetch_fluentd_logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          pc_ip: pcIp,
+          bug_folder: fullBugFolder,
+          pc_password: 'nutanix/4u',
+          filer_password: filerPassword,
+          filer_ip: currentFilerConfig.ip,
+          filer_user: currentFilerConfig.user,
+          filer_base_path: currentFilerConfig.basePath
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to start log fetch');
+        }
+        return response.body;
+      }).then(body => {
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        
+        function readStream() {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              document.getElementById('startBtn').disabled = false;
+              return;
+            }
+            
+            const text = decoder.decode(value, { stream: true });
+            const lines = text.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  
+                  if (data.ping) {
+                    continue;
+                  }
+                  
+                  if (data.message === 'END') {
+                    // Check for any error logs or exit code != 0
+                    const errorLogs = document.querySelectorAll('.log-line.error');
+                    const logsContainer = document.getElementById('logsContainer');
+                    const allLogsText = logsContainer ? logsContainer.textContent : '';
+                    
+                    // Comprehensive error detection
+                    const errorIndicators = [
+                      'Script exited with code 1',
+                      'exited with code 1',
+                      'Failed to',
+                      'Cannot proceed',
+                      'directory not found',
+                      'No log files found',
+                      'Logs directory not created',
+                      'kubectl cp may have failed',
+                      'No files were compressed',
+                      'Upload failed',
+                      'verification failed',
+                      '✗'
+                    ];
+                    
+                    const hasErrors = errorLogs.length > 0 || 
+                                     errorIndicators.some(indicator => allLogsText.includes(indicator));
+                    
+                    if (hasErrors) {
+                      document.getElementById('logsStatus').className = 'logs-status error';
+                      document.getElementById('logsStatus').textContent = 'Failed';
+                      const progressBarFill = document.getElementById('progressBarFill');
+                      progressBarFill.style.background = '#DC2626'; // Red for error
+                      updateProgress(100, 'Failed - Check logs');
+                    } else {
+                      document.getElementById('logsStatus').className = 'logs-status success';
+                      document.getElementById('logsStatus').textContent = 'Completed';
+                      const progressBarFill = document.getElementById('progressBarFill');
+                      progressBarFill.style.background = ''; // Reset to default green
+                      updateProgress(100, 'Completed Successfully');
+                    }
+                    document.getElementById('startBtn').disabled = false;
+                    return;
+                  }
+                  
+                  // Add log line
+                  const logLine = document.createElement('div');
+                  logLine.className = 'log-line ' + data.level.toLowerCase();
+                  logLine.innerHTML = `
+                    <span class="log-timestamp">[${data.timestamp}]</span>
+                    <span class="log-message">${escapeHtml(data.message)}</span>
+                  `;
+                  document.getElementById('logsContainer').appendChild(logLine);
+                  
+                  // Detect progress from log message
+                  detectProgressFromLog(data.message);
+                  
+                  // Check for immediate error indicators in the message
+                  if (data.level.toLowerCase() === 'error' || 
+                      data.message.includes('✗') ||
+                      data.message.includes('Script exited with code 1')) {
+                    document.getElementById('logsStatus').className = 'logs-status error';
+                    document.getElementById('logsStatus').textContent = 'Failed';
+                  }
+                  
+                  // Auto-scroll
+                  const container = document.getElementById('logsContainer');
+                  container.scrollTop = container.scrollHeight;
+                  
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e);
+                }
+              }
+            }
+            
+            readStream();
+          });
+        }
+        
+        readStream();
+      }).catch(error => {
+        console.error('Error:', error);
+        document.getElementById('logsStatus').className = 'logs-status error';
+        document.getElementById('logsStatus').textContent = 'Error';
+        document.getElementById('startBtn').disabled = false;
+        updateProgress(100, 'Error: ' + error.message);
+        
+        const logLine = document.createElement('div');
+        logLine.className = 'log-line error';
+        logLine.innerHTML = `
+          <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+          <span class="log-message">Error: ${error.message}</span>
+        `;
+        document.getElementById('logsContainer').appendChild(logLine);
+      });
+    });
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Progress tracking
+    const progressSteps = {
+      'Fetching kubeconfig': 10,
+      'Kubeconfig saved': 20,
+      'Copying logs from pod': 30,
+      'Logs copied successfully': 50,
+      'Compressing logs': 60,
+      'Creating folder on filer': 70,
+      'Uploading to filer': 75,
+      'Upload completed': 90,
+      'Upload verified': 95,
+      'Done': 100
+    };
+    
+    function updateProgress(percentage, stepText) {
+      const progressBarFill = document.getElementById('progressBarFill');
+      const progressBarText = document.getElementById('progressBarText');
+      const progressPercentage = document.getElementById('progressPercentage');
+      const progressStep = document.getElementById('progressStep');
+      
+      // Update progress bar
+      progressBarFill.style.width = percentage + '%';
+      progressPercentage.textContent = percentage + '%';
+      progressStep.textContent = stepText;
+      
+      // Update text inside bar if there's enough space
+      if (percentage > 20) {
+        progressBarText.textContent = percentage + '%';
+      } else {
+        progressBarText.textContent = '';
+      }
+    }
+    
+    function detectProgressFromLog(message) {
+      // Check for error/failure indicators FIRST - most aggressive detection
+      const errorPatterns = [
+        'Script exited with code 1',
+        'exited with code 1',
+        '✗ Script exited',
+        '✗',
+        'Failed to',
+        'Error:',
+        'Cannot proceed',
+        'directory not found',
+        'No log files found',
+        'Logs directory not created',
+        'kubectl cp may have failed',
+        'No files were compressed'
+      ];
+      
+      const hasError = errorPatterns.some(pattern => message.includes(pattern));
+      
+      if (hasError) {
+        const progressBarFill = document.getElementById('progressBarFill');
+        const logsStatus = document.getElementById('logsStatus');
+        
+        // Immediately update to error state
+        progressBarFill.style.background = '#DC2626'; // Red for error
+        logsStatus.className = 'logs-status error';
+        logsStatus.textContent = 'Failed';
+        
+        // Update progress text
+        const currentPercentage = parseInt(document.getElementById('progressPercentage').textContent) || 0;
+        if (currentPercentage < 100) {
+          updateProgress(currentPercentage, 'Error - Operation Failed');
+        } else {
+          updateProgress(100, 'Failed - Check logs');
+        }
+        
+        return; // Don't process further
+      }
+      
+      // Check each step keyword and update progress
+      for (const [keyword, percentage] of Object.entries(progressSteps)) {
+        if (message.includes(keyword)) {
+          updateProgress(percentage, keyword);
+          return;
+        }
+      }
+      
+      // Specific step detection (updated for 7 steps)
+      if (message.includes('Step 1/7') || message.includes('Fetching Kubeconfig')) {
+        updateProgress(10, 'Fetching Kubeconfig from PC');
+      } else if (message.includes('Step 2/7') || message.includes('Verifying Kubeconfig')) {
+        updateProgress(20, 'Verifying Kubeconfig');
+      } else if (message.includes('Step 3/7') || message.includes('Copying Fluentd Logs') || message.includes('Copying Logs')) {
+        updateProgress(35, 'Copying Logs from Pod');
+      } else if (message.includes('Step 4/7') || message.includes('Creating Folder on Filer')) {
+        updateProgress(50, 'Creating Folder on Filer');
+      } else if (message.includes('Step 5/7') || message.includes('Compressing Logs by Namespace')) {
+        updateProgress(60, 'Compressing by Namespace');
+      } else if (message.includes('Step 6/7') || message.includes('Uploading Compressed Files')) {
+        updateProgress(80, 'Uploading Files to Filer');
+      } else if (message.includes('Step 7/7') || message.includes('Verification and Cleanup')) {
+        updateProgress(92, 'Verifying and Cleaning Up');
+      } else if (message.includes('completed successfully') || message.includes('✅') || message.includes('Success - All Operations Completed')) {
+        const progressBarFill = document.getElementById('progressBarFill');
+        progressBarFill.style.background = ''; // Reset to default green
+        updateProgress(100, 'Completed Successfully');
+      }
+    }
+  </script>
+</body>
+</html>
