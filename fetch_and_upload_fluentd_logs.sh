@@ -315,8 +315,25 @@ compress_logs_by_namespace() {
     
     # Extract unique namespaces
     local namespaces
-    # Use mapfile for better compatibility (readarray is an alias)
-    mapfile -t namespaces < <(extract_namespaces "$logs_dir")
+    
+    # Check if FLUENTD_NAMESPACES environment variable is set (comma-separated list)
+    if [ -n "${FLUENTD_NAMESPACES:-}" ]; then
+        if [ "$FLUENTD_NAMESPACES" = "NONE" ]; then
+            print_warning "No namespaces selected - skipping fluentd log compression" >&2
+            return 0
+        fi
+        print_info "Using selected namespaces from filter: $FLUENTD_NAMESPACES" >&2
+        # Convert comma-separated string to array
+        IFS=',' read -ra namespaces <<< "$FLUENTD_NAMESPACES"
+        # Trim whitespace from each namespace
+        for i in "${!namespaces[@]}"; do
+            namespaces[$i]=$(echo "${namespaces[$i]}" | xargs)
+        done
+    else
+        print_info "No namespace filter specified, detecting all namespaces..." >&2
+        # Use mapfile for better compatibility (readarray is an alias)
+        mapfile -t namespaces < <(extract_namespaces "$logs_dir")
+    fi
     
     if [ ${#namespaces[@]} -eq 0 ]; then
         print_warning "No namespace folders found, compressing all logs together" >&2
@@ -331,7 +348,7 @@ compress_logs_by_namespace() {
         fi
     fi
     
-    print_success "Found ${#namespaces[@]} unique namespace(s): ${namespaces[*]}" >&2
+    print_success "Processing ${#namespaces[@]} namespace(s): ${namespaces[*]}" >&2
     echo "" >&2
     
     # Create output directory for compressed files
@@ -380,7 +397,7 @@ compress_logs_by_namespace() {
         
         # Disable set -e temporarily to handle tar failures gracefully
         set +e
-        tar -czf "$output_file" -C "$logs_dir" "${dirs_to_compress[@]}" 2>&1 | grep -v "Removing leading" || true
+        tar_output=$(tar -czf "$output_file" -C "$logs_dir" "${dirs_to_compress[@]}" 2>&1 | grep -v "Removing leading" || true)
         tar_exit=$?
         set -e
         
@@ -389,7 +406,15 @@ compress_logs_by_namespace() {
             print_success "  Compressed: $compressed_size" >&2
             compressed_files+=("$output_file")
         else
-            print_error "  Failed to compress namespace: $namespace (tar exit code: $tar_exit)" >&2
+            if echo "$tar_output" | grep -q "No space left on device"; then
+                print_error "  ⚠️  No space left on device while compressing $namespace" >&2
+                print_error "  Please free up disk space and try again" >&2
+            else
+                print_error "  Failed to compress namespace: $namespace (tar exit code: $tar_exit)" >&2
+                if [ -n "$tar_output" ]; then
+                    print_error "  Error: $tar_output" >&2
+                fi
+            fi
             failed=1
         fi
         echo "" >&2
@@ -689,25 +714,48 @@ fi
 mkdir -p "$KUBECONFIG_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-KUBECONFIG_FILE="$KUBECONFIG_DIR/${PC_IP}_kubeconfig_${TIMESTAMP}"
+KUBECONFIG_FILE="$KUBECONFIG_DIR/${PC_IP}_kubeconfig"
+KUBECONFIG_FILE_NEW="$KUBECONFIG_DIR/${PC_IP}_kubeconfig_${TIMESTAMP}"
 LOG_OUTPUT_DIR="$OUTPUT_DIR/${PC_IP}_${TIMESTAMP}"
 LOG_FOLDER_NAME=$(basename "$LOG_OUTPUT_DIR")
 
-# Step 1: Fetch kubeconfig
-print_header "Step 1/7: Fetching Kubeconfig"
-print_info "Connecting to ${PC_USER}@${PC_IP}..."
+# Step 1: Check and use existing kubeconfig
+print_header "Step 1/7: Checking Kubeconfig"
+NEED_NEW_KUBECONFIG=0
 
-if fetch_kubeconfig "$PC_IP" "$KUBECONFIG_FILE"; then
-    print_success "Kubeconfig fetched successfully"
-    print_info "Saved to: ${KUBECONFIG_FILE}"
+if [ -f "$KUBECONFIG_FILE" ]; then
+    print_info "Found existing kubeconfig for ${PC_IP}"
+    print_info "Verifying existing kubeconfig..."
+    
+    if verify_kubeconfig "$KUBECONFIG_FILE"; then
+        print_success "Existing kubeconfig is valid and cluster is reachable"
+        print_info "Using: ${KUBECONFIG_FILE}"
+    else
+        print_warning "Existing kubeconfig validation failed"
+        NEED_NEW_KUBECONFIG=1
+    fi
 else
-    print_error "Failed to fetch kubeconfig"
-    exit 1
+    print_info "No existing kubeconfig found for ${PC_IP}"
+    NEED_NEW_KUBECONFIG=1
+fi
+
+if [ $NEED_NEW_KUBECONFIG -eq 1 ]; then
+    print_info "Fetching new kubeconfig from ${PC_USER}@${PC_IP}..."
+    
+    if fetch_kubeconfig "$PC_IP" "$KUBECONFIG_FILE_NEW"; then
+        print_success "New kubeconfig fetched successfully"
+        # Replace old kubeconfig with new one
+        mv "$KUBECONFIG_FILE_NEW" "$KUBECONFIG_FILE"
+        print_info "Saved to: ${KUBECONFIG_FILE}"
+    else
+        print_error "Failed to fetch kubeconfig"
+        exit 1
+    fi
 fi
 echo ""
 
-# Step 2: Verify kubeconfig
-print_header "Step 2/7: Verifying Kubeconfig"
+# Step 2: Final verification
+print_header "Step 2/7: Final Kubeconfig Verification"
 if verify_kubeconfig "$KUBECONFIG_FILE"; then
     print_success "Kubeconfig is valid and cluster is reachable"
 else
@@ -860,8 +908,41 @@ if [ -z "$dir_check" ] || [ "$dir_check" -eq 0 ]; then
 fi
 print_info "Found $dir_check log directories to compress"
 
+# Check available disk space before compression
+print_info "Checking available disk space..."
+available_space=$(df -BG "$OUTPUT_DIR" | awk 'NR==2 {print $4}' | tr -d 'G')
+log_size=$(du -sm "$LOG_OUTPUT_DIR" 2>/dev/null | awk '{print $1}' || echo "0")
+
+if [ "$available_space" -lt 1 ]; then
+    print_error "⚠️  Insufficient disk space detected!"
+    print_error "   Available: ${available_space}GB"
+    print_error "   Estimated needed: ~${log_size}MB for compression"
+    print_error "   Please free up disk space and try again"
+    print_warning "Local logs preserved at: $LOG_OUTPUT_DIR"
+    exit 1
+fi
+
+print_info "Available disk space: ${available_space}GB (Log size: ${log_size}MB)"
+
 COMPRESSED_DIR="${OUTPUT_DIR}/compressed_${TIMESTAMP}"
-mkdir -p "$COMPRESSED_DIR"
+
+# Try to create compressed directory with error handling
+set +e
+mkdir_output=$(mkdir -p "$COMPRESSED_DIR" 2>&1)
+mkdir_exit=$?
+set -e
+
+if [ $mkdir_exit -ne 0 ]; then
+    print_error "⚠️  Failed to create compressed directory!"
+    if echo "$mkdir_output" | grep -q "No space left on device"; then
+        print_error "   Error: No space left on device"
+        print_error "   Please free up disk space and try again"
+    else
+        print_error "   Error: $mkdir_output"
+    fi
+    print_warning "Local logs preserved at: $LOG_OUTPUT_DIR"
+    exit 1
+fi
 
 # Get list of compressed files
 print_info "Calling compress_logs_by_namespace..."
@@ -880,53 +961,61 @@ if [ $compress_exit_code -ne 0 ]; then
 fi
 
 if [ ${#COMPRESSED_FILES[@]} -eq 0 ]; then
-    print_error "No files were compressed"
-    print_warning "Local logs preserved at: $LOG_OUTPUT_DIR"
-    exit 1
-fi
-
-print_success "Created ${#COMPRESSED_FILES[@]} compressed file(s)"
-
-# Calculate total compressed size
-TOTAL_SIZE_BYTES=0
-for file in "${COMPRESSED_FILES[@]}"; do
-    if [ -f "$file" ]; then
-        # Get file size (temporarily disable set -e for compatibility check)
-        set +e
-        file_size=$(stat -c%s "$file" 2>/dev/null)
-        if [ -z "$file_size" ] || [ "$file_size" = "" ]; then
-            file_size=$(stat -f%z "$file" 2>/dev/null)
-        fi
-        if [ -z "$file_size" ] || [ "$file_size" = "" ]; then
-            file_size="0"
-        fi
-        set -e
-        TOTAL_SIZE_BYTES=$((TOTAL_SIZE_BYTES + file_size))
+    # Check if this is because no namespaces were selected
+    if [ "${FLUENTD_NAMESPACES:-}" = "NONE" ]; then
+        print_warning "No fluentd namespaces selected - skipping file upload"
+        print_info "Proceeding to next steps..."
+    else
+        print_error "No files were compressed"
+        print_warning "Local logs preserved at: $LOG_OUTPUT_DIR"
+        exit 1
     fi
-done
-
-# Convert to GB for display (without bc)
-if [ $TOTAL_SIZE_BYTES -gt 0 ]; then
-    # Use awk instead of bc for better compatibility
-    TOTAL_SIZE_GB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_SIZE_BYTES / 1024 / 1024 / 1024}")
-    print_info "Total compressed size: ${TOTAL_SIZE_GB} GB"
 fi
-echo ""
 
-# Step 6: Upload compressed files to filer
-print_header "Step 6/7: Uploading Compressed Files to Filer"
+# Only proceed with size calculation and upload if files were compressed
+if [ ${#COMPRESSED_FILES[@]} -gt 0 ]; then
+    print_success "Created ${#COMPRESSED_FILES[@]} compressed file(s)"
 
-UPLOAD_SUCCESS_COUNT=0
-UPLOAD_FAILED_COUNT=0
-declare -a UPLOADED_FILES
+    # Calculate total compressed size
+    TOTAL_SIZE_BYTES=0
+    for file in "${COMPRESSED_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            # Get file size (temporarily disable set -e for compatibility check)
+            set +e
+            file_size=$(stat -c%s "$file" 2>/dev/null)
+            if [ -z "$file_size" ] || [ "$file_size" = "" ]; then
+                file_size=$(stat -f%z "$file" 2>/dev/null)
+            fi
+            if [ -z "$file_size" ] || [ "$file_size" = "" ]; then
+                file_size="0"
+            fi
+            set -e
+            TOTAL_SIZE_BYTES=$((TOTAL_SIZE_BYTES + file_size))
+        fi
+    done
 
-for compressed_file in "${COMPRESSED_FILES[@]}"; do
-    file_name=$(basename "$compressed_file")
-    print_section "Uploading: $file_name"
-    
-    if upload_file_to_filer "$compressed_file" "$FILER_TARGET_PATH"; then
-        UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
-        UPLOADED_FILES+=("$file_name")
+    # Convert to GB for display (without bc)
+    if [ $TOTAL_SIZE_BYTES -gt 0 ]; then
+        # Use awk instead of bc for better compatibility
+        TOTAL_SIZE_GB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_SIZE_BYTES / 1024 / 1024 / 1024}")
+        print_info "Total compressed size: ${TOTAL_SIZE_GB} GB"
+    fi
+    echo ""
+
+    # Step 6: Upload compressed files to filer
+    print_header "Step 6/7: Uploading Compressed Files to Filer"
+
+    UPLOAD_SUCCESS_COUNT=0
+    UPLOAD_FAILED_COUNT=0
+    declare -a UPLOADED_FILES
+
+    for compressed_file in "${COMPRESSED_FILES[@]}"; do
+        file_name=$(basename "$compressed_file")
+        print_section "Uploading: $file_name"
+        
+        if upload_file_to_filer "$compressed_file" "$FILER_TARGET_PATH"; then
+            UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
+            UPLOADED_FILES+=("$file_name")
     else
         UPLOAD_FAILED_COUNT=$((UPLOAD_FAILED_COUNT + 1))
     fi
@@ -1035,18 +1124,26 @@ else
 fi
 echo ""
 
+else
+    # No files were compressed (no namespaces selected)
+    print_info "Skipping Steps 6 & 7: No fluentd files to upload"
+    print_success "Fluentd steps completed (skipped per configuration)"
+    echo ""
+fi
+
 # Final summary
 print_header "✅ Success - All Operations Completed"
 echo ""
 
-echo "📁 Files:"
-echo "  Kubeconfig:      ${KUBECONFIG_FILE}"
-echo "  Filer Location:  ${FILER_HOST}:${FILER_TARGET_PATH}/"
-echo "  Format:          Compressed by namespace (tar.gz)"
-echo ""
+if [ ${#COMPRESSED_FILES[@]} -gt 0 ]; then
+    echo "📁 Files:"
+    echo "  Kubeconfig:      ${KUBECONFIG_FILE}"
+    echo "  Filer Location:  ${FILER_HOST}:${FILER_TARGET_PATH}/"
+    echo "  Format:          Compressed by namespace (tar.gz)"
+    echo ""
 
-echo "📦 Uploaded Files (${#UPLOADED_FILES[@]}):"
-for file_name in "${UPLOADED_FILES[@]}"; do
+    echo "📦 Uploaded Files (${#UPLOADED_FILES[@]}):"
+    for file_name in "${UPLOADED_FILES[@]}"; do
     # Get file size from filer
     size=$(ssh_exec "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" \
         "du -sh '$FILER_TARGET_PATH/$file_name' 2>/dev/null | cut -f1" 2>/dev/null || echo "?")
@@ -1067,21 +1164,30 @@ FILER_URL=$(get_filer_url "$BUG_FOLDER")
 echo "  ${FILER_URL}/"
 echo ""
 
-echo "📊 Summary:"
-echo "  ✓ Kubeconfig fetched from PC"
-echo "  ✓ Logs copied from fluentd pod"
-echo "  ✓ Logs split by namespace (${#UPLOADED_FILES[@]} namespaces)"
-echo "  ✓ Each namespace compressed separately"
-echo "  ✓ All files uploaded to filer"
-echo "  ✓ Upload verified"
-echo "  ✓ Local logs cleaned up"
-echo ""
+    echo "📊 Summary:"
+    echo "  ✓ Kubeconfig fetched from PC"
+    echo "  ✓ Logs copied from fluentd pod"
+    echo "  ✓ Logs split by namespace (${#UPLOADED_FILES[@]} namespaces)"
+    echo "  ✓ Each namespace compressed separately"
+    echo "  ✓ All files uploaded to filer"
+    echo "  ✓ Upload verified"
+    echo "  ✓ Local logs cleaned up"
+    echo ""
 
-echo "💡 Tips:"
-echo "  - Each namespace has its own tar.gz file for faster downloads"
-echo "  - Extract specific namespace: tar -xzf namespace.tar.gz"
-echo "  - Use the URLs above to access files via browser"
-echo "  - Kubeconfig saved locally for future use"
-echo ""
+    echo "💡 Tips:"
+    echo "  - Each namespace has its own tar.gz file for faster downloads"
+    echo "  - Extract specific namespace: tar -xzf namespace.tar.gz"
+    echo "  - Use the URLs above to access files via browser"
+    echo "  - Kubeconfig saved locally for future use"
+    echo ""
+else
+    echo "📊 Summary:"
+    echo "  ✓ Kubeconfig fetched from PC"
+    echo "  ✓ Logs copied from fluentd pod"
+    echo "  ⊘ Fluentd namespace compression skipped (no namespaces selected)"
+    echo "  ⊘ File upload skipped"
+    echo "  ℹ Local logs available at: $LOG_OUTPUT_DIR"
+    echo ""
+fi
 
 print_header "Done"

@@ -3376,6 +3376,11 @@ def api_fetch_fluentd_logs():
     filer_user = data.get("filer_user", "nutanix").strip()
     filer_base_path = data.get("filer_base_path", "/home/nutanix/data/Bugs").strip()
     
+    # Get filter selections
+    fluentd_namespaces = data.get("fluentd_namespaces", [])
+    logbay_services = data.get("logbay_services", [])
+    logbay_duration = data.get("logbay_duration", {})
+    
     if not pc_ip:
         return jsonify({"success": False, "error": "PC IP is required"}), 400
     
@@ -3428,6 +3433,15 @@ def api_fetch_fluentd_logs():
             env["FILER_USER"] = filer_user
             env["FILER_BASE_PATH"] = filer_base_path
             
+            # Pass selected namespaces if any are specified
+            if fluentd_namespaces:
+                env["FLUENTD_NAMESPACES"] = ",".join(fluentd_namespaces)
+                send_log(f"Selected namespaces: {', '.join(fluentd_namespaces)}", "INFO")
+            else:
+                # No namespaces selected - signal to skip fluentd compression
+                env["FLUENTD_NAMESPACES"] = "NONE"
+                send_log("No fluentd namespaces selected - skipping fluentd log collection", "INFO")
+            
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -3458,7 +3472,13 @@ def api_fetch_fluentd_logs():
             
             if process.returncode == 0:
                 send_log("=" * 80, "INFO")
-                send_log("✅ Log fetch completed successfully!", "SUCCESS")
+                send_log("✅ Fluentd log fetch completed successfully!", "SUCCESS")
+                
+                # Run logbay collection if services are selected
+                if logbay_services:
+                    send_log("=" * 80, "INFO")
+                    send_log("Starting Logbay collection...", "INFO")
+                    run_logbay_collection()
             else:
                 send_log("=" * 80, "INFO")
                 send_log(f"❌ Script exited with code {process.returncode}", "ERROR")
@@ -3468,6 +3488,166 @@ def api_fetch_fluentd_logs():
             app_logger.exception("Error in fetch_fluentd_logs")
         finally:
             send_log("END", "INFO")
+    
+    def run_logbay_collection():
+        """Run logbay collection on PC for selected services."""
+        total_services = len(logbay_services)
+        successful_collections = 0
+        failed_collections = 0
+        
+        try:
+            send_log("=" * 80, "INFO")
+            send_log(f"Step 8/8: Logbay Collection ({total_services} service(s))", "INFO")
+            send_log("=" * 80, "INFO")
+            
+            # Build logbay command with password in ftp URL
+            # Format: ftp://user:password@host/path
+            from urllib.parse import quote
+            # URL-encode the password to handle special characters
+            encoded_password = quote(filer_password, safe='')
+            filer_dest = f"ftp://{filer_user}:{encoded_password}@{filer_ip}/{filer_base_path}/{bug_folder}"
+            
+            # Build duration parameter
+            if logbay_duration.get('type') == 'recent':
+                hours = logbay_duration.get('hours', 24)
+                duration_param = f"--duration=-{hours}h"
+                send_log(f"Duration: Last {hours} hours", "INFO")
+            else:
+                # Custom duration
+                from_date = logbay_duration.get('from_date')
+                from_time = logbay_duration.get('from_time', '09:00')
+                duration_hours = logbay_duration.get('duration_hours', 2)
+                # Format: 2025/12/16-09:00:00
+                from_datetime = f"{from_date.replace('-', '/')}-{from_time}:00"
+                duration_param = f"--from={from_datetime} --duration=+{duration_hours}h"
+                send_log(f"Duration: From {from_datetime}, +{duration_hours} hours", "INFO")
+            
+            # Run logbay for each selected service
+            for idx, service in enumerate(logbay_services, 1):
+                send_log("", "INFO")
+                send_log(f"Substep {idx}/{total_services}: Collecting {service} logs", "INFO")
+                send_log("-" * 80, "INFO")
+                
+                # Build logbay command - use expect with heredoc to handle password prompt
+                filer_dest = f"ftp://{filer_user}@{filer_ip}/{filer_base_path}/{bug_folder}"
+                
+                # Use heredoc to pass expect script directly (avoids /tmp noexec issue)
+                logbay_cmd = f"""expect << 'EXPECT_EOF'
+set timeout 600
+spawn ~/ncc/bin/logbay collect -D={filer_dest} -t {service} -O run_all=true,msp_pod=true,msp_systemd=true,kubectl_cmds=true,persistent=true {duration_param}
+expect {{
+    "password:" {{
+        send "{filer_password}\\r"
+        exp_continue
+    }}
+    "Password:" {{
+        send "{filer_password}\\r"
+        exp_continue
+    }}
+    "Enter password:" {{
+        send "{filer_password}\\r"
+        exp_continue
+    }}
+    eof
+}}
+wait
+EXPECT_EOF
+"""
+                
+                send_log(f"Command: ~/ncc/bin/logbay collect -D={filer_dest} -t {service} -O run_all=true,msp_pod=true,msp_systemd=true,kubectl_cmds=true,persistent=true {duration_param}", "INFO")
+                
+                # Execute via SSH
+                ssh_cmd = [
+                    "sshpass", "-p", pc_password,
+                    "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
+                    f"nutanix@{pc_ip}",
+                    logbay_cmd
+                ]
+                
+                process = subprocess.Popen(
+                    ssh_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1
+                )
+                
+                # Stream output and detect errors
+                command_not_found = False
+                permission_denied = False
+                has_error = False
+                error_messages = []
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        clean_line = line.rstrip()
+                        
+                        # Detect command not found
+                        if "command not found" in clean_line.lower() or "logbay: command not found" in clean_line:
+                            command_not_found = True
+                            has_error = True
+                            error_messages.append(clean_line)
+                            send_log(clean_line, "ERROR")
+                        # Detect permission denied
+                        elif "permission denied" in clean_line.lower():
+                            permission_denied = True
+                            has_error = True
+                            error_messages.append(clean_line)
+                            send_log(clean_line, "ERROR")
+                        # Detect SFTP/FTP connection errors
+                        elif "unable to connect" in clean_line.lower() or "connection refused" in clean_line.lower() or "connection failed" in clean_line.lower():
+                            has_error = True
+                            error_messages.append(clean_line)
+                            send_log(clean_line, "ERROR")
+                        # Detect other errors
+                        elif "error" in clean_line.lower() or "failed" in clean_line.lower():
+                            # Track errors but filter out harmless messages
+                            if not any(ignore in clean_line.lower() for ignore in ["warning", "info", "debug"]):
+                                has_error = True
+                                error_messages.append(clean_line)
+                            send_log(clean_line, "ERROR")
+                        elif "warning" in clean_line.lower():
+                            send_log(clean_line, "WARNING")
+                        else:
+                            send_log(clean_line, "INFO")
+                
+                process.wait()
+                
+                # Check for errors
+                if command_not_found:
+                    send_log(f"❌ Logbay command not found on PC {pc_ip}", "ERROR")
+                    send_log(f"   Please ensure logbay is installed and available in PATH", "ERROR")
+                    failed_collections += 1
+                elif permission_denied:
+                    send_log(f"❌ Logbay collection for {service} failed: Permission denied", "ERROR")
+                    send_log(f"   Check SFTP permissions or ensure expect is installed on the PC", "ERROR")
+                    failed_collections += 1
+                elif process.returncode == 127:
+                    send_log(f"❌ Logbay collection for {service} failed: command not found (exit code 127)", "ERROR")
+                    failed_collections += 1
+                elif has_error or process.returncode != 0:
+                    # Failed due to errors in output or non-zero exit code
+                    if error_messages:
+                        send_log(f"❌ Logbay collection for {service} failed: {error_messages[0][:100]}", "ERROR")
+                    else:
+                        send_log(f"❌ Logbay collection for {service} failed with exit code {process.returncode}", "ERROR")
+                    failed_collections += 1
+                else:
+                    send_log(f"✅ Logbay collection for {service} completed successfully", "SUCCESS")
+                    successful_collections += 1
+            
+            # Summary
+            send_log("=" * 80, "INFO")
+            if failed_collections == 0:
+                send_log(f"✅ All logbay collections completed successfully! ({successful_collections}/{total_services})", "SUCCESS")
+            elif successful_collections == 0:
+                send_log(f"❌ All logbay collections failed! ({failed_collections}/{total_services})", "ERROR")
+            else:
+                send_log(f"⚠️  Logbay collections completed with errors: {successful_collections} succeeded, {failed_collections} failed", "WARNING")
+            
+        except Exception as e:
+            send_log(f"Exception during logbay collection: {str(e)}", "ERROR")
+            app.logger.exception("Error in logbay collection")
     
     # Start the fetch in background thread
     thread = threading.Thread(target=run_fetch_script, daemon=True)
