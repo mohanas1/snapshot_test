@@ -3702,20 +3702,30 @@
         <section class="config-card" style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-dark);">📋 VM Inventory & Filters</h3>
-            <button type="button" id="btn-fetch-vms" class="btn-impact-cta" style="height: 40px; padding: 0 1.5rem;">
+            <button type="button" id="btn-get-vms" class="btn-impact-cta" style="height: 40px; padding: 0 1.5rem;">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+              </svg>
+              Get VMs
+            </button>
+            <button type="button" id="btn-fetch-latest" class="btn-secondary" style="height: 40px; padding: 0 1.5rem; margin-left: 0.5rem;">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
                 <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
                 <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
               </svg>
-              Fetch VMs
+              Fetch Latest VMs Info
             </button>
+            <span id="vm-last-fetched" style="margin-left: 1rem; font-size: 0.875rem; color: #16a34a; font-weight: 600; display: none;">
+              Last fetched: <span id="vm-fetch-time"></span>
+            </span>
           </div>
           
           <!-- Fetch-time filter toggles -->
           <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #e1e8ed;">
             <div style="margin-bottom: 8px;">
-              <strong style="font-size: 0.9rem; color: #374151;">🔍 Fetch Filters (server-side):</strong>
-              <span style="font-size: 0.8rem; color: #6b7280; margin-left: 4px;">Skip these VMs during fetch</span>
+              <strong style="font-size: 0.9rem; color: #374151;">🔍 VM Filters:</strong>
+              <span style="font-size: 0.8rem; color: #6b7280; margin-left: 4px;">Apply during fetch AND when loading from cache</span>
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px;">
               <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.85rem; color: #374151;">
@@ -3747,7 +3757,7 @@
           </div>
           
           <p class="muted" style="margin-top:0; margin-bottom: 1rem;">
-            Loads automatically when page opens. Click "Fetch VMs" to reload. Shows all non-CVM VMs from Prism Central.
+            <strong>Get VMs:</strong> Load from disk cache with current filters applied (instant). <strong>Fetch Latest VMs Info:</strong> Fetch fresh data from PC (takes time). Shows all non-CVM VMs from Prism Central.
           </p>
 
       <div id="vm-summary" style="display:none;">
@@ -5669,18 +5679,27 @@
       try {
         const requestBody = {
           pc_ip: c.pc_ip,
-          inventory_cache_id: inventoryCacheId,
           q: q.trim(),
           page: inventoryTablePage,
           page_size: pageSize,
         };
         
-        console.log("Sending request with page_size:", requestBody.page_size);
+        console.log("Loading table page for PC:", c.pc_ip, "page:", inventoryTablePage, "page_size:", pageSize);
         
         // Add sorting parameters if active
         if (inventorySortColumn && inventorySortDirection) {
           requestBody.sort_column = inventorySortColumn;
           requestBody.sort_direction = inventorySortDirection;
+        }
+        
+        // Add PE cluster filters if "Skip specific clusters" is enabled
+        if ($("fetch-filter-by-clusters") && $("fetch-filter-by-clusters").checked) {
+          const clusterCheckboxes = document.querySelectorAll('#fetch-cluster-checkboxes input[type="checkbox"]:checked');
+          const skipClusters = Array.from(clusterCheckboxes).map(cb => cb.value);
+          if (skipClusters.length > 0) {
+            requestBody.skip_clusters = skipClusters.join(',');
+            console.log("Applying cluster filters:", skipClusters);
+          }
         }
         
         const r = await fetch("{{ url_for('api_vm_inventory_table') }}", {
@@ -5691,10 +5710,11 @@
         const j = await r.json();
         if (!j.ok) {
           if (errEl) {
-            errEl.textContent = j.message || "Table load failed.";
+            const errMsg = j.message || "Table load failed.";
+            errEl.textContent = errMsg;
             errEl.style.display = "block";
           }
-          tb.innerHTML = "";
+          tb.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #9ca3af;">No VM data available. Click "Fetch Latest VMs Info" to load data from PC.</td></tr>';
           return;
         }
         inventoryTablePage = j.page || 1;
@@ -7063,6 +7083,154 @@
     // End Curator Operations
     // ============================================================
 
+    // VM Inventory Caching Functions
+    function getVmCacheKey(pcIp) {
+      return `vm_inventory_${pcIp}`;
+    }
+    
+    function saveVmInventoryCache(pcIp, data, filters) {
+      try {
+        const cacheKey = getVmCacheKey(pcIp);
+        const cacheData = {
+          timestamp: Date.now(),
+          data: data,
+          filters: filters || {}  // Store the filters used during fetch
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log(`VM inventory cached for PC ${pcIp}`);
+      } catch (e) {
+        console.warn('Failed to cache VM inventory:', e);
+      }
+    }
+    
+    function loadVmInventoryCache(pcIp) {
+      try {
+        const cacheKey = getVmCacheKey(pcIp);
+        const cached = localStorage.getItem(cacheKey);
+        if (!cached) return null;
+        
+        const cacheData = JSON.parse(cached);
+        return cacheData;
+      } catch (e) {
+        console.warn('Failed to load VM inventory cache:', e);
+        return null;
+      }
+    }
+    
+    function updateLastFetchedTime() {
+      const lastFetchedEl = $('vm-last-fetched');
+      const fetchTimeEl = $('vm-fetch-time');
+      if (lastFetchedEl && fetchTimeEl) {
+        const now = new Date();
+        fetchTimeEl.textContent = now.toLocaleString();
+        lastFetchedEl.style.display = 'inline';
+      }
+    }
+    
+    function renderCachedVmInventory(cacheData) {
+      const data = cacheData.data;
+      const vmFetchStatus = $("vm-fetch-status");
+      const vmSummary = $("vm-summary");
+      const vmFetchErr = $("vm-fetch-err");
+      
+      if (vmFetchErr) vmFetchErr.style.display = "none";
+      
+      // Get connection details to set cache ID
+      const c = readConn();
+      
+      // Store PC IP for table fetching - no need for inventory_cache_id anymore
+      inventoryCacheId = c.pc_ip;  // Use PC IP as cache identifier
+      
+      // Store cached filters globally so loadInventoryTablePage can use them
+      window.cachedVmFilters = cacheData.filters || {};
+      
+      setInventoryDashSkeleton(false);
+      if (vmFetchStatus) vmFetchStatus.textContent = "Done (from cache: " + data.total_vms + " VMs).";
+      
+      const cards = $("vm-stat-cards");
+      if (cards) {
+        cards.innerHTML = "";
+        const addCard = (label, val) => {
+          const d = document.createElement("div");
+          d.className = "stat-card";
+          d.innerHTML = "<strong>" + val + "</strong>" + label;
+          cards.appendChild(d);
+        };
+        
+        // Show fetch filtering info if enabled
+        if (data.fetch_filtered && data.fetch_filtered.enabled) {
+          const ff = data.fetch_filtered;
+          const totalSkipped = (ff.skipped_no_ip || 0) + (ff.skipped_powered_off || 0) + (ff.skipped_low_ram || 0) + (ff.skipped_clusters || 0);
+          const d = document.createElement("div");
+          d.className = "stat-card";
+          d.style.gridColumn = "1 / -1";
+          d.style.background = "#ecfdf5";
+          d.style.border = "1px solid #10b981";
+          let clusterInfo = '';
+          if (ff.skipped_clusters && ff.skipped_cluster_names && ff.skipped_cluster_names.length > 0) {
+            clusterInfo = ` • Clusters (${ff.skipped_cluster_names.join(', ')}): ${ff.skipped_clusters}`;
+          }
+          d.innerHTML = `<div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" fill="#10b981" viewBox="0 0 16 16">
+              <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z"/>
+            </svg>
+            <div>
+              <strong style="color: #10b981; font-size: 1.1rem;">${totalSkipped} VMs skipped during fetch</strong>
+              <div style="font-size: 0.85rem; color: #059669; margin-top: 2px;">
+                Original: ${ff.original_count} • Fetched: ${ff.filtered_count}
+                ${ff.skipped_no_ip ? ` • No IP: ${ff.skipped_no_ip}` : ''}
+                ${ff.skipped_powered_off ? ` • Powered OFF: ${ff.skipped_powered_off}` : ''}
+                ${ff.skipped_low_ram ? ` • Low RAM: ${ff.skipped_low_ram}` : ''}${clusterInfo}
+              </div>
+            </div>
+          </div>`;
+          cards.appendChild(d);
+        }
+        
+        addCard("Total VMs (non-CVM)", data.total_vms);
+        addCard("With IP", data.with_ip);
+        addCard("Without IP", data.without_ip);
+        if (typeof data.guest_disk_eligible === "number") {
+          const m = data.guest_disk_min_memory_mib;
+          const slab = (typeof m === "number" && m > 0)
+            ? "Disk churn eligible (IP + on + skips + RAM>" + m + " MiB)"
+            : "Disk churn eligible (IP + on + skips, no RAM floor)";
+          addCard(slab, data.guest_disk_eligible);
+        }
+        if (typeof data.guest_disk_skipped_power_off === "number")
+          addCard("…skipped (powered off)", data.guest_disk_skipped_power_off);
+        if (typeof data.guest_disk_skipped_below_min_memory === "number" && (data.guest_disk_min_memory_mib || 0) > 0)
+          addCard("…skipped (RAM ≤ min or unknown)", data.guest_disk_skipped_below_min_memory);
+        if (data.duplicate_rows_skipped)
+          addCard("Duplicate rows skipped", data.duplicate_rows_skipped);
+      }
+      
+      inventoryTablePage = 1;
+      if ($("inventory-search")) $("inventory-search").value = "";
+      
+      if (vmSummary) vmSummary.style.display = "block";
+      renderPeCvmIpsFromInventory(data);
+      
+      // Only populate cluster filters if they haven't been populated yet
+      // This prevents clearing user selections
+      const clusterCheckboxes = document.querySelectorAll('#fetch-cluster-checkboxes input[type="checkbox"]');
+      if (clusterCheckboxes.length === 0) {
+        populateFetchClusterFilters(data);
+      }
+      
+      populateCuratorClusters(data);
+      loadInventoryTablePage(1);
+      
+      // Update last fetched time from cache
+      const lastFetchedEl = $('vm-last-fetched');
+      const fetchTimeEl = $('vm-fetch-time');
+      if (lastFetchedEl && fetchTimeEl) {
+        const cachedTime = new Date(cacheData.timestamp);
+        fetchTimeEl.textContent = cachedTime.toLocaleString();
+        lastFetchedEl.style.display = 'inline';
+      }
+    }
+    
     async function fetchVmInventoryAndRender() {
       const c = readConn();
       const vmFetchErr = $("vm-fetch-err");
@@ -7131,7 +7299,12 @@
           renderPeCvmIpsFromInventory({ ok: false, message: errMsg });
           return { ok: false, message: errMsg };
         }
-        inventoryCacheId = data.inventory_cache_id || null;
+        // Use PC IP as cache identifier instead of temporary UUID
+        inventoryCacheId = c.pc_ip;
+        
+        // Store fetch filters globally so they can be used by table API
+        window.cachedVmFilters = fetchFilters;
+        
         const dplInv = $("disk-preview-line");
         if (dplInv) dplInv.textContent = "Inventory loaded — updating guest SSH target counts…";
         setInventoryDashSkeleton(false);
@@ -7217,6 +7390,11 @@
         loadInventoryTablePage(1);
         await runDiskTargetsPreviewFromForm();
         scheduleActiveDiskJobRefresh();
+        
+        // Cache VM inventory data for this PC IP along with fetch filters
+        saveVmInventoryCache(c.pc_ip, data, fetchFilters);
+        updateLastFetchedTime();
+        
         return { ok: true, message: "Done (" + data.total_vms + " VMs)." };
       } catch (e) {
         inventoryCacheId = null;
@@ -7500,34 +7678,111 @@
     scheduleActiveDiskJobRefresh();
     setInterval(refreshActiveDiskJobState, 6000);
 
-    // Auto-fetch VM inventory on page load
-    (function bootAutoFetchVmInventory() {
-      function go() {
-        fetchVmInventoryAndRender().then((r) => {
-          if (!r.ok && r.message && !$("vm-fetch-err").textContent) {
-            showToast("warning", "Inventory Warning", r.message, 6000);
-          }
-        });
+    // Don't auto-load VM inventory - user must click "Get VMs" or "Fetch Latest VMs Info"
+    // This ensures filters are applied correctly and cache is used appropriately
+
+    // Load VMs from cache (both client localStorage and server disk cache)
+    async function getVMsFromCache() {
+      const c = readConn();
+      if (!c.pc_ip || !c.pc_user) {
+        showToast("warning", "VM Inventory", "Please enter PC IP and Username first", 3000);
+        return;
       }
+      
+      const btnGetVms = $("btn-get-vms");
+      if (btnGetVms) {
+        btnGetVms.disabled = true;
+        btnGetVms.textContent = "Loading...";
+      }
+      
+      showLoading("Loading VMs from cache...");
+      
+      try {
+        // Try to load from client cache first for instant display
+        const cached = loadVmInventoryCache(c.pc_ip);
+        if (cached && cached.data) {
+          console.log('Loading VM inventory from client localStorage...');
+          renderCachedVmInventory(cached);
+          
+          // Wait for table to load from server disk cache
+          await new Promise(resolve => setTimeout(resolve, 600));
+          
+          // Check if table loaded successfully
+          const tbody = document.querySelector("#tbl-inventory-vms tbody");
+          const tableErr = $("inventory-table-err");
+          const hasError = tableErr && tableErr.style.display !== "none";
+          const hasRows = tbody && tbody.children.length > 0 && !tbody.querySelector('.skeleton-row');
+          
+          hideLoading();
+          
+          if (hasRows && !hasError) {
+            showToast("success", "VM Inventory", "Loaded " + cached.data.total_vms + " VMs from cache", 2000);
+          } else {
+            // No server cache - user needs to fetch manually
+            showToast("warning", "VM Inventory", "No server cache found. Click 'Fetch Latest VMs Info' to load from PC.", 5000);
+          }
+        } else {
+          // No client cache available
+          hideLoading();
+          showToast("info", "VM Inventory", "No cached data. Click 'Fetch Latest VMs Info' to load from PC.", 5000);
+        }
+      } catch (error) {
+        console.error("Error loading VMs:", error);
+        hideLoading();
+        showToast("error", "VM Inventory", "Error: " + String(error), 5000);
+      } finally {
+        if (btnGetVms) {
+          btnGetVms.disabled = false;
+          btnGetVms.innerHTML = `
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
+              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+              <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            </svg>
+            Get VMs
+          `;
+        }
+      }
+    }
+
+    // Wire up "Get VMs" button (loads from cache + applies filters)
+    (function setupGetVMsButton() {
+      function wireButton() {
+        const btnGetVms = $("btn-get-vms");
+        if (btnGetVms) {
+          console.log("Get VMs button found, attaching event listener");
+          btnGetVms.addEventListener("click", async (e) => {
+            e.preventDefault();
+            console.log("Get VMs button clicked");
+            await getVMsFromCache();
+          });
+        } else {
+          console.warn("Get VMs button not found (btn-get-vms)");
+        }
+        
+        // NOTE: Don't auto-reload on filter toggles for fetch filters
+        // These are server-side filters that only apply during "Fetch Latest VMs Info"
+        // They don't affect cached data display
+      }
+      
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", go);
+        document.addEventListener("DOMContentLoaded", wireButton);
       } else {
-        go();
+        wireButton();
       }
     })();
 
-    // Wire up manual Fetch VMs button
-    (function setupFetchVMsButton() {
+    // Wire up "Fetch Latest VMs Info" button (fetches fresh from PC)
+    (function setupFetchLatestButton() {
       function wireButton() {
-        const btnFetchVms = $("btn-fetch-vms");
-        if (btnFetchVms) {
-          console.log("Fetch VMs button found, attaching event listener");
-          btnFetchVms.addEventListener("click", async (e) => {
+        const btnFetchLatest = $("btn-fetch-latest");
+        if (btnFetchLatest) {
+          console.log("Fetch Latest button found, attaching event listener");
+          btnFetchLatest.addEventListener("click", async (e) => {
             e.preventDefault();
-            console.log("Fetch VMs button clicked");
-            showLoading("Fetching VM inventory...");
-            btnFetchVms.disabled = true;
-            btnFetchVms.textContent = "Fetching...";
+            console.log("Fetch Latest VMs Info button clicked");
+            showLoading("Fetching VM inventory from PC...");
+            btnFetchLatest.disabled = true;
+            btnFetchLatest.textContent = "Fetching...";
             try {
               console.log("Calling fetchVmInventoryAndRender...");
               const result = await fetchVmInventoryAndRender();
@@ -7539,22 +7794,22 @@
                 showToast("error", "VM Inventory", result.message || "Failed to fetch VMs", 5000);
               }
             } catch (error) {
-              console.error("Error in Fetch VMs:", error);
+              console.error("Error in Fetch Latest:", error);
               hideLoading();
               showToast("error", "VM Inventory", "Error: " + String(error), 5000);
             } finally {
-              btnFetchVms.disabled = false;
-              btnFetchVms.innerHTML = `
+              btnFetchLatest.disabled = false;
+              btnFetchLatest.innerHTML = `
                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
                   <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
                   <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
                 </svg>
-                Fetch VMs
+                Fetch Latest VMs Info
               `;
             }
           });
         } else {
-          console.warn("Fetch VMs button not found (btn-fetch-vms)");
+          console.warn("Fetch Latest button not found (btn-fetch-latest)");
         }
       }
       

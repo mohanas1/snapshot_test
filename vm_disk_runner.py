@@ -231,7 +231,7 @@ class DiskOpConfig:
     guest_ssh_password: str = ""
     guest_ssh_port: int = 22
     guest_ssh_connect_timeout: float = 30.0
-    guest_ssh_command_timeout: float = 7200.0
+    guest_ssh_command_timeout: float = 300.0 # 5 minutes for disk operations
 
     guest_target_file: str = "/root/dummy_snapshot_data_1.img"
     guest_delete_glob: str = "/root/dummy_snapshot_data_*.img"
@@ -2274,7 +2274,17 @@ def run_disk_ops(
             guest_cmd_sec = float(gs)
         else:
             guest_timing["overhead_sec"] = None
-        if dur_vm >= 20.0:
+        if dur_vm >= 30.0:
+            log.error(
+                "⚠️  SLOW VM: Guest disk op wall %.1fs (vm=%r ip=%s op=%s ec=%s) — EXCEEDED 30s THRESHOLD! "
+                "includes SSH + guest disk command; if still high, check guest disk throughput vs. MiB settings.",
+                dur_vm,
+                vm_name or "?",
+                guest_ip,
+                op,
+                ec,
+            )
+        elif dur_vm >= 20.0:
             log.warning(
                 "Guest disk op wall %.1fs (vm=%r ip=%s op=%s ec=%s) — includes SSH + "
                 "guest disk command; if still high, check guest disk throughput vs. MiB settings.",

@@ -19212,3 +19212,4 @@
 2026-06-09 16:00:50,746 WARNING Guest disk op wall 38.3s (vm='ahv_ins_delete-0-260608-103821' ip=10.117.69.133 op=create ec=0) — includes SSH + guest disk command; if still high, check guest disk throughput vs. MiB settings.
 2026-06-09 16:00:50,746 DEBUG [513/610] VM ec01bd5f… (ahv_ins_delete-0-260608-104845) via 10.117.70.230 op=create
 2026-06-09 16:00:50,747 DEBUG   remote: bash -lc 'set -e; _bs(){ printf '"'"'BULK_SNAP_T %s %s\n'"'"' "$1" "$(date +%s.%N 2>/dev/null || date +%s)"; }; _bs guest_start; _bs pipeline_start; openssl enc -aes-256-ctr -pass pass:"testing" -nosalt < /dev/zero 2>/dev/null | dd of=/root/dummy_snapshot_data_1.img bs=1M count=1024 iflag=fullblock status=progress; ec=$?; _bs pipeline_done; _bs guest_end; exit $ec'
+2026-06-09 16:22:11,653 INFO Disk job cancelled by user.

@@ -150,11 +150,10 @@ schedules_lock = threading.Lock()
 # normalized_pc_host_key -> schedule record (see _persist_schedules)
 schedules: dict[str, dict] = {}
 
-# Rows from index **VM inventory** (page load), reused for guest disk preview/run (no second Prism pass when possible).
-INVENTORY_CACHE_TTL_SEC = int(os.environ.get("BULK_SNAP_INVENTORY_CACHE_TTL", str(4 * 3600)))
+# Rows from index **VM inventory** - stored on disk as JSON files (one per PC)
+INVENTORY_CACHE_DIR = os.path.join(os.path.dirname(__file__), "data", "inventory_cache")
+os.makedirs(INVENTORY_CACHE_DIR, exist_ok=True)
 inventory_cache_lock = threading.Lock()
-# cache_id -> { rows, pc_host_key, deadline_epoch }
-inventory_cache: dict[str, dict] = {}
 
 PC_SCHEME = "https"
 PC_PORT = 9440
@@ -527,43 +526,68 @@ def _pc_host_key(field: str) -> str:
     return s
 
 
-def _inventory_cache_prune_unlocked() -> None:
-    now = time.time()
-    dead = [k for k, v in inventory_cache.items() if float(v.get("deadline", 0)) < now]
-    for k in dead:
-        inventory_cache.pop(k, None)
+def _get_inventory_cache_file(pc_host_key: str) -> str:
+    """Get the JSON file path for a given PC host key."""
+    # Sanitize pc_host_key to make it filesystem-safe
+    safe_key = pc_host_key.replace(":", "_").replace("/", "_").replace("\\", "_")
+    return os.path.join(INVENTORY_CACHE_DIR, f"{safe_key}.json")
 
 
 def _inventory_cache_store(rows: list, pc_host_key: str, duplicate_rows_skipped: int = 0) -> str:
-    cid = uuid.uuid4().hex
-    deadline = time.time() + INVENTORY_CACHE_TTL_SEC
+    """
+    Store inventory rows to a JSON file using PC IP as the filename.
+    Returns the pc_host_key for consistency with existing code.
+    """
+    cache_file = _get_inventory_cache_file(pc_host_key)
+    
+    cache_data = {
+        "rows": rows,
+        "pc_host_key": pc_host_key,
+        "timestamp": time.time(),
+        "duplicate_rows_skipped": int(duplicate_rows_skipped or 0),
+    }
+    
     with inventory_cache_lock:
-        _inventory_cache_prune_unlocked()
-        inventory_cache[cid] = {
-            "rows": rows,
-            "pc_host_key": pc_host_key,
-            "deadline": deadline,
-            "duplicate_rows_skipped": int(duplicate_rows_skipped or 0),
-        }
-    return cid
+        try:
+            with open(cache_file, "w") as f:
+                json.dump(cache_data, f, indent=2)
+            app.logger.info(f"Stored VM inventory cache for {pc_host_key}: {len(rows)} rows")
+        except Exception as e:
+            app.logger.error(f"Failed to write inventory cache to {cache_file}: {e}")
+    
+    return pc_host_key
 
 
 def _inventory_cache_get(cache_id: str, pc_host_key: str) -> tuple[list | None, int, str | None]:
-    """Return (rows, duplicate_rows_skipped, error_message). ``error_message`` is set when rows is None."""
-    cid = (cache_id or "").strip()
-    if not cid:
+    """
+    Load inventory rows from JSON file using PC IP as the filename.
+    Returns (rows, duplicate_rows_skipped, error_message).
+    """
+    # Use pc_host_key as the cache key
+    cache_key = pc_host_key if pc_host_key else (cache_id or "").strip()
+    
+    if not cache_key:
         return None, 0, None
+    
+    cache_file = _get_inventory_cache_file(cache_key)
+    
     with inventory_cache_lock:
-        _inventory_cache_prune_unlocked()
-        ent = inventory_cache.get(cid)
-        if not ent:
-            return None, 0, "inventory_cache_id expired or unknown — reload the index page."
-        if ent["pc_host_key"] != pc_host_key:
-            return None, 0, "inventory cache is for a different Prism Central host — reload the index page."
-        if time.time() > float(ent["deadline"]):
-            inventory_cache.pop(cid, None)
-            return None, 0, "inventory cache expired — reload the index page."
-        return ent["rows"], int(ent.get("duplicate_rows_skipped") or 0), None
+        try:
+            if not os.path.exists(cache_file):
+                return None, 0, None
+            
+            with open(cache_file, "r") as f:
+                cache_data = json.load(f)
+            
+            rows = cache_data.get("rows", [])
+            dup_rows = int(cache_data.get("duplicate_rows_skipped", 0))
+            
+            app.logger.info(f"Loaded VM inventory cache for {cache_key}: {len(rows)} rows")
+            return rows, dup_rows, None
+            
+        except Exception as e:
+            app.logger.error(f"Failed to read inventory cache from {cache_file}: {e}")
+            return None, 0, None
 
 
 def _parse_guest_min_memory_mib(mapping: dict) -> int:
@@ -2093,10 +2117,13 @@ def api_pc_reachable():
 
 @app.route("/api/vm_inventory_table", methods=["POST"])
 def api_vm_inventory_table():
-    """Paginated, searchable VM rows from a cached inventory (see ``api_vm_inventory``)."""
+    """
+    Paginated, searchable VM rows from cached inventory.
+    Now uses PC IP as cache key - inventory_cache_id is optional.
+    """
     payload = request.get_json(silent=True) or {}
     pc_ip = str(payload.get("pc_ip") or "").strip()
-    cache_id = str(payload.get("inventory_cache_id") or "").strip()
+    cache_id = str(payload.get("inventory_cache_id") or "").strip()  # Optional, kept for backward compat
     q = str(payload.get("q") or "").strip().lower()
     sort_column = str(payload.get("sort_column") or "").strip()
     sort_direction = str(payload.get("sort_direction") or "").strip()
@@ -2111,14 +2138,28 @@ def api_vm_inventory_table():
     page = max(1, page)
     page_size = max(5, min(100, page_size))
 
-    if not cache_id:
-        return jsonify({"ok": False, "message": "inventory_cache_id is required."}), 400
+    if not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip is required."}), 400
 
-    rows, _dups, err = _inventory_cache_get(cache_id, _pc_host_key(pc_ip))
-    if err:
-        return jsonify({"ok": False, "message": err}), 400
+    # Fetch from cache using PC IP as key (inventory_cache_id is ignored)
+    pc_host_key = _pc_host_key(pc_ip)
+    rows, _dups, err = _inventory_cache_get(cache_id, pc_host_key)
+    
     if not rows:
-        return jsonify({"ok": False, "message": "No inventory rows in cache."}), 400
+        return jsonify({"ok": False, "message": "No inventory data cached for this PC. Click 'Fetch Latest VMs Info' to load data."}), 400
+    
+    # Apply PE cluster filters if provided
+    skip_clusters_raw = str(payload.get("skip_clusters") or "").strip()
+    if skip_clusters_raw:
+        skip_clusters = [c.strip() for c in skip_clusters_raw.split(",") if c.strip()]
+        if skip_clusters:
+            original_count = len(rows)
+            rows = [r for r in rows if str(r.get("cluster_name") or "") not in skip_clusters]
+            filtered_count = len(rows)
+            app.logger.info(f"Applied cluster filter: {original_count} -> {filtered_count} rows (skipped clusters: {skip_clusters})")
+    
+    if not rows:
+        return jsonify({"ok": False, "message": "No VMs match the selected cluster filters."}), 400
 
     cluster_names_pe = sorted(
         {str(r.get("cluster_name") or "—") for r in rows},
