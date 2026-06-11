@@ -111,8 +111,8 @@ def get_all_vms_with_recovery_points(base_url: str, auth_header: str,
     return all_vms
 
 
-def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str) -> List[Dict]:
-    """Fetch detailed recovery points for a specific VM using v4 API."""
+def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str, max_pages: int = 50) -> List[Dict]:
+    """Fetch detailed recovery points for a specific VM using v4 API with improved timeout handling."""
     headers = {
         'Content-Type': 'application/json',
         'Authorization': auth_header,
@@ -123,7 +123,7 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
     all_recovery_points = []
     page = 0
     
-    while True:
+    while page < max_pages:  # Add safety limit on pages
         params = {
             '$page': page,
             '$limit': RECOVERY_POINTS_PAGE_SIZE,
@@ -138,7 +138,7 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
                 headers=headers,
                 params=params,
                 verify=False,
-                timeout=30
+                timeout=15  # Reduced from 30s to 15s per page
             )
             response.raise_for_status()
             data = response.json()
@@ -159,14 +159,22 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
             
             page += 1
             
+        except requests.exceptions.Timeout:
+            # On timeout, return what we have so far
+            if all_recovery_points:
+                return all_recovery_points
+            raise Exception(f"Timeout fetching recovery points for VM {vm_uuid} (page {page})")
         except requests.exceptions.RequestException as e:
+            # On other errors, return what we have if any, otherwise raise
+            if all_recovery_points:
+                return all_recovery_points
             raise Exception(f"Error fetching recovery points for VM {vm_uuid}: {str(e)}")
     
     return all_recovery_points
 
 
 def get_vm_name(base_url: str, auth_header: str, vm_uuid: str) -> str:
-    """Get VM name from UUID using v3 API."""
+    """Get VM name from UUID using v3 API with short timeout."""
     headers = {
         'Content-Type': 'application/json',
         'Authorization': auth_header
@@ -179,13 +187,13 @@ def get_vm_name(base_url: str, auth_header: str, vm_uuid: str) -> str:
             v3_vm_url,
             headers=headers,
             verify=False,
-            timeout=10
+            timeout=5  # Reduced from 10s to 5s
         )
         response.raise_for_status()
         data = response.json()
-        return data.get('spec', {}).get('name', vm_uuid)
+        return data.get('spec', {}).get('name', f"VM-{vm_uuid[:8]}")
     except:
-        return vm_uuid
+        return f"VM-{vm_uuid[:8]}"
 
 
 def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str, 
@@ -230,7 +238,7 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
     processed_count = [0]  # Use list for mutable counter
     
     def process_vm(vm, idx):
-        """Process a single VM"""
+        """Process a single VM with timeout protection"""
         nonlocal total_reclaimable_bytes, total_recovery_points
         
         vm_uuid = vm['vm_uuid']
@@ -240,10 +248,13 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             if progress_callback:
                 progress_callback(f"[{idx}/{len(vms)}] Processing VM: {vm_uuid[:8]}... (Expected: {expected_count} recovery points)")
             
-            # Get VM name
-            vm_name = get_vm_name(base_url, auth_header, vm_uuid)
+            # Get VM name (with shorter timeout)
+            try:
+                vm_name = get_vm_name(base_url, auth_header, vm_uuid)
+            except:
+                vm_name = f"VM-{vm_uuid[:8]}"
             
-            # Get recovery point details
+            # Get recovery point details (with timeout handling in the function)
             recovery_points = get_vm_recovery_points_details(base_url, auth_header, vm_uuid)
             
             # Calculate reclaimable space
@@ -251,6 +262,20 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             for rp in recovery_points:
                 size_bytes = rp.get('totalExclusiveUsageBytes', 0)
                 vm_reclaimable += size_bytes
+            
+            # Format recovery points with individual sizes and extIds
+            formatted_recovery_points = []
+            for rp in recovery_points:
+                size_bytes = rp.get('totalExclusiveUsageBytes', 0)
+                formatted_recovery_points.append({
+                    'ext_id': rp.get('extId', ''),  # UUID for delete operations
+                    'name': rp.get('name', 'Unnamed'),
+                    'created_time': rp.get('creationTime', 'Unknown'),
+                    'size_bytes': size_bytes,
+                    'size_formatted': format_bytes(size_bytes),
+                    'expiration_time': rp.get('expirationTime', 'N/A'),
+                    'status': rp.get('status', 'UNKNOWN')
+                })
             
             with lock:
                 total_reclaimable_bytes += vm_reclaimable
@@ -262,19 +287,19 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                     'vm_uuid': vm_uuid,
                     'recovery_point_count': len(recovery_points),
                     'reclaimable_bytes': vm_reclaimable,
-                    'reclaimable_formatted': format_bytes(vm_reclaimable)
+                    'reclaimable_formatted': format_bytes(vm_reclaimable),
+                    'recovery_points': formatted_recovery_points  # Include individual recovery points
                 })
                 
                 if progress_callback:
-                    progress_callback(f"  ✓ VM: {vm_name}")
-                    progress_callback(f"    Recovery Points: {len(recovery_points)}")
-                    progress_callback(f"    Total Reclaimable Space: {format_bytes(vm_reclaimable)}")
-                    progress_callback("")
+                    progress_callback(f"  ✓ VM: {vm_name} ({len(recovery_points)} RPs, {format_bytes(vm_reclaimable)})")
         
         except Exception as e:
+            # Log error but continue processing other VMs
+            with lock:
+                processed_count[0] += 1  # Count as processed even if failed
             if progress_callback:
-                progress_callback(f"❌ [{idx}/{len(vms)}] Error processing VM {vm_uuid[:8]}: {str(e)}")
-                progress_callback("")
+                progress_callback(f"  ⚠️ Skipped VM {vm_uuid[:8]}: {str(e)[:100]}")
     
     # Create work queue
     work_queue = Queue()

@@ -1,15 +1,16 @@
 # VM Inventory Cache (JSON files)
 data/inventory_cache/*.json
 kubeconfigs/*
+pc_logs/*
 # Python
-__pycache__/
+__pycache__/*
 *.pyc
-*.pyo
+*.pyogit add .
 *.pyd
 .Python
 
 # Logs
-logs/*.log
+logs/*
 
 # Virtual Environment
 venv/

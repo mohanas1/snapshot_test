@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log Collection Job Status</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F9FAFB;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      color: #1F2937;
+      margin-bottom: 0.5rem;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .status-running { background: #DBEAFE; color: #1E40AF; }
+    .status-completed { background: #D1FAE5; color: #065F46; }
+    .status-failed { background: #FEE2E2; color: #991B1B; }
+    .status-aborted { background: #FEF3C7; color: #92400E; }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .info-item label {
+      display: block;
+      font-size: 0.875rem;
+      color: #6B7280;
+      margin-bottom: 0.25rem;
+    }
+    .info-item value {
+      display: block;
+      font-size: 1rem;
+      color: #1F2937;
+      font-weight: 500;
+    }
+    .section {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      font-size: 1.125rem;
+      color: #1F2937;
+      margin-bottom: 1rem;
+    }
+    .files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem;
+      background: #F9FAFB;
+      border-radius: 4px;
+      border: 1px solid #E5E7EB;
+    }
+    .log-console {
+      background: #1F2937;
+      color: #F9FAFB;
+      padding: 1rem;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      max-height: 600px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Log Collection Job: {{ log_job_id }}</h1>
+      <span class="status-badge status-{{ job_info.status }}">{{ job_info.status|upper }}</span>
+      
+      <div class="info-grid">
+        <div class="info-item">
+          <label>PC IP</label>
+          <value>{{ job_info.pc_ip }}</value>
+        </div>
+        <div class="info-item">
+          <label>Bug Folder</label>
+          <value>{{ job_info.bug_folder }}</value>
+        </div>
+        <div class="info-item">
+          <label>Start Time</label>
+          <value>{{ job_info.start_time }}</value>
+        </div>
+        {% if job_info.end_time %}
+        <div class="info-item">
+          <label>End Time</label>
+          <value>{{ job_info.end_time }}</value>
+        </div>
+        {% endif %}
+        {% if job_info.filer_url %}
+        <div class="info-item">
+          <label>Filer Location</label>
+          <value><a href="{{ job_info.filer_url }}" target="_blank">{{ job_info.filer_url }}</a></value>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if job_info.files_collected %}
+    <div class="section">
+      <h2>Collected Files</h2>
+      <div class="files-list">
+        {% for file in job_info.files_collected %}
+        <div class="file-item">
+          <span>{{ file.name }} ({{ file.type }})</span>
+          <span>{{ file.size_mb }} MB</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="section">
+      <h2>Console Logs</h2>
+      <div class="log-console" id="logConsole">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-refresh if job is still running
+    const jobStatus = "{{ job_info.status }}";
+    if (jobStatus === "running") {
+      setTimeout(() => {
+        location.reload();
+      }, 5000);
+    }
+
+    // Fetch and display logs
+    fetch("{{ api_url }}")
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('logConsole').textContent = data.log_text || 'No logs available';
+      });
+  </script>
+</body>
+</html>

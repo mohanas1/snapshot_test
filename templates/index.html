@@ -893,6 +893,36 @@
       border: 1px solid #93C5FD;
     }
     
+    /* Job Status Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.625rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+      text-transform: capitalize;
+    }
+    
+    .badge-completed {
+      background: #DEF7EC;
+      color: #03543F;
+    }
+    
+    .badge-running {
+      background: #E1EFFE;
+      color: #1E3A8A;
+    }
+    
+    .badge-failed {
+      background: #FDE8E8;
+      color: #9B1C1C;
+    }
+    
+    .badge-aborted {
+      background: #F3F4F6;
+      color: #374151;
+    }
+    
     .status-badge-neutral {
       background: #F3F4F6;
       color: #374151;
@@ -3886,6 +3916,72 @@
     </section>
   </div>
 
+  <!-- Bulk Job History Section -->
+  <div style="max-width: 100%; width: 100%; margin: 1rem auto; padding: 0 1rem;">
+    <section style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 600; color: #1F2937; margin: 0;">📊 Bulk Job History</h3>
+        <button type="button" onclick="refreshJobHistory()" style="padding:0.5rem 1rem; font-size:0.875rem; background:var(--primary-blue); color:white; border:none; border-radius:6px; cursor:pointer; transition: all 0.2s;">
+          🔄 Refresh
+        </button>
+      </div>
+      
+      <div id="job-history-container">
+        {% if recent_runs %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for job in recent_runs %}
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.875rem 1rem; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+              <span style="font-weight: 600; color: #374151; font-size: 0.9375rem;">
+                {% if job.job_kind == 'snapshot' %}
+                  📸 Snapshot_Config
+                {% elif job.job_kind == 'disk' %}
+                  💾 DiskOp_Config
+                {% elif job.job_kind == 'logs' %}
+                  📋 Logs_Collection
+                {% else %}
+                  {{ job.job_kind }}
+                {% endif %}
+              </span>
+              
+              <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+              
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                {{ job.at[:19] if job.at else '' }}
+              </span>
+              
+              {% if job.duration_sec %}
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                ({{ job.duration_sec|int }}s)
+              </span>
+              {% endif %}
+              
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                {{ job.pc_host }}
+              </span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              {% if job.job_kind == 'logs' %}
+                <a href="/log_job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
+                  Open job
+                </a>
+              {% else %}
+                <a href="/job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
+                  Open job
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #6B7280; text-align: center; padding: 2rem;">No job history yet</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
   <!-- Advanced Configuration (HIDDEN) -->
   <div class="form-sheet-container" style="display: none;">
     <form id="main-form-advanced">
@@ -5999,6 +6095,17 @@
       if (inventoryCacheId) {
         body.inventory_cache_id = inventoryCacheId;
       }
+      
+      // Add PE cluster filters if enabled
+      if ($("fetch-filter-by-clusters") && $("fetch-filter-by-clusters").checked) {
+        const clusterCheckboxes = document.querySelectorAll('#fetch-cluster-checkboxes input[type="checkbox"]:checked');
+        const skipClusters = Array.from(clusterCheckboxes).map(cb => cb.value);
+        if (skipClusters.length > 0) {
+          body.skip_clusters = skipClusters.join(',');
+          console.log("Disk preview: applying cluster filters:", skipClusters);
+        }
+      }
+      
       return body;
     }
 
@@ -6281,6 +6388,21 @@
         }
       }
       
+      // Get dd block size and count
+      const blockSize = $("guest_dd_bs") ? $("guest_dd_bs").value : "—";
+      const opModeRadio = document.querySelector("input[name='disk_op_mode']:checked");
+      const opMode = opModeRadio ? opModeRadio.value : "update";
+      let ddCount = "—";
+      
+      // Determine which count to show based on operation mode
+      if (opMode === "create") {
+        const createCountInput = $("create_count_mib");
+        ddCount = createCountInput && createCountInput.value ? createCountInput.value : "—";
+      } else if (opMode === "add" || opMode === "update" || opMode === "random_mix") {
+        const churnCountInput = $("churn_count_mib");
+        ddCount = churnCountInput && churnCountInput.value ? churnCountInput.value : "—";
+      }
+      
       return (
         "<p><strong>Guest SSH disk work will run</strong> against the current Prism Central connection and limits.</p>" +
         "<ul>" +
@@ -6289,6 +6411,12 @@
         "</span></li>" +
         "<li><strong>Concurrent SSH</strong><span>" +
         escHtml(concurrentSSH) +
+        "</span></li>" +
+        "<li><strong>dd block size</strong><span>" +
+        escHtml(blockSize) +
+        "</span></li>" +
+        "<li><strong>dd count</strong><span>" +
+        escHtml(ddCount) + " blocks" +
         "</span></li>" +
         "<li><strong>Planned SSH runs</strong><span>" +
         escHtml(runs) +
@@ -7717,6 +7845,11 @@
           
           if (hasRows && !hasError) {
             showToast("success", "VM Inventory", "Loaded " + cached.data.total_vms + " VMs from cache", 2000);
+            
+            // Trigger disk preview after successful cache load
+            console.log("Triggering disk preview after cache load...");
+            await runDiskTargetsPreviewFromForm();
+            scheduleActiveDiskJobRefresh();
           } else {
             // No server cache - user needs to fetch manually
             showToast("warning", "VM Inventory", "No server cache found. Click 'Fetch Latest VMs Info' to load from PC.", 5000);
@@ -8363,6 +8496,17 @@
     // Update badge periodically
     setInterval(updateInventoryStatusBadge, 2000);
     window.addEventListener('load', updateInventoryStatusBadge);
+    
+    // Refresh Job History
+    window.refreshJobHistory = async function() {
+      console.log("🔄 Refreshing job history...");
+      try {
+        // Simply reload the page to get fresh data
+        window.location.reload();
+      } catch (error) {
+        console.error("❌ Error refreshing job history:", error);
+      }
+    };
     
     // FORCE ENABLE BUTTONS ON PAGE LOAD
     console.log("🟢 About to add DOMContentLoaded listener");

@@ -221,6 +221,40 @@
       background-color: #F9FAFB;
     }
     
+    /* Searchable dropdown styles */
+    .search-dropdown {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .search-dropdown-item {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid #F3F4F6;
+      transition: background 0.15s;
+    }
+    
+    .search-dropdown-item:hover {
+      background: #EFF6FF;
+    }
+    
+    .search-dropdown-item:last-child {
+      border-bottom: none;
+    }
+    
+    .search-dropdown-item.selected {
+      background: #DBEAFE;
+      font-weight: 600;
+      color: #1E40AF;
+    }
+    
+    .search-dropdown-empty {
+      padding: 1rem;
+      text-align: center;
+      color: #9CA3AF;
+      font-style: italic;
+    }
+    
     /* Loading Spinner */
     .spinner {
       display: inline-block;
@@ -499,6 +533,32 @@
       }
     }
     
+    /* Indeterminate progress bar state */
+    .progress-bar-fill.indeterminate {
+      width: 100% !important;
+      background: linear-gradient(90deg, 
+        #E5E7EB 0%, 
+        #3B82F6 20%, 
+        #2563EB 40%, 
+        #3B82F6 60%, 
+        #E5E7EB 80%);
+      background-size: 200% 100%;
+      animation: indeterminate-progress 2s linear infinite;
+    }
+    
+    .progress-bar-fill.indeterminate::before {
+      display: none; /* Disable shimmer for indeterminate state */
+    }
+    
+    @keyframes indeterminate-progress {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+    
     .progress-bar-text {
       color: white;
       font-weight: 600;
@@ -511,11 +571,121 @@
       background: #1F2937;
       border-radius: 8px;
       padding: 1.5rem;
-      max-height: 500px;
+      max-height: 600px;
       overflow-y: auto;
       font-family: var(--font-mono);
       font-size: 0.875rem;
       line-height: 1.8;
+      position: relative;
+    }
+    
+    .logs-container::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    .logs-container::-webkit-scrollbar-track {
+      background: #374151;
+      border-radius: 4px;
+    }
+    
+    .logs-container::-webkit-scrollbar-thumb {
+      background: #6B7280;
+      border-radius: 4px;
+    }
+    
+    .logs-container::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+    
+    /* Jump to bottom button */
+    .jump-to-bottom-btn {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #3B82F6;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+      transition: all 0.2s;
+      z-index: 1000;
+      font-size: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+    }
+    
+    .jump-to-bottom-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    
+    .jump-to-bottom-btn:hover {
+      background: #2563EB;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .jump-to-bottom-btn:active {
+      transform: translateY(0);
+    }
+    
+    /* Performance indicator */
+    .performance-indicator {
+      position: fixed;
+      bottom: 1rem;
+      left: 1rem;
+      background: rgba(31, 41, 55, 0.95);
+      color: #10B981;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 0.75rem;
+      border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+      z-index: 1000;
+      display: none;
+    }
+    
+    .performance-indicator.active {
+      display: block;
+    }
+    
+    .performance-indicator .perf-label {
+      color: #9CA3AF;
+      margin-right: 0.5rem;
+    }
+    
+    .performance-indicator .perf-value {
+      color: #10B981;
+      font-weight: 600;
+    }
+    
+    .performance-indicator .perf-warning {
+      color: #F59E0B;
+    }
+    
+    .performance-indicator .perf-error {
+      color: #EF4444;
+    }
+    
+    /* Sticky action buttons */
+    .action-buttons-sticky {
+      position: sticky;
+      top: 4.5rem;
+      background: white;
+      z-index: 100;
+      padding: 1rem 0;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #E5E7EB;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     
     .log-line {
@@ -759,6 +929,17 @@
         </div>
       </div>
       
+      <!-- Recent Jobs -->
+      <div class="info-box" id="recentJobsSection" style="display: none; margin-top: 1.5rem;">
+        <div class="info-box-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📊 Recent Log Collection Jobs (Last 10)</span>
+          <button type="button" onclick="loadRecentJobs()" style="padding: 0.25rem 0.75rem; font-size: 0.875rem; background: #3B82F6; color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh</button>
+        </div>
+        <div id="recentJobsList" style="margin-top: 1rem;">
+          <div style="text-align: center; padding: 1rem; color: #6B7280;">Loading...</div>
+        </div>
+      </div>
+      
       <!-- Configuration Form -->
       <div class="form-section">
         <h2 class="form-section-title">🔧 Connection Configuration</h2>
@@ -788,15 +969,33 @@
           <div class="form-group">
             <label class="form-label" for="folderLevel1">Select Folder Level 1</label>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-              <select id="folderLevel1" name="folderLevel1" class="form-input loading" disabled required style="flex: 1;">
-                <option value="">⏳ Loading folders...</option>
-              </select>
+              <div style="position: relative; flex: 1;">
+                <input type="text" 
+                       id="folderLevel1Search" 
+                       class="form-input" 
+                       placeholder="🔍 Type to search folders..." 
+                       autocomplete="off"
+                       disabled
+                       style="padding-right: 2.5rem;">
+                <select id="folderLevel1" 
+                        name="folderLevel1" 
+                        class="form-input" 
+                        disabled 
+                        required 
+                        style="position: absolute; top: 0; left: 0; width: 100%; opacity: 0; pointer-events: none;">
+                  <option value="">⏳ Loading folders...</option>
+                </select>
+                <div id="folderLevel1Dropdown" 
+                     class="search-dropdown" 
+                     style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 300px; overflow-y: auto; background: white; border: 1px solid #D1D5DB; border-radius: 4px; margin-top: 0.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 1000;">
+                </div>
+              </div>
               <button type="button" id="refreshLevel1Btn" class="btn-refresh" title="Refresh folders" disabled>
                 🔄
               </button>
             </div>
             <div class="form-help-text">
-              📁 Select first level folder (e.g., MA, EMEA, APJ)
+              📁 Type to search folders (e.g., MA, EMEA, APJ, IP addresses, dates)
             </div>
             <div id="level1CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
               📦 Using cached folders from <strong id="level1CacheTime"></strong>
@@ -878,10 +1077,10 @@
                 <span>🔍</span>
                 <span>Customized Log Collection</span>
               </div>
-              <span class="toggle-icon" style="color: var(--text-muted); font-size: 0.75rem;">▶</span>
+              <span class="toggle-icon" style="color: var(--text-muted); font-size: 0.75rem;">▼</span>
             </div>
             
-            <div id="filterContent" style="display: none; padding: 1.5rem; background: white;">
+            <div id="filterContent" style="display: block; padding: 1.5rem; background: white;">
               <!-- Fluentd Section -->
               <div style="margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
@@ -1065,9 +1264,12 @@
             </div>
           </div>
           
-          <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+          <div class="action-buttons-sticky" style="display: flex; gap: 1rem; margin-top: 2rem;">
             <button type="submit" class="btn-primary" id="startBtn" disabled>
               Start Log Fetch
+            </button>
+            <button type="button" class="btn-secondary" id="abortBtn" onclick="abortLogFetch()" style="display: none; background: #DC2626;">
+              ⚠️ Abort Collection
             </button>
             <button type="button" class="btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">
               Back to Home
@@ -1122,11 +1324,94 @@
         <div class="logs-container" id="logsContainer">
           <!-- Logs will be appended here -->
         </div>
+        
+        <!-- Jump to bottom button -->
+        <button class="jump-to-bottom-btn" id="jumpToBottomBtn" title="Jump to latest logs">
+          ↓
+        </button>
+        
+        <!-- Performance indicator (only shown during active log streaming) -->
+        <div class="performance-indicator" id="perfIndicator">
+          <span class="perf-label" id="perfWorkerStatus">🔄 Worker: <span class="perf-value">OFF</span></span>
+          <span class="perf-label">| Buffer:</span>
+          <span class="perf-value" id="perfBuffer">0</span>
+          <span class="perf-label">| Visible:</span>
+          <span class="perf-value" id="perfVisible">0</span>
+          <span class="perf-label">| Total:</span>
+          <span class="perf-value" id="perfTotal">0</span>
+        </div>
       </div>
     </main>
   </div>
   
   <script>
+    // Load recent log collection jobs
+    function loadRecentJobs() {
+      fetch('/api/log_jobs/recent')
+        .then(r => r.json())
+        .then(data => {
+          const jobsList = document.getElementById('recentJobsList');
+          const jobsSection = document.getElementById('recentJobsSection');
+          
+          if (data.success && data.jobs && data.jobs.length > 0) {
+            jobsSection.style.display = 'block';
+            
+            jobsList.innerHTML = data.jobs.map(job => {
+              const statusColor = job.status === 'completed' ? '#10B981' : 
+                                 job.status === 'running' ? '#3B82F6' :
+                                 job.status === 'failed' ? '#EF4444' : '#F59E0B';
+              
+              const fluentdCount = (job.fluentd_namespaces || []).length;
+              const logbayCount = (job.logbay_services || []).length;
+              const filesCount = (job.files_collected || []).length;
+              const totalSizeMB = ((job.total_size_bytes || 0) / (1024 * 1024)).toFixed(2);
+              
+              return `
+                <div style="padding: 1rem; border: 1px solid #E5E7EB; border-radius: 4px; margin-bottom: 0.75rem; background: white;">
+                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                    <div>
+                      <a href="/log_job/${job.job_id}" style="font-weight: 600; color: #3B82F6; text-decoration: none; font-size: 0.9375rem;">
+                        ${job.pc_ip} / ${job.bug_folder}
+                      </a>
+                      <div style="font-size: 0.8125rem; color: #6B7280; margin-top: 0.25rem;">
+                        Started: ${job.start_time || 'N/A'}
+                      </div>
+                    </div>
+                    <span style="padding: 0.25rem 0.75rem; background: ${statusColor}20; color: ${statusColor}; border-radius: 4px; font-size: 0.8125rem; font-weight: 500;">
+                      ${job.status}
+                    </span>
+                  </div>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; font-size: 0.8125rem; color: #4B5563;">
+                    <div>📦 Fluentd: ${fluentdCount} namespace(s)</div>
+                    <div>🔧 Logbay: ${logbayCount} service(s)</div>
+                    <div>📁 Files: ${filesCount}</div>
+                    <div>💾 Size: ${totalSizeMB} MB</div>
+                  </div>
+                  ${job.filer_url ? `
+                    <div style="margin-top: 0.5rem;">
+                      <a href="${job.filer_url}" target="_blank" style="font-size: 0.8125rem; color: #3B82F6; text-decoration: none;">
+                        🌐 View on Filer →
+                      </a>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('');
+          } else {
+            jobsList.innerHTML = '<div style="text-align: center; padding: 1rem; color: #6B7280;">No recent jobs found</div>';
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load recent jobs:', err);
+          document.getElementById('recentJobsList').innerHTML = '<div style="text-align: center; padding: 1rem; color: #EF4444;">Failed to load jobs</div>';
+        });
+    }
+    
+    // Load recent jobs on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadRecentJobs();
+    });
+    
     // Toggle all checkboxes for a specific type (fluentd or logbay)
     function toggleAllCheckboxes(type) {
       const checkboxes = document.querySelectorAll(`.filter-checkbox[data-type="${type}"]`);
@@ -1179,8 +1464,11 @@
         checkbox.style.cssText = 'width: 18px; height: 18px; accent-color: #10B981; cursor: not-allowed;';
         
         const label = document.createElement('span');
-        label.style.cssText = 'font-size: 0.875rem; color: #374151; flex: 1;';
-        label.innerHTML = `<strong>Step ${index + 1}:</strong> ${step.label}`;
+        label.style.cssText = 'font-size: 0.875rem; color: #374151; flex: 1; display: flex; align-items: center; gap: 0.5rem;';
+        label.innerHTML = `
+          <span><strong>Step ${index + 1}:</strong> ${step.label}</span>
+          <span id="status-${step.id}" class="step-status-badge" style="display: none; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500;"></span>
+        `;
         
         mainStepDiv.appendChild(checkbox);
         mainStepDiv.appendChild(label);
@@ -1252,6 +1540,7 @@
       const stepDiv = document.getElementById(`tracker-${stepId}`);
       const substepsContainer = document.getElementById(`substeps-${stepId}`);
       const collapseBtn = document.getElementById(`collapse-${stepId}`);
+      const statusBadge = document.getElementById(`status-${stepId}`);
       
       // Collapse previous step if moving to a new step
       if (inProgress && currentActiveStep && currentActiveStep !== stepNum) {
@@ -1288,6 +1577,15 @@
         if (stepDiv) {
           stepDiv.style.background = 'linear-gradient(90deg, #DBEAFE 0%, #BFDBFE 100%)';
           stepDiv.style.border = '1px solid #3B82F6';
+        }
+        
+        // Update status badge to "In Progress"
+        if (statusBadge) {
+          statusBadge.style.display = 'inline-block';
+          statusBadge.textContent = 'In Progress';
+          statusBadge.style.background = '#DBEAFE';
+          statusBadge.style.color = '#1E40AF';
+          statusBadge.style.border = '1px solid #3B82F6';
         }
       }
       
@@ -1373,6 +1671,26 @@
             stepDiv.style.border = '1px solid #C7D2FE';
             stepDiv.style.opacity = '0.8';
           }
+          
+          // Update status badge to "Success"
+          if (statusBadge) {
+            statusBadge.style.display = 'inline-block';
+            statusBadge.textContent = '✓ Success';
+            statusBadge.style.background = '#D1FAE5';
+            statusBadge.style.color = '#065F46';
+            statusBadge.style.border = '1px solid #10B981';
+          }
+        }
+      }
+      
+      // Also update badge for completed steps without substeps
+      if (completed && !substep && checkbox && checkbox.checked) {
+        if (statusBadge) {
+          statusBadge.style.display = 'inline-block';
+          statusBadge.textContent = '✓ Success';
+          statusBadge.style.background = '#D1FAE5';
+          statusBadge.style.color = '#065F46';
+          statusBadge.style.border = '1px solid #10B981';
         }
       }
     }
@@ -1589,13 +1907,22 @@
       
       const total = (copyAvg || 60) + (compressAvg || 30) + (uploadAvg || 45);
       
+      // Don't show estimation banner if we don't have reliable data
+      // The indeterminate progress bar will indicate we're calculating
       const estimateDiv = document.createElement('div');
-      estimateDiv.style.cssText = 'margin-top: 0.5rem; padding: 0.75rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 0.875rem;';
+      estimateDiv.style.cssText = 'margin-top: 0.5rem; padding: 0.75rem; background: #F3F4F6; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 0.875rem; display: none;';
       estimateDiv.innerHTML = `
-        <strong style="color: #1E40AF;">⏱️ Estimated Time:</strong> ~${formatDuration(total)}
-        ${copyAvg ? `<span style="margin-left: 1rem; color: #6B7280;">(Copy: ${formatDuration(copyAvg)}, Compress: ${formatDuration(compressAvg || 30)}, Upload: ${formatDuration(uploadAvg || 45)})</span>` : ''}
-        <div style="margin-top: 0.25rem; color: #6B7280; font-size: 0.75rem; font-style: italic;">
-          ⚠️ Size-based estimation not yet available. Run operations to build data.
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: #6B7280;">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          <span style="font-style: italic;">
+            ⏳ Calculating operation progress... Time estimation will appear as data is collected.
+          </span>
+        </div>
+        <div style="margin-top: 0.5rem; color: #9CA3AF; font-size: 0.75rem;">
+          💡 Run more operations to build historical data for accurate time estimates
         </div>
       `;
       
@@ -1785,6 +2112,108 @@
         }
       }
     }
+    
+    // Initialize searchable dropdown for folder selection
+    function setupSearchableDropdown(searchInputId, selectId, dropdownId) {
+      const searchInput = document.getElementById(searchInputId);
+      const select = document.getElementById(selectId);
+      const dropdown = document.getElementById(dropdownId);
+      let allOptions = [];
+      
+      // Update dropdown options from select element
+      function updateDropdownOptions() {
+        allOptions = Array.from(select.options)
+          .filter(opt => opt.value && !opt.value.includes('Loading') && !opt.value.includes('Select'))
+          .map(opt => ({ value: opt.value, text: opt.text }));
+      }
+      
+      // Filter and display matching options
+      function filterOptions(query) {
+        if (!query) {
+          dropdown.style.display = 'none';
+          return;
+        }
+        
+        const lowerQuery = query.toLowerCase();
+        const matches = allOptions.filter(opt => 
+          opt.value.toLowerCase().includes(lowerQuery) || 
+          opt.text.toLowerCase().includes(lowerQuery)
+        );
+        
+        if (matches.length === 0) {
+          dropdown.innerHTML = '<div class="search-dropdown-empty">No matching folders found</div>';
+          dropdown.style.display = 'block';
+          return;
+        }
+        
+        dropdown.innerHTML = matches.map(opt => `
+          <div class="search-dropdown-item ${opt.value === select.value ? 'selected' : ''}" 
+               data-value="${escapeHtml(opt.value)}">
+            ${escapeHtml(opt.value)}
+          </div>
+        `).join('');
+        dropdown.style.display = 'block';
+      }
+      
+      // Handle search input
+      searchInput.addEventListener('input', (e) => {
+        updateDropdownOptions();
+        filterOptions(e.target.value);
+      });
+      
+      // Handle dropdown item click
+      dropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('.search-dropdown-item');
+        if (item) {
+          const value = item.dataset.value;
+          select.value = value;
+          searchInput.value = value;
+          dropdown.style.display = 'none';
+          
+          // Trigger change event on select
+          const event = new Event('change', { bubbles: true });
+          select.dispatchEvent(event);
+        }
+      });
+      
+      // Handle focus - show all options if empty
+      searchInput.addEventListener('focus', () => {
+        updateDropdownOptions();
+        if (allOptions.length > 0 && !searchInput.value) {
+          filterOptions('');
+          dropdown.innerHTML = allOptions.map(opt => `
+            <div class="search-dropdown-item ${opt.value === select.value ? 'selected' : ''}" 
+                 data-value="${escapeHtml(opt.value)}">
+              ${escapeHtml(opt.value)}
+            </div>
+          `).join('');
+          dropdown.style.display = 'block';
+        }
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+      
+      // Sync search input with select value when select changes programmatically
+      const observer = new MutationObserver(() => {
+        if (select.value && select.value !== searchInput.value) {
+          searchInput.value = select.value;
+        }
+        if (!select.disabled) {
+          searchInput.disabled = false;
+        } else {
+          searchInput.disabled = true;
+        }
+      });
+      observer.observe(select, { attributes: true, attributeFilter: ['disabled'], childList: true });
+    }
+    
+    // Initialize searchable dropdown for Level 1
+    setupSearchableDropdown('folderLevel1Search', 'folderLevel1', 'folderLevel1Dropdown');
     
     // Initialize on page load - moved to after filer server event listener setup
     
@@ -2000,8 +2429,12 @@
       document.getElementById('logsStatus').className = 'logs-status running';
       document.getElementById('logsStatus').textContent = 'Running...';
       
-      // Reset progress bar
-      updateProgress(0, 'Initializing...');
+      // Reset log batching state
+      resetLogState();
+      
+      // Reset progress bar - start with indeterminate state
+      setIndeterminateProgress();
+      document.getElementById('progressStep').textContent = 'Initializing connection and preparing environment...';
       showEstimatedTime();
       
       // Initialize step tracker
@@ -2110,7 +2543,17 @@
                     continue;
                   }
                   
+                  // Capture job ID
+                  if (data.type === 'job_id') {
+                    window.currentLogJobId = data.job_id;
+                    // Show abort button
+                    document.getElementById('abortBtn').style.display = 'inline-block';
+                    continue;
+                  }
+                  
                   if (data.message === 'END') {
+                    // Hide abort button when job ends
+                    document.getElementById('abortBtn').style.display = 'none';
                     // Check for any error logs or exit code != 0
                     const errorLogs = document.querySelectorAll('.log-line.error');
                     const logsContainer = document.getElementById('logsContainer');
@@ -2141,12 +2584,24 @@
                       const progressBarFill = document.getElementById('progressBarFill');
                       progressBarFill.style.background = '#DC2626'; // Red for error
                       updateProgress(100, 'Failed - Check logs');
+                      
+                      // Hide performance indicator on failure
+                      setTimeout(() => {
+                        const perfIndicator = document.getElementById('perfIndicator');
+                        if (perfIndicator) perfIndicator.classList.remove('active');
+                      }, 3000);
                     } else {
                       document.getElementById('logsStatus').className = 'logs-status success';
                       document.getElementById('logsStatus').textContent = 'Completed';
                       const progressBarFill = document.getElementById('progressBarFill');
                       progressBarFill.style.background = ''; // Reset to default green
                       updateProgress(100, 'Completed Successfully');
+                      
+                      // Hide performance indicator on completion
+                      setTimeout(() => {
+                        const perfIndicator = document.getElementById('perfIndicator');
+                        if (perfIndicator) perfIndicator.classList.remove('active');
+                      }, 3000);
                       
                       // Parse sizes from logs and save size-based metrics (only on success)
                       if (window.operationTimes && window.operationTimes.totalStart) {
@@ -2196,24 +2651,28 @@
                     return;
                   }
                   
-                  // Add log line
-                  const logLine = document.createElement('div');
-                  logLine.className = 'log-line ' + data.level.toLowerCase();
-                  logLine.innerHTML = `
-                    <span class="log-timestamp">[${data.timestamp}]</span>
-                    <span class="log-message">${escapeHtml(data.message)}</span>
-                  `;
-                  document.getElementById('logsContainer').appendChild(logLine);
-                  
-                  // Store message for size parsing later
-                  if (window.operationTimes && window.operationTimes.allLogMessages) {
-                    window.operationTimes.allLogMessages.push(data.message);
-                  }
+                  // Add log line to batch buffer (FIX #2, #3, #4: Batched rendering)
+                  addLogToBatch(data.timestamp, data.level, data.message);
                   
                   // Detect progress from log message
                   detectProgressFromLog(data.message);
                   
-                  // Detect filer folder creation and show link
+                  // Detect logs location from bash script output (preferred method)
+                  if (data.message.includes('🌐') && data.message.includes('Logs Location')) {
+                    // Next line should contain the URL
+                    window._waitingForLogsUrl = true;
+                  } else if (window._waitingForLogsUrl) {
+                    let cleanMsg = data.message.replace(/\x1b\[[0-9;]*m/g, '').trim();
+                    // Check if this line contains a URL
+                    if (cleanMsg.match(/^https?:\/\//)) {
+                      document.getElementById('filerLink').href = cleanMsg;
+                      document.getElementById('filerLink').textContent = cleanMsg;
+                      document.getElementById('filerLinkContainer').style.display = 'block';
+                      window._waitingForLogsUrl = false;
+                    }
+                  }
+                  
+                  // Fallback: Detect filer folder creation and show link
                   if (data.message.includes('Folder verified:')) {
                     const match = data.message.match(/Folder verified:\s*(.+)/);
                     if (match && match[1]) {
@@ -2226,9 +2685,12 @@
                       const pathParts = filerPath.replace('/home/nutanix/data/', '').replace(/\\/g, '/');
                       const filerUrl = `http://10.46.1.165/${pathParts}/`;
                       
-                      document.getElementById('filerLink').href = filerUrl;
-                      document.getElementById('filerLink').textContent = filerUrl;
-                      document.getElementById('filerLinkContainer').style.display = 'block';
+                      // Only use this fallback if we haven't already set the URL from the bash script
+                      if (!document.getElementById('filerLink').href || document.getElementById('filerLink').href === window.location.href + '#') {
+                        document.getElementById('filerLink').href = filerUrl;
+                        document.getElementById('filerLink').textContent = filerUrl;
+                        document.getElementById('filerLinkContainer').style.display = 'block';
+                      }
                     }
                   }
                   
@@ -2240,9 +2702,7 @@
                     document.getElementById('logsStatus').textContent = 'Failed';
                   }
                   
-                  // Auto-scroll
-                  const container = document.getElementById('logsContainer');
-                  container.scrollTop = container.scrollHeight;
+                  // Auto-scroll is now handled by batched rendering in renderLogBatch()
                   
                 } catch (e) {
                   console.error('Error parsing SSE data:', e);
@@ -2262,13 +2722,8 @@
         document.getElementById('startBtn').disabled = false;
         updateProgress(100, 'Error: ' + error.message);
         
-        const logLine = document.createElement('div');
-        logLine.className = 'log-line error';
-        logLine.innerHTML = `
-          <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
-          <span class="log-message">Error: ${error.message}</span>
-        `;
-        document.getElementById('logsContainer').appendChild(logLine);
+        // Add error to log batch
+        addLogToBatch(new Date().toLocaleTimeString(), 'ERROR', 'Error: ' + error.message);
       });
     });
     
@@ -2276,6 +2731,74 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+    
+    /**
+     * Parse ANSI escape codes and convert them to HTML with inline styles.
+     * This makes colored terminal output display properly in the browser.
+     */
+    function parseAnsiCodes(text) {
+      // Strip ANSI codes and convert to HTML with colors
+      const ansiColors = {
+        '30': '#1F2937',  // black
+        '31': '#EF4444',  // red
+        '32': '#10B981',  // green
+        '33': '#F59E0B',  // yellow
+        '34': '#3B82F6',  // blue
+        '35': '#A855F7',  // magenta
+        '36': '#06B6D4',  // cyan
+        '37': '#F3F4F6',  // white
+        '90': '#6B7280',  // bright black (gray)
+        '91': '#F87171',  // bright red
+        '92': '#34D399',  // bright green
+        '93': '#FBBF24',  // bright yellow
+        '94': '#60A5FA',  // bright blue
+        '95': '#C084FC',  // bright magenta
+        '96': '#22D3EE',  // bright cyan
+        '97': '#FFFFFF'   // bright white
+      };
+      
+      let html = '';
+      let currentStyles = [];
+      
+      // Replace ANSI codes with HTML spans
+      const parts = text.split(/\x1b\[([0-9;]+)m/g);
+      
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+          // This is text content
+          if (parts[i]) {
+            const escaped = escapeHtml(parts[i]);
+            if (currentStyles.length > 0) {
+              html += `<span style="${currentStyles.join(';')}">${escaped}</span>`;
+            } else {
+              html += escaped;
+            }
+          }
+        } else {
+          // This is an ANSI code
+          const codes = parts[i].split(';');
+          currentStyles = [];
+          
+          for (const code of codes) {
+            if (code === '0' || code === '') {
+              // Reset
+              currentStyles = [];
+            } else if (code === '1') {
+              // Bold
+              currentStyles.push('font-weight: 600');
+            } else if (code === '4') {
+              // Underline
+              currentStyles.push('text-decoration: underline');
+            } else if (ansiColors[code]) {
+              // Color
+              currentStyles.push(`color: ${ansiColors[code]}`);
+            }
+          }
+        }
+      }
+      
+      return html;
     }
     
     // Progress tracking
@@ -2298,10 +2821,19 @@
       const progressPercentage = document.getElementById('progressPercentage');
       const progressStep = document.getElementById('progressStep');
       
+      // FIX #1: Prevent loop boundary overflow
+      const displayedTotal = Math.max(totalSteps, stepNumber || 0);
+      const safePercentage = Math.min(Math.max(percentage, 0), 100);
+      
+      // Switch from indeterminate to deterministic mode once we have real progress
+      if (safePercentage > 0 && safePercentage < 100) {
+        progressBarFill.classList.remove('indeterminate');
+      }
+      
       // Build step text with number if provided
       let displayText = stepText;
       if (stepNumber !== null && stepNumber > 0) {
-        displayText = `Step ${stepNumber}/${totalSteps}: ${stepText}`;
+        displayText = `Step ${stepNumber}/${displayedTotal}: ${stepText}`;
         
         // Add substep on new line if provided
         if (substep !== null && totalSubsteps !== null && totalSubsteps > 0) {
@@ -2311,17 +2843,305 @@
       }
       
       // Update progress bar
-      progressBarFill.style.width = percentage + '%';
-      progressPercentage.textContent = percentage + '%';
+      progressBarFill.style.width = safePercentage + '%';
+      progressPercentage.textContent = safePercentage + '%';
       progressStep.textContent = displayText;
       
       // Update text inside bar if there's enough space
-      if (percentage > 20) {
-        progressBarText.textContent = percentage + '%';
+      if (safePercentage > 20) {
+        progressBarText.textContent = safePercentage + '%';
       } else {
         progressBarText.textContent = '';
       }
     }
+    
+    function setIndeterminateProgress() {
+      const progressBarFill = document.getElementById('progressBarFill');
+      const progressPercentage = document.getElementById('progressPercentage');
+      const progressBarText = document.getElementById('progressBarText');
+      
+      progressBarFill.classList.add('indeterminate');
+      progressPercentage.textContent = '...';
+      progressBarText.textContent = 'Calculating...';
+    }
+    
+    // ===== PERFORMANCE IMPROVEMENTS =====
+    // FIX #2, #3, #4: Web Worker + Batched rendering + Virtual scrolling
+    
+    const LOG_CONFIG = {
+      MAX_VISIBLE_LINES: 1000,      // Only keep last 1000 lines in DOM
+      BATCH_INTERVAL_MS: 150,        // Update UI every 150ms (not per message)
+      MAX_BUFFER_SIZE: 100,          // Process up to 100 messages per batch
+      WORKER_ENABLED: true           // Use Web Worker for ANSI parsing
+    };
+    
+    let logBuffer = [];
+    let logRenderScheduled = false;
+    let totalLogCount = 0;
+    let droppedLogCount = 0;
+    let logWorker = null;
+    let workerReady = false;
+    
+    /**
+     * Initialize Web Worker for log processing
+     * FIX #2: Move log processing to Web Worker
+     */
+    function initLogWorker() {
+      if (!LOG_CONFIG.WORKER_ENABLED || typeof Worker === 'undefined') {
+        console.warn('Web Workers not available, falling back to main thread processing');
+        workerReady = true;
+        return;
+      }
+      
+      try {
+        logWorker = new Worker('/static/log-worker.js');
+        
+        logWorker.addEventListener('message', (event) => {
+          const { type, data } = event.data;
+          
+          if (type === 'READY') {
+            workerReady = true;
+            console.log('✅ Log processing Web Worker initialized - UI will remain responsive during heavy log streams');
+            updatePerformanceIndicator(); // Update indicator to show worker is active
+          } else if (type === 'BATCH_PROCESSED') {
+            // Worker has processed the batch, now render it
+            renderProcessedBatch(data);
+          } else if (type === 'RESET_COMPLETE') {
+            console.log('Worker state reset');
+          }
+        });
+        
+        logWorker.addEventListener('error', (error) => {
+          console.error('Web Worker error:', error);
+          workerReady = true; // Fallback to main thread
+          logWorker = null;
+        });
+      } catch (error) {
+        console.error('Failed to initialize Web Worker:', error);
+        workerReady = true; // Fallback to main thread
+        logWorker = null;
+      }
+    }
+    
+    /**
+     * Add a log message to the buffer for batched rendering
+     * FIX #4: Debounce and batch UI redraws
+     */
+    function addLogToBatch(timestamp, level, message) {
+      logBuffer.push({ timestamp, level, message });
+      totalLogCount++;
+      
+      // Schedule a batch render if not already scheduled
+      if (!logRenderScheduled) {
+        logRenderScheduled = true;
+        setTimeout(renderLogBatch, LOG_CONFIG.BATCH_INTERVAL_MS);
+      }
+    }
+    
+    /**
+     * Render batched logs efficiently
+     * FIX #2 & #3: Web Worker processing + Virtual scrolling
+     */
+    function renderLogBatch() {
+      logRenderScheduled = false;
+      
+      if (logBuffer.length === 0) return;
+      
+      // Process up to MAX_BUFFER_SIZE messages per batch
+      const messagesToProcess = logBuffer.splice(0, LOG_CONFIG.MAX_BUFFER_SIZE);
+      
+      // If Web Worker is available, send to worker for processing
+      if (logWorker && workerReady) {
+        logWorker.postMessage({
+          type: 'PROCESS_BATCH',
+          data: messagesToProcess
+        });
+      } else {
+        // Fallback to main thread processing
+        const processed = messagesToProcess.map(msg => ({
+          timestamp: msg.timestamp,
+          level: msg.level,
+          html: parseAnsiCodes(msg.message)
+        }));
+        renderProcessedBatch(processed);
+      }
+      
+      // If there are more messages in the buffer, schedule another render
+      if (logBuffer.length > 0) {
+        logRenderScheduled = true;
+        setTimeout(renderLogBatch, LOG_CONFIG.BATCH_INTERVAL_MS);
+      }
+    }
+    
+    /**
+     * Render pre-processed log batch (from worker or main thread)
+     * FIX #3: Virtual scrolling - only keep MAX_VISIBLE_LINES in DOM
+     */
+    function renderProcessedBatch(processedMessages) {
+      if (processedMessages.length === 0) return;
+      
+      const logsContainer = document.getElementById('logsContainer');
+      const fragment = document.createDocumentFragment();
+      
+      for (const { timestamp, level, html } of processedMessages) {
+        const logLine = document.createElement('div');
+        logLine.className = 'log-line ' + level.toLowerCase();
+        logLine.innerHTML = `
+          <span class="log-timestamp">[${timestamp}]</span>
+          <span class="log-message">${html}</span>
+        `;
+        fragment.appendChild(logLine);
+      }
+      
+      // Append new logs
+      logsContainer.appendChild(fragment);
+      
+      // FIX #3: Virtual scrolling - remove old lines if we exceed MAX_VISIBLE_LINES
+      const allLines = logsContainer.children;
+      const excessLines = allLines.length - LOG_CONFIG.MAX_VISIBLE_LINES;
+      
+      if (excessLines > 0) {
+        droppedLogCount += excessLines;
+        // Remove oldest lines
+        for (let i = 0; i < excessLines; i++) {
+          logsContainer.removeChild(allLines[0]);
+        }
+        
+        // Add a notice at the top if we've dropped lines
+        if (droppedLogCount > 0 && !document.getElementById('log-truncation-notice')) {
+          const notice = document.createElement('div');
+          notice.id = 'log-truncation-notice';
+          notice.className = 'log-line';
+          notice.style.cssText = 'background: #FEF3C7; color: #92400E; font-weight: 600; border: 1px solid #FCD34D; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; position: sticky; top: 0; z-index: 10;';
+          notice.innerHTML = `
+            <span class="log-message">
+              ⚠️ Showing last ${LOG_CONFIG.MAX_VISIBLE_LINES} lines (${droppedLogCount.toLocaleString()} earlier lines hidden for performance) | Total: ${totalLogCount.toLocaleString()} lines
+            </span>
+          `;
+          logsContainer.insertBefore(notice, logsContainer.firstChild);
+        } else if (document.getElementById('log-truncation-notice')) {
+          // Update the counter
+          const notice = document.getElementById('log-truncation-notice');
+          notice.innerHTML = `
+            <span class="log-message">
+              ⚠️ Showing last ${LOG_CONFIG.MAX_VISIBLE_LINES} lines (${droppedLogCount.toLocaleString()} earlier lines hidden for performance) | Total: ${totalLogCount.toLocaleString()} lines
+            </span>
+          `;
+        }
+      }
+      
+      // Auto-scroll to bottom only if user was already at bottom
+      // This allows users to scroll up to read earlier logs without being forced down
+      const isScrolledToBottom = logsContainer.scrollHeight - logsContainer.clientHeight <= logsContainer.scrollTop + 50;
+      if (isScrolledToBottom) {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+      }
+      
+      // Update performance indicator
+      updatePerformanceIndicator();
+      
+      // If there are more messages in the buffer, schedule another render
+      if (logBuffer.length > 0) {
+        logRenderScheduled = true;
+        setTimeout(renderLogBatch, LOG_CONFIG.BATCH_INTERVAL_MS);
+      }
+    }
+    
+    /**
+     * Update performance indicator with current stats
+     */
+    function updatePerformanceIndicator() {
+      const perfIndicator = document.getElementById('perfIndicator');
+      const perfBuffer = document.getElementById('perfBuffer');
+      const perfVisible = document.getElementById('perfVisible');
+      const perfTotal = document.getElementById('perfTotal');
+      const perfWorkerStatus = document.getElementById('perfWorkerStatus');
+      
+      if (!perfIndicator) return;
+      
+      const logsContainer = document.getElementById('logsContainer');
+      const visibleLines = logsContainer ? logsContainer.children.length : 0;
+      
+      // Update worker status
+      if (perfWorkerStatus) {
+        if (logWorker && workerReady) {
+          perfWorkerStatus.innerHTML = '⚡ Worker: <span class="perf-value" style="color: #10B981;">ON</span>';
+        } else {
+          perfWorkerStatus.innerHTML = '🔄 Worker: <span class="perf-value" style="color: #9CA3AF;">OFF</span>';
+        }
+      }
+      
+      // Show indicator when actively streaming logs
+      if (totalLogCount > 0) {
+        perfIndicator.classList.add('active');
+        perfTotal.textContent = totalLogCount.toLocaleString();
+        perfVisible.textContent = visibleLines.toLocaleString();
+        perfBuffer.textContent = logBuffer.length.toLocaleString();
+        
+        // Color code buffer size
+        perfBuffer.className = 'perf-value';
+        if (logBuffer.length > 500) {
+          perfBuffer.className = 'perf-value perf-error';
+        } else if (logBuffer.length > 200) {
+          perfBuffer.className = 'perf-value perf-warning';
+        }
+      }
+    }
+    
+    /**
+     * Reset log state when starting a new job
+     */
+    function resetLogState() {
+      logBuffer = [];
+      logRenderScheduled = false;
+      totalLogCount = 0;
+      droppedLogCount = 0;
+      const notice = document.getElementById('log-truncation-notice');
+      if (notice) notice.remove();
+      
+      const perfIndicator = document.getElementById('perfIndicator');
+      if (perfIndicator) perfIndicator.classList.remove('active');
+      
+      // Reset Web Worker state
+      if (logWorker && workerReady) {
+        logWorker.postMessage({ type: 'RESET' });
+      }
+    }
+    
+    /**
+     * Manage "Jump to Bottom" button visibility and behavior
+     */
+    function initializeJumpToBottom() {
+      const logsContainer = document.getElementById('logsContainer');
+      const jumpBtn = document.getElementById('jumpToBottomBtn');
+      
+      if (!logsContainer || !jumpBtn) return;
+      
+      // Show/hide button based on scroll position
+      logsContainer.addEventListener('scroll', function() {
+        const isScrolledToBottom = logsContainer.scrollHeight - logsContainer.clientHeight <= logsContainer.scrollTop + 100;
+        
+        if (isScrolledToBottom) {
+          jumpBtn.classList.remove('visible');
+        } else {
+          jumpBtn.classList.add('visible');
+        }
+      });
+      
+      // Handle button click
+      jumpBtn.addEventListener('click', function() {
+        logsContainer.scrollTo({
+          top: logsContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeJumpToBottom();
+      initLogWorker(); // Initialize Web Worker for log processing
+    });
     
     function detectProgressFromLog(message) {
       // Check for error/failure indicators FIRST - most aggressive detection
@@ -2418,6 +3238,91 @@
         }
         
         return; // Don't process further
+      }
+      
+      // === Handle Dynamic Substeps (from bash/python markers) ===
+      if (message.includes('SUBSTEP_START:') || message.includes('SUBSTEP_UPDATE:') || message.includes('SUBSTEP_COMPLETE:')) {
+        const parts = message.split(/SUBSTEP_(START|UPDATE|COMPLETE):\s*/);
+        if (parts.length >= 3) {
+          const action = parts[1]; // 'START', 'UPDATE', or 'COMPLETE'
+          const remainder = parts[2].trim();
+          const spaceIdx = remainder.indexOf(' ');
+          const substepId = spaceIdx > 0 ? remainder.substring(0, spaceIdx) : remainder;
+          const substepLabel = spaceIdx > 0 ? remainder.substring(spaceIdx + 1).trim() : '';
+          
+          // Parse step number from substep ID (e.g., "step5_namespace_1" -> step 5)
+          const stepMatch = substepId.match(/step(\d+)_/);
+          if (stepMatch) {
+            const stepNum = parseInt(stepMatch[1]);
+            const stepId = `step${stepNum}`;
+            const trackerStep = document.getElementById(`tracker-${stepId}`);
+            
+            if (trackerStep) {
+              let substepsContainer = trackerStep.querySelector('.substeps-container');
+              
+              // Create substeps container if it doesn't exist yet
+              if (!substepsContainer) {
+                substepsContainer = document.createElement('div');
+                substepsContainer.className = 'substeps-container';
+                substepsContainer.id = `substeps-${stepId}`;
+                substepsContainer.style.cssText = 'display: block; margin-top: 0.5rem; padding-left: 2rem; flex-direction: column; gap: 0.25rem;';
+                trackerStep.appendChild(substepsContainer);
+                
+                // Expand parent step when adding dynamic substeps
+                const collapseBtn = document.getElementById(`collapse-${stepId}`);
+                if (collapseBtn) {
+                  collapseBtn.innerHTML = '▼';
+                  substepsContainer.style.display = 'flex';
+                }
+              }
+              
+              // Find or create the substep element
+              let substepDiv = substepsContainer.querySelector(`[data-substep-id="${substepId}"]`);
+              
+              if (action === 'START' && !substepDiv) {
+                // Create new substep
+                substepDiv = document.createElement('div');
+                substepDiv.setAttribute('data-substep-id', substepId);
+                substepDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; background: #F9FAFB; border-radius: 3px; border: 1px solid #E5E7EB;';
+                
+                const subCheckbox = document.createElement('input');
+                subCheckbox.type = 'checkbox';
+                subCheckbox.disabled = true;
+                subCheckbox.style.cssText = 'width: 14px; height: 14px; accent-color: #10B981; cursor: not-allowed;';
+                subCheckbox.id = `check-${substepId}`;
+                
+                const subLabel = document.createElement('span');
+                subLabel.style.cssText = 'font-size: 0.8125rem; color: #6B7280; flex: 1;';
+                subLabel.textContent = `↳ ${substepLabel}`;
+                
+                substepDiv.appendChild(subCheckbox);
+                substepDiv.appendChild(subLabel);
+                substepsContainer.appendChild(substepDiv);
+              }
+              
+              if (substepDiv) {
+                const subCheckbox = substepDiv.querySelector('input[type="checkbox"]');
+                const subLabel = substepDiv.querySelector('span');
+                
+                if (action === 'UPDATE' && substepLabel) {
+                  // Update substep label
+                  subLabel.textContent = `↳ ${substepLabel}`;
+                  subLabel.style.color = '#3B82F6'; // Blue for in-progress
+                  subCheckbox.checked = false;
+                  substepDiv.style.borderColor = '#3B82F6';
+                  substepDiv.style.background = '#EFF6FF';
+                } else if (action === 'COMPLETE') {
+                  // Mark complete
+                  subCheckbox.checked = true;
+                  subLabel.style.color = '#10B981'; // Green for complete
+                  substepDiv.style.borderColor = '#10B981';
+                  substepDiv.style.background = '#F0FDF4';
+                }
+              }
+            }
+          }
+        }
+        // Continue processing for other patterns
       }
       
       // Track intermediate operations for better context and granular progress
@@ -2695,6 +3600,49 @@
         const finalStepNumber = window.operationTimes.currentStepNumber || 7;
         updateProgress(100, 'Completed Successfully', finalStepNumber);
       }
+    }
+    
+    // Abort log fetch function
+    function abortLogFetch() {
+      if (!window.currentLogJobId) {
+        alert('No active job to abort');
+        return;
+      }
+      
+      if (!confirm('Are you sure you want to abort the log collection?')) {
+        return;
+      }
+      
+      // Disable abort button
+      const abortBtn = document.getElementById('abortBtn');
+      abortBtn.disabled = true;
+      abortBtn.textContent = 'Aborting...';
+      
+      fetch('/api/abort_log_fetch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          job_id: window.currentLogJobId
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('Abort signal sent successfully');
+        } else {
+          alert('Failed to abort: ' + data.error);
+          abortBtn.disabled = false;
+          abortBtn.textContent = '⚠️ Abort Collection';
+        }
+      })
+      .catch(error => {
+        console.error('Error aborting job:', error);
+        alert('Error aborting job: ' + error.message);
+        abortBtn.disabled = false;
+        abortBtn.textContent = '⚠️ Abort Collection';
+      });
     }
   </script>
   

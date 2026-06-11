@@ -722,19 +722,48 @@
                 <input type="number" id="concurrency" name="concurrency" min="1" max="20" value="5" required style="max-width: 120px;">
               </div>
               
-              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                <input type="checkbox" id="fetch_latest" name="fetch_latest" style="width: auto;">
-                <label for="fetch_latest" style="margin: 0; cursor: pointer;">
-                  🔄 Fetch Latest Recovery Points (bypass cache)
-                </label>
-              </div>
-              
               <div id="cacheInfo" style="font-size: 0.875rem; color: var(--text-muted); padding: 0.75rem; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; margin-bottom: 1rem; display: none;">
                 <strong>ℹ️ Cache Available:</strong> <span id="cacheTimestamp"></span>
               </div>
               
-              <button type="submit" class="btn btn-primary" id="analyzeBtn">Analyze Recovery Points</button>
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <button type="button" class="btn" style="background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); color: white;" id="loadCachedBtn" disabled>
+                  💾 Load Cached Apps
+                </button>
+                <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                  🔄 Fetch Latest Apps Data
+                </button>
+              </div>
             </form>
+            
+            <!-- Delete Configuration Section -->
+            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border-gray);">
+              <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary);">🗑️ Delete Configuration</h3>
+              
+              <div class="form-group">
+                <label for="delete_concurrency">Delete Concurrency (1-5)</label>
+                <input type="number" id="delete_concurrency" name="delete_concurrency" min="1" max="5" value="5" required style="max-width: 120px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Max concurrent delete operations (default: 5)</div>
+              </div>
+              
+              <div class="form-group">
+                <label for="size_filter">Size Filter (for bulk delete)</label>
+                <select id="size_filter" name="size_filter" style="padding: 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px; width: 100%; max-width: 300px;">
+                  <option value="all">All Sizes</option>
+                  <option value="zero">Only 0 Bytes (Zero Space)</option>
+                  <option value="0-100KB">0 - 100 KB</option>
+                  <option value="100KB-1MB">100 KB - 1 MB</option>
+                  <option value="1MB-50MB">1 MB - 50 MB</option>
+                  <option value="50MB-500MB">50 MB - 500 MB</option>
+                  <option value="500MB+">500 MB and above</option>
+                </select>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Filter recovery points by size for bulk delete operations</div>
+              </div>
+              
+              <button id="bulkDeleteAllBtn" class="btn" style="background: #DC2626; color: white; margin-top: 1rem;" onclick="openBulkDeleteAllModal()">
+                🗑️ Bulk Delete All Recovery Points
+              </button>
+            </div>
           </div>
         </div>
         
@@ -1042,10 +1071,21 @@
       const pageVMs = allVMs.slice(startIdx, endIdx);
       
       // Populate table with current page VMs
-      pageVMs.forEach(vm => {
+      pageVMs.forEach((vm, idx) => {
+        const vmRowId = `vm-row-${startIdx + idx}`;
+        const detailsRowId = `vm-details-${startIdx + idx}`;
+        
+        // Main VM row
         const row = document.createElement('tr');
+        row.id = vmRowId;
+        row.style.cursor = 'pointer';
         row.innerHTML = `
-          <td>${vm.vm_name}</td>
+          <td onclick="toggleRecoveryPointDetails('${detailsRowId}', '${vmRowId}')">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span id="expand-icon-${detailsRowId}" style="font-size: 0.9rem; transition: transform 0.2s;">▶</span>
+              <span>${vm.vm_name}</span>
+            </div>
+          </td>
           <td><code style="font-size: 0.75rem; color: var(--text-muted);">${vm.vm_uuid || 'N/A'}</code></td>
           <td>${vm.recovery_point_count}</td>
           <td>${vm.reclaimable_formatted}</td>
@@ -1057,10 +1097,70 @@
               <button class="action-btn action-btn-disk" onclick="openDiskUpdateModal('${vm.vm_uuid}', '${vm.vm_name.replace(/'/g, "\\'")}')" title="Update Disk">
                 💾 Disk Update
               </button>
+              <button class="action-btn" style="background: #DC2626; color: white;" onclick="bulkDeleteVmRecoveryPoints(${startIdx + idx})" title="Bulk Delete VM Recovery Points">
+                🗑️ Delete All
+              </button>
             </div>
           </td>
         `;
         tbody.appendChild(row);
+        
+        // Details row (hidden by default)
+        if (vm.recovery_points && vm.recovery_points.length > 0) {
+          const detailsRow = document.createElement('tr');
+          detailsRow.id = detailsRowId;
+          detailsRow.style.display = 'none';
+          detailsRow.style.backgroundColor = '#f8f9fa';
+          
+          const detailsCell = document.createElement('td');
+          detailsCell.colSpan = 5;
+          detailsCell.style.padding = '1rem';
+          
+          // Build recovery points table
+          let rpTableHTML = `
+            <div style="padding: 0.5rem; background: white; border-radius: 4px; border: 1px solid #e1e8ed;">
+              <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #374151;">Recovery Points Details (${vm.recovery_points.length})</h4>
+              <table style="width: 100%; font-size: 0.875rem;">
+                <thead>
+                  <tr style="background: #f1f5f9;">
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #e1e8ed;">Recovery Point Name</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #e1e8ed;">Created Time</th>
+                    <th style="padding: 0.5rem; text-align: right; border-bottom: 2px solid #e1e8ed;">Size</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #e1e8ed;">Expiration</th>
+                    <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid #e1e8ed; width: 100px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          
+          vm.recovery_points.forEach((rp, rpIdx) => {
+            rpTableHTML += `
+              <tr style="border-bottom: 1px solid #e1e8ed;">
+                <td style="padding: 0.5rem;">${rp.name}</td>
+                <td style="padding: 0.5rem;">${formatDateTime(rp.created_time)}</td>
+                <td style="padding: 0.5rem; text-align: right; font-weight: 600; color: #059669;">${rp.size_formatted}</td>
+                <td style="padding: 0.5rem;">${formatDateTime(rp.expiration_time)}</td>
+                <td style="padding: 0.5rem; text-align: center;">
+                  <button class="action-btn" style="background: #DC2626; color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
+                          onclick='deleteSingleRecoveryPoint(${JSON.stringify(rp).replace(/'/g, "&#39;")}, "${vm.vm_name.replace(/'/g, "\\'")}")' 
+                          title="Delete this recovery point">
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+          
+          rpTableHTML += `
+                </tbody>
+              </table>
+            </div>
+          `;
+          
+          detailsCell.innerHTML = rpTableHTML;
+          detailsRow.appendChild(detailsCell);
+          tbody.appendChild(detailsRow);
+        }
       });
       
       // Update pagination info
@@ -1142,10 +1242,11 @@
     async function checkCacheAvailability() {
       const pcIp = document.getElementById('pc_ip').value.trim();
       const cacheInfo = document.getElementById('cacheInfo');
-      const fetchLatestCheckbox = document.getElementById('fetch_latest');
+      const loadCachedBtn = document.getElementById('loadCachedBtn');
       
       if (!pcIp) {
         cacheInfo.style.display = 'none';
+        loadCachedBtn.disabled = true;
         return;
       }
       
@@ -1159,13 +1260,10 @@
             document.getElementById('cacheTimestamp').textContent = 
               `Last analyzed ${timeAgo} (${cacheDate.toLocaleString()})`;
             cacheInfo.style.display = 'block';
-            
-            // Auto-uncheck fetch_latest if there's cache
-            fetchLatestCheckbox.checked = false;
+            loadCachedBtn.disabled = false;
           } else {
             cacheInfo.style.display = 'none';
-            // Auto-check fetch_latest if no cache
-            fetchLatestCheckbox.checked = true;
+            loadCachedBtn.disabled = true;
           }
         }
       } catch (error) {
@@ -1187,6 +1285,86 @@
     // Check cache when PC IP changes
     document.getElementById('pc_ip').addEventListener('blur', checkCacheAvailability);
     document.getElementById('pc_ip').addEventListener('change', checkCacheAvailability);
+    
+    // Load Cached Apps button
+    document.getElementById('loadCachedBtn').addEventListener('click', async () => {
+      const pcIp = document.getElementById('pc_ip').value.trim();
+      if (!pcIp) {
+        alert('Please enter a Prism Central IP');
+        return;
+      }
+      
+      try {
+        // Check if cache exists
+        const cacheResponse = await fetch(`/api/check_recovery_cache?pc_ip=${encodeURIComponent(pcIp)}`);
+        if (!cacheResponse.ok) {
+          alert('Failed to check cache availability');
+          return;
+        }
+        
+        const cacheData = await cacheResponse.json();
+        if (!cacheData.has_cache) {
+          alert('No cached data available. Please click "Fetch Latest Apps Data" first.');
+          return;
+        }
+        
+        // Load from cache (fetch_latest = false)
+        loading.classList.add('active');
+        errorMessage.classList.remove('active');
+        results.classList.remove('active');
+        
+        const response = await fetch('/api/analyze_recovery_points', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pc_ip: pcIp,
+            pc_user: document.getElementById('pc_user').value,
+            pc_password: document.getElementById('pc_password').value,
+            concurrency: parseInt(document.getElementById('concurrency').value),
+            fetch_latest: false  // Load from cache
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to load cached data');
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith('data: ')) continue;
+            
+            try {
+              const data = JSON.parse(line.substring(6));
+              
+              if (data.type === 'complete') {
+                loading.classList.remove('active');
+                displayResults(data.summary, data.from_cache);
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+            } catch (parseError) {
+              console.error('Parse error:', parseError);
+            }
+          }
+        }
+      } catch (error) {
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.classList.add('active');
+        loading.classList.remove('active');
+      }
+    });
     
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1217,7 +1395,7 @@
         pc_user: document.getElementById('pc_user').value,
         pc_password: document.getElementById('pc_password').value,
         concurrency: parseInt(document.getElementById('concurrency').value),
-        fetch_latest: document.getElementById('fetch_latest').checked
+        fetch_latest: true  // Always fetch latest when using "Fetch Latest Apps Data" button
       };
       
       try {
@@ -1325,6 +1503,27 @@
       <div class="modal-footer">
         <button class="modal-btn modal-btn-cancel" onclick="closeSnapshotModal()">Cancel</button>
         <button class="modal-btn modal-btn-primary" id="snapshotSubmitBtn" onclick="submitSnapshot()">Take Snapshot</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Confirmation Modal -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title" id="confirmModalTitle">Confirm Action</div>
+        <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="confirmModalMessage" style="margin-bottom: 1.5rem; line-height: 1.8;"></div>
+        <div id="confirmModalStats" style="background: #FEF3C7; padding: 1rem; border-radius: 6px; border-left: 3px solid #F59E0B; display: none;">
+          <div style="font-weight: 600; margin-bottom: 0.5rem;">Delete Summary:</div>
+          <div id="confirmStatsContent"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+        <button class="modal-btn" style="background: #DC2626; color: white;" id="confirmModalProceed" onclick="executeConfirmedAction()">Delete</button>
       </div>
     </div>
   </div>
@@ -1554,6 +1753,253 @@
     document.getElementById('diskModal').addEventListener('click', (e) => {
       if (e.target.id === 'diskModal') closeDiskUpdateModal();
     });
+    
+    document.getElementById('confirmModal').addEventListener('click', (e) => {
+      if (e.target.id === 'confirmModal') closeConfirmModal();
+    });
+    
+    // Toggle recovery point details
+    function toggleRecoveryPointDetails(detailsRowId, vmRowId) {
+      const detailsRow = document.getElementById(detailsRowId);
+      const expandIcon = document.getElementById(`expand-icon-${detailsRowId}`);
+      const vmRow = document.getElementById(vmRowId);
+      
+      if (detailsRow) {
+        if (detailsRow.style.display === 'none' || !detailsRow.style.display) {
+          detailsRow.style.display = 'table-row';
+          expandIcon.style.transform = 'rotate(90deg)';
+          vmRow.style.backgroundColor = '#f8f9fa';
+        } else {
+          detailsRow.style.display = 'none';
+          expandIcon.style.transform = 'rotate(0deg)';
+          vmRow.style.backgroundColor = '';
+        }
+      }
+    }
+    
+    // Format datetime string
+    function formatDateTime(datetimeStr) {
+      if (!datetimeStr || datetimeStr === 'N/A' || datetimeStr === 'Unknown') {
+        return datetimeStr || 'N/A';
+      }
+      
+      try {
+        const date = new Date(datetimeStr);
+        if (isNaN(date.getTime())) {
+          return datetimeStr;
+        }
+        
+        // Format as: MMM DD, YYYY HH:MM AM/PM
+        const options = {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        };
+        
+        return date.toLocaleString('en-US', options);
+      } catch (e) {
+        return datetimeStr;
+      }
+    }
+    
+    // Confirmation Modal Variables
+    let pendingAction = null;
+    
+    function openConfirmModal(title, message, stats, onConfirm) {
+      document.getElementById('confirmModalTitle').textContent = title;
+      document.getElementById('confirmModalMessage').innerHTML = message;
+      
+      const statsDiv = document.getElementById('confirmModalStats');
+      const statsContent = document.getElementById('confirmStatsContent');
+      
+      if (stats) {
+        statsContent.innerHTML = stats;
+        statsDiv.style.display = 'block';
+      } else {
+        statsDiv.style.display = 'none';
+      }
+      
+      pendingAction = onConfirm;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+    
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+      pendingAction = null;
+    }
+    
+    function executeConfirmedAction() {
+      if (pendingAction) {
+        closeConfirmModal();
+        pendingAction();
+      }
+    }
+    
+    // Delete single recovery point
+    async function deleteSingleRecoveryPoint(rp, vmName) {
+      const message = `Are you sure you want to delete recovery point <strong>"${rp.name}"</strong> from VM <strong>"${vmName}"</strong>?<br><br>This action cannot be undone.`;
+      const stats = `<div>• <strong>VM:</strong> ${vmName}</div><div>• <strong>Recovery Point:</strong> ${rp.name}</div><div>• <strong>Size:</strong> ${rp.size_formatted}</div><div>• <strong>Total Items:</strong> 1 recovery point</div>`;
+      
+      openConfirmModal('🗑️ Delete Recovery Point', message, stats, async () => {
+        const pcIp = document.getElementById('pc_ip').value;
+        const pcUser = document.getElementById('pc_user').value;
+        const pcPassword = document.getElementById('pc_password').value;
+        
+        try {
+          const response = await fetch('/api/delete_recovery_point', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              pc_ip: pcIp,
+              pc_user: pcUser,
+              pc_password: pcPassword,
+              rp_ext_id: rp.ext_id,
+              rp_name: rp.name
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.ok) {
+            alert(`✅ Recovery point deleted successfully!\nTask ID: ${result.task_ext_id}`);
+            // Refresh the analysis
+            document.getElementById('loadCachedBtn').click();
+          } else {
+            alert(`❌ Failed to delete recovery point:\n${result.error}`);
+          }
+        } catch (error) {
+          alert(`❌ Error: ${error.message}`);
+        }
+      });
+    }
+    
+    // Bulk delete all recovery points for a VM
+    async function bulkDeleteVmRecoveryPoints(vmIndex) {
+      const vm = allVMs[vmIndex];
+      if (!vm || !vm.recovery_points || vm.recovery_points.length === 0) {
+        alert('No recovery points to delete for this VM');
+        return;
+      }
+      
+      const sizeFilter = document.getElementById('size_filter').value;
+      const concurrency = parseInt(document.getElementById('delete_concurrency').value);
+      
+      const message = `Are you sure you want to delete all recovery points for VM <strong>"${vm.vm_name}"</strong>?<br><br>This action cannot be undone.`;
+      const stats = `<div>• <strong>VM:</strong> ${vm.vm_name}</div><div>• <strong>Total Recovery Points:</strong> ${vm.recovery_points.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div>`;
+      
+      openConfirmModal('🗑️ Bulk Delete VM Recovery Points', message, stats, async () => {
+        await executeBulkDelete(vm.recovery_points, `VM: ${vm.vm_name}`, sizeFilter, concurrency);
+      });
+    }
+    
+    // Bulk delete ALL recovery points across all VMs
+    async function openBulkDeleteAllModal() {
+      if (!allVMs || allVMs.length === 0) {
+        alert('No VMs with recovery points available. Run analysis first.');
+        return;
+      }
+      
+      // Collect all recovery points from all VMs
+      let allRecoveryPoints = [];
+      let vmsWithRPs = 0;
+      allVMs.forEach(vm => {
+        if (vm.recovery_points && vm.recovery_points.length > 0) {
+          allRecoveryPoints = allRecoveryPoints.concat(vm.recovery_points);
+          vmsWithRPs++;
+        }
+      });
+      
+      if (allRecoveryPoints.length === 0) {
+        alert('No recovery points found across all VMs');
+        return;
+      }
+      
+      const sizeFilter = document.getElementById('size_filter').value;
+      const concurrency = parseInt(document.getElementById('delete_concurrency').value);
+      
+      const message = `<strong style="color: #DC2626;">⚠️ WARNING:</strong> You are about to delete <strong>ALL recovery points</strong> across <strong>ALL VMs</strong>!<br><br>This action cannot be undone.`;
+      const stats = `<div>• <strong>Total VMs with Recovery Points:</strong> ${vmsWithRPs}</div><div>• <strong>Total Recovery Points:</strong> ${allRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div><br><div style="color: #DC2626; font-weight: 600;">⚠️ THIS WILL DELETE ${allRecoveryPoints.length} RECOVERY POINTS FROM ${vmsWithRPs} VMs!</div>`;
+      
+      openConfirmModal('🗑️ Bulk Delete All Recovery Points', message, stats, async () => {
+        await executeBulkDelete(allRecoveryPoints, 'All VMs', sizeFilter, concurrency);
+      });
+    }
+    
+    // Execute bulk delete with streaming logs
+    async function executeBulkDelete(recoveryPoints, scope, sizeFilter, concurrency) {
+      const pcIp = document.getElementById('pc_ip').value;
+      const pcUser = document.getElementById('pc_user').value;
+      const pcPassword = document.getElementById('pc_password').value;
+      
+      // Create modal for progress
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+      modal.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow: auto;">
+          <h3 style="margin: 0 0 1rem 0;">🗑️ Bulk Delete Progress - ${scope}</h3>
+          <div id="bulkDeleteLogs" style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.75rem; max-height: 400px; overflow-y: auto; margin-bottom: 1rem;"></div>
+          <button id="closeBulkDeleteModal" class="btn" style="width: 100%;" disabled>Close</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      const logsContainer = document.getElementById('bulkDeleteLogs');
+      const closeBtn = document.getElementById('closeBulkDeleteModal');
+      
+      try {
+        const response = await fetch('/api/bulk_delete_recovery_points', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            pc_ip: pcIp,
+            pc_user: pcUser,
+            pc_password: pcPassword,
+            recovery_points: recoveryPoints,
+            size_filter: sizeFilter,
+            concurrency: concurrency
+          })
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const {value, done} = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'log') {
+                logsContainer.innerHTML += data.message + '<br>';
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+              } else if (data.type === 'complete') {
+                const result = data.result;
+                logsContainer.innerHTML += `<br><strong style="color: #10b981;">✅ Bulk delete completed!</strong><br>`;
+                logsContainer.innerHTML += `Total: ${result.total} | Deleted: ${result.deleted} | Failed: ${result.failed}<br>`;
+                closeBtn.disabled = false;
+                closeBtn.onclick = () => {
+                  document.body.removeChild(modal);
+                  // Refresh analysis by fetching latest data
+                  document.getElementById('analyzeBtn').click();
+                };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logsContainer.innerHTML += `<br><strong style="color: #ef4444;">❌ Error: ${error.message}</strong><br>`;
+        closeBtn.disabled = false;
+        closeBtn.onclick = () => document.body.removeChild(modal);
+      }
+    }
   </script>
 </body>
 </html>

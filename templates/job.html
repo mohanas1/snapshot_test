@@ -1076,6 +1076,10 @@
       </div>
       <div class="disk-vm-done-toolbar">
         <input type="search" id="disk-vm-done-filter" placeholder="Filter by VM name or cluster…" autocomplete="off" aria-label="Filter completed VMs by name or cluster" />
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="disk-vm-group-by-cluster" style="cursor: pointer;" />
+          <span style="font-size: 0.9rem; color: #aaa;">Group by cluster</span>
+        </label>
         <span id="disk-vm-done-filter-hint" class="disk-vm-filter-hint" aria-live="polite"></span>
       </div>
       <div class="disk-vm-section-scroll">
@@ -1188,6 +1192,13 @@
     const errBox = document.getElementById('run-error');
     const hint = document.getElementById('poll-hint');
     const diskWrap = document.getElementById('disk-progress-wrap');
+    
+    // HTML escape helper
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
     const diskTbody = document.getElementById('disk-progress-tbody');
     const diskActiveOpValue = document.getElementById('disk-active-op-value');
     const diskSummaryCards = document.getElementById('disk-summary-cards');
@@ -1527,6 +1538,8 @@
     function applyDiskVmDoneView() {
       if (!diskVmTbodyDone) return;
       var inp = document.getElementById('disk-vm-done-filter');
+      var groupByCluster = document.getElementById('disk-vm-group-by-cluster');
+      var isGrouped = groupByCluster && groupByCluster.checked;
       var q = (inp && inp.value ? String(inp.value) : '').trim().toLowerCase();
       var list = diskVmCompletedCache.slice();
       if (q) {
@@ -1548,10 +1561,49 @@
           return ta < tb ? -mul : mul;
         });
       }
+      
       var parts = [];
-      for (var i = 0; i < list.length; i++) {
-        parts.push(vmRowHtmlDone(list[i]));
+      if (isGrouped) {
+        // Group by cluster
+        var grouped = {};
+        for (var i = 0; i < list.length; i++) {
+          var clusterName = fmtClusterName(list[i].cluster) || 'Unknown';
+          if (!grouped[clusterName]) {
+            grouped[clusterName] = [];
+          }
+          grouped[clusterName].push(list[i]);
+        }
+        
+        // Sort cluster names
+        var clusterNames = Object.keys(grouped).sort();
+        
+        // Build HTML with cluster headers
+        for (var c = 0; c < clusterNames.length; c++) {
+          var cluster = clusterNames[c];
+          var clusterVms = grouped[cluster];
+          
+          // Add cluster header row
+          parts.push(
+            '<tr class="disk-vm-cluster-header" style="background: #2d2f31; border-top: 2px solid #444; border-bottom: 1px solid #555;">' +
+            '<td colspan="15" style="padding: 0.75rem; font-weight: 600; color: #60a5fa; font-size: 0.95rem;">' +
+            '<span style="margin-right: 0.5rem;">📁</span>' +
+            escapeHtml(cluster) + ' <span style="color: #aaa; font-weight: normal; font-size: 0.85rem;">(' + clusterVms.length + ' VM' + (clusterVms.length === 1 ? '' : 's') + ')</span>' +
+            '</td>' +
+            '</tr>'
+          );
+          
+          // Add VM rows for this cluster
+          for (var v = 0; v < clusterVms.length; v++) {
+            parts.push(vmRowHtmlDone(clusterVms[v]));
+          }
+        }
+      } else {
+        // No grouping, just list all VMs
+        for (var i = 0; i < list.length; i++) {
+          parts.push(vmRowHtmlDone(list[i]));
+        }
       }
+      
       diskVmTbodyDone.innerHTML = parts.join('');
       updateDiskVmDoneSortIndicator();
       updateDiskVmDoneFilterHint(list.length);
@@ -1606,12 +1658,22 @@
     function initDiskVmDoneControls() {
       var inp = document.getElementById('disk-vm-done-filter');
       var th = document.getElementById('disk-vm-done-th-total');
+      var groupCheckbox = document.getElementById('disk-vm-group-by-cluster');
+      
       if (inp && !inp._diskVmDoneBound) {
         inp._diskVmDoneBound = true;
         inp.addEventListener('input', function () {
           applyDiskVmDoneView();
         });
       }
+      
+      if (groupCheckbox && !groupCheckbox._diskVmDoneBound) {
+        groupCheckbox._diskVmDoneBound = true;
+        groupCheckbox.addEventListener('change', function () {
+          applyDiskVmDoneView();
+        });
+      }
+      
       if (th && !th._diskVmDoneBound) {
         th._diskVmDoneBound = true;
         th.addEventListener('click', function () {
