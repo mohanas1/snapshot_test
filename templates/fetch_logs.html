@@ -929,17 +929,6 @@
         </div>
       </div>
       
-      <!-- Recent Jobs -->
-      <div class="info-box" id="recentJobsSection" style="display: none; margin-top: 1.5rem;">
-        <div class="info-box-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>📊 Recent Log Collection Jobs (Last 10)</span>
-          <button type="button" onclick="loadRecentJobs()" style="padding: 0.25rem 0.75rem; font-size: 0.875rem; background: #3B82F6; color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh</button>
-        </div>
-        <div id="recentJobsList" style="margin-top: 1rem;">
-          <div style="text-align: center; padding: 1rem; color: #6B7280;">Loading...</div>
-        </div>
-      </div>
-      
       <!-- Configuration Form -->
       <div class="form-section">
         <h2 class="form-section-title">🔧 Connection Configuration</h2>
@@ -1042,21 +1031,26 @@
           
           <div class="form-group">
             <label class="form-label">Filer Destination Path</label>
-            <div class="path-display" id="pathDisplay">
-              <span id="pathBase">/home/nutanix/data/bugs</span>/<span class="path-variable" id="pathPreview">[select-folders-above]</span>
+            <input type="text" id="filerDestPath" name="filerDestPath" class="form-input" 
+                   value="/home/nutanix/data/bugs/[select-folders-above]"
+                   style="font-family: var(--font-mono); font-size: 0.9375rem;">
+            <div class="form-help-text" style="color: #DC2626; font-weight: 500;">
+              ⚠️ <strong>Warning:</strong> Editing this path manually can cause upload failures or data loss if the destination is incorrect. The system auto-generates this path from your folder selections above. Only modify if you know exactly what you're doing.
             </div>
-            <div class="form-help-text">
-              📂 SSH path where logs will be stored
+            <div class="form-help-text" style="margin-top: 0.5rem;">
+              📂 SSH path where logs will be stored on the filer server
             </div>
           </div>
           
           <div class="form-group">
             <label class="form-label">Access URL (After Upload)</label>
             <div class="url-display">
-              <span id="urlBase">http://10.46.1.165/bugs</span>/<span class="path-variable" style="color: #059669;" id="urlPreview">[select-folders-above]</span>
+              <a id="accessUrl" href="#" target="_blank" style="color: #3B82F6; text-decoration: none; font-family: var(--font-mono); font-size: 0.9375rem;">
+                <span id="urlBase">http://10.46.1.165/bugs</span>/<span class="path-variable" style="color: #059669;" id="urlPreview">[select-folders-above]</span>
+              </a>
             </div>
             <div class="form-help-text">
-              🌐 Browser link to access uploaded logs
+              🌐 Browser link to access uploaded logs (clickable)
             </div>
           </div>
           
@@ -1339,6 +1333,23 @@
           <span class="perf-value" id="perfVisible">0</span>
           <span class="perf-label">| Total:</span>
           <span class="perf-value" id="perfTotal">0</span>
+        </div>
+      </div>
+      
+      <!-- Recent Jobs (Collapsed by default, at bottom) -->
+      <div class="info-box" id="recentJobsSection" style="display: none; margin-top: 1.5rem; margin-bottom: 3rem;">
+        <div style="background: #F3F4F6; padding: 0.75rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; border-radius: 8px 8px 0 0;" 
+             onclick="document.getElementById('recentJobsContent').style.display = document.getElementById('recentJobsContent').style.display === 'none' ? 'block' : 'none'; this.querySelector('.toggle-icon').textContent = document.getElementById('recentJobsContent').style.display === 'none' ? '▶' : '▼';">
+          <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
+            <span class="toggle-icon">▶</span>
+            <span>📊 Recent Log Collection Jobs (Last 10)</span>
+          </div>
+          <button type="button" onclick="event.stopPropagation(); loadRecentJobs();" style="padding: 0.25rem 0.75rem; font-size: 0.875rem; background: #3B82F6; color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh</button>
+        </div>
+        <div id="recentJobsContent" style="display: none; padding: 1rem; background: white; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 8px 8px;">
+          <div id="recentJobsList">
+            <div style="text-align: center; padding: 1rem; color: #6B7280;">Loading...</div>
+          </div>
         </div>
       </div>
     </main>
@@ -1940,11 +1951,13 @@
     function updateFilerDetails(config) {
       document.getElementById('filerIp').textContent = config.ip;
       document.getElementById('filerUser').textContent = config.user;
-      document.getElementById('pathBase').textContent = config.basePath;
       document.getElementById('urlBase').textContent = config.urlBase;
       document.getElementById('filerPassword').value = config.password;
       currentPath = config.basePath;
       currentFilerConfig = config;
+      
+      // Update the destination path input with new base path
+      updatePathPreview();
     }
     
     // Handle filer server selection change
@@ -2291,8 +2304,19 @@
       }
       
       const preview = pathParts.length > 0 ? pathParts.join('/') : '[select-folders-above]';
-      document.getElementById('pathPreview').textContent = preview;
+      
+      // Update the editable filer destination path input
+      const basePath = currentFilerConfig.basePath;
+      const fullPath = `${basePath}/${preview}`;
+      document.getElementById('filerDestPath').value = fullPath;
+      
+      // Update URL preview
       document.getElementById('urlPreview').textContent = preview;
+      
+      // Update Access URL link href
+      const urlBase = document.getElementById('urlBase').textContent;
+      const fullUrl = pathParts.length > 0 ? `${urlBase}/${preview}` : '#';
+      document.getElementById('accessUrl').href = fullUrl;
       
       // Update button state
       validateFormAndUpdateButton();
@@ -2440,6 +2464,14 @@
       // Initialize step tracker
       initializeStepTracker();
       
+      // Set the Logs Location link to the Access URL
+      const accessUrl = document.getElementById('accessUrl').href;
+      if (accessUrl && accessUrl !== '#') {
+        document.getElementById('filerLink').href = accessUrl;
+        document.getElementById('filerLink').textContent = accessUrl;
+        document.getElementById('filerLinkContainer').style.display = 'block';
+      }
+      
       // Scroll to logs
       document.getElementById('logsSection').scrollIntoView({ behavior: 'smooth' });
       
@@ -2497,6 +2529,73 @@
         };
       }
       
+      // Handle custom filer destination path
+      const customDestPath = document.getElementById('filerDestPath').value.trim();
+      let filerBasePathOverride = currentFilerConfig.basePath;
+      let bugFolderOverride = fullBugFolder;
+      
+      // Check if user manually edited the path (doesn't match auto-generated)
+      const expectedPath = `${currentFilerConfig.basePath}/${fullBugFolder}`;
+      if (customDestPath !== expectedPath) {
+        // User edited the path - try to parse it intelligently
+        // Look for common base paths
+        const commonBases = [
+          '/home/nutanix/data/bugs',
+          '/home/nutanix/data/Bugs',
+          '/home/aiops/data/bugs',
+          '/home/aiops/data/Bugs'
+        ];
+        
+        let basePath = null;
+        let relativePath = null;
+        
+        for (const base of commonBases) {
+          if (customDestPath.startsWith(base + '/')) {
+            basePath = base;
+            relativePath = customDestPath.substring(base.length + 1);
+            break;
+          } else if (customDestPath === base) {
+            basePath = base;
+            relativePath = '';
+            break;
+          }
+        }
+        
+        // If no common base found, try to split at /bugs/ or /Bugs/
+        if (!basePath) {
+          const bugsMatch = customDestPath.match(/^(.*)\/[Bb]ugs\/(.*)$/);
+          if (bugsMatch) {
+            basePath = bugsMatch[1] + '/bugs';
+            relativePath = bugsMatch[2];
+          } else if (customDestPath.match(/^(.*)\/[Bb]ugs$/)) {
+            basePath = customDestPath;
+            relativePath = '';
+          } else {
+            // User entered completely custom path - use as-is
+            // Try to find last meaningful directory separator
+            const lastSlash = customDestPath.lastIndexOf('/');
+            if (lastSlash > 0) {
+              basePath = customDestPath.substring(0, lastSlash);
+              relativePath = customDestPath.substring(lastSlash + 1);
+            } else {
+              // No path structure - warn and use custom path
+              alert('⚠️ Warning: Custom path format may not work correctly. Recommended format: /base/path/relative/folder');
+              basePath = customDestPath;
+              relativePath = '';
+            }
+          }
+        }
+        
+        filerBasePathOverride = basePath;
+        bugFolderOverride = relativePath;
+        
+        console.log('Custom path detected:', {
+          original: customDestPath,
+          parsed_base: basePath,
+          parsed_relative: relativePath
+        });
+      }
+      
       // Send POST request
       fetch('/api/fetch_fluentd_logs', {
         method: 'POST',
@@ -2505,12 +2604,12 @@
         },
         body: JSON.stringify({
           pc_ip: pcIp,
-          bug_folder: fullBugFolder,
+          bug_folder: bugFolderOverride,
           pc_password: 'nutanix/4u',
           filer_password: filerPassword,
           filer_ip: currentFilerConfig.ip,
           filer_user: currentFilerConfig.user,
-          filer_base_path: currentFilerConfig.basePath,
+          filer_base_path: filerBasePathOverride,
           fluentd_namespaces: fluentdNamespaces,
           logbay_services: logbayServices,
           logbay_duration: logbayDuration

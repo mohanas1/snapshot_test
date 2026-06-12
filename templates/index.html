@@ -3916,72 +3916,6 @@
     </section>
   </div>
 
-  <!-- Bulk Job History Section -->
-  <div style="max-width: 100%; width: 100%; margin: 1rem auto; padding: 0 1rem;">
-    <section style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 style="font-size: 1.125rem; font-weight: 600; color: #1F2937; margin: 0;">📊 Bulk Job History</h3>
-        <button type="button" onclick="refreshJobHistory()" style="padding:0.5rem 1rem; font-size:0.875rem; background:var(--primary-blue); color:white; border:none; border-radius:6px; cursor:pointer; transition: all 0.2s;">
-          🔄 Refresh
-        </button>
-      </div>
-      
-      <div id="job-history-container">
-        {% if recent_runs %}
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          {% for job in recent_runs %}
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.875rem 1rem; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px;">
-            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-              <span style="font-weight: 600; color: #374151; font-size: 0.9375rem;">
-                {% if job.job_kind == 'snapshot' %}
-                  📸 Snapshot_Config
-                {% elif job.job_kind == 'disk' %}
-                  💾 DiskOp_Config
-                {% elif job.job_kind == 'logs' %}
-                  📋 Logs_Collection
-                {% else %}
-                  {{ job.job_kind }}
-                {% endif %}
-              </span>
-              
-              <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
-              
-              <span style="color: #6B7280; font-size: 0.875rem;">
-                {{ job.at[:19] if job.at else '' }}
-              </span>
-              
-              {% if job.duration_sec %}
-              <span style="color: #6B7280; font-size: 0.875rem;">
-                ({{ job.duration_sec|int }}s)
-              </span>
-              {% endif %}
-              
-              <span style="color: #6B7280; font-size: 0.875rem;">
-                {{ job.pc_host }}
-              </span>
-            </div>
-            
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              {% if job.job_kind == 'logs' %}
-                <a href="/log_job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
-                  Open job
-                </a>
-              {% else %}
-                <a href="/job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
-                  Open job
-                </a>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <p style="color: #6B7280; text-align: center; padding: 2rem;">No job history yet</p>
-        {% endif %}
-      </div>
-    </section>
-  </div>
-
   <!-- Advanced Configuration (HIDDEN) -->
   <div class="form-sheet-container" style="display: none;">
     <form id="main-form-advanced">
@@ -8695,6 +8629,72 @@
       }
     })();
   </script>
+
+  <!-- Bulk Job History Section (Bottom) -->
+  <div style="max-width: 100%; width: 100%; margin: 2rem auto 6rem; padding: 0 1rem;">
+    <section style="background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e1e1e1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 600; color: #1F2937; margin: 0;">📊 Recent Job History</h3>
+        <button type="button" onclick="refreshJobHistory()" style="padding:0.5rem 1rem; font-size:0.875rem; background:var(--primary-blue); color:white; border:none; border-radius:6px; cursor:pointer; transition: all 0.2s;">
+          🔄 Refresh
+        </button>
+      </div>
+      
+      <div id="job-history-container">
+        {% if recent_runs %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for job in recent_runs[:5] %}
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.875rem 1rem; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+              <span style="font-weight: 600; color: #374151; font-size: 0.9375rem;">
+                {% if job.job_kind == 'snapshot' %}
+                  📸 Snapshot
+                {% elif job.job_kind == 'disk' %}
+                  💾 DiskOp
+                {% elif job.job_kind == 'logs' %}
+                  📋 Logs
+                {% else %}
+                  {{ job.job_kind }}
+                {% endif %}
+              </span>
+              
+              <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+              
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                {{ job.at[:19] if job.at else '' }}
+              </span>
+              
+              {% if job.duration_sec %}
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                ({{ job.duration_sec|int }}s)
+              </span>
+              {% endif %}
+              
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                {{ job.pc_host }}
+              </span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              {% if job.job_kind == 'logs' %}
+                <a href="/log_job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
+                  Open job
+                </a>
+              {% else %}
+                <a href="/job/{{ job.run_id }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #D1D5DB; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
+                  Open job
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #6B7280; text-align: center; padding: 2rem;">No job history yet</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 
 </body>
 </html>

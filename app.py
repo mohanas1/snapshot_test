@@ -3717,7 +3717,8 @@ def api_fetch_fluentd_logs():
             env["FILER_HOST"] = filer_ip  # Script expects FILER_HOST
             env["FILER_USER"] = filer_user
             env["FILER_BASE_PATH"] = filer_base_path
-            env["FLUENTD_SUBFOLDER"] = "fluentd"  # Upload fluentd logs to subfolder
+            # Don't use subfolder - upload directly to bug folder
+            # env["FLUENTD_SUBFOLDER"] = "fluentd"
             
             # Pass selected namespaces if any are specified
             if fluentd_namespaces:

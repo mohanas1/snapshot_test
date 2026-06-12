@@ -181,6 +181,7 @@ copy_pod_logs_selective() {
     done
     
     print_info "Processing ${#selected_namespaces[@]} namespace(s)"
+    print_info "Namespaces: ${selected_namespaces[*]}"
     
     # For each selected namespace, find matching directories and copy them
     local total_copied=0
@@ -189,13 +190,21 @@ copy_pod_logs_selective() {
     for ns in "${selected_namespaces[@]}"; do
         print_info ""
         print_info "📦 Processing namespace: ${ns}"
+        print_info "Source path: ${SOURCE_PATH}"
+        print_info "Pod: ${NAMESPACE}/${POD_NAME}"
         
         # List matching directories in the pod (e.g., kube.ntnx-system.*)
         print_info "Finding log directories for ${ns}..."
         
         local find_cmd="find ${SOURCE_PATH} -maxdepth 1 -type d -name 'kube.${ns}.*' 2>/dev/null | sort"
+        print_info "Find command: $find_cmd"
+        
         local matching_dirs
         matching_dirs=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$find_cmd" 2>/dev/null || true)
+        
+        print_info "Raw matching_dirs output:"
+        echo "$matching_dirs" | head -10
+        print_info "---"
         
         if [ -z "$matching_dirs" ]; then
             print_warning "No log directories found for namespace: ${ns}"
@@ -208,75 +217,241 @@ copy_pod_logs_selective() {
         dir_count=$(echo "$matching_dirs" | wc -l | tr -d '[:space:]')
         print_info "Found ${dir_count} log director(y/ies) for ${ns}"
         
-        # Create a tar archive of these directories inside the pod
-        print_info "Creating tar archive of ${ns} logs..."
+        # Create namespace output directory locally
+        local ns_output_dir="${output_dir}/${ns}"
+        mkdir -p "$ns_output_dir"
         
-        # Build list of directory names (avoiding "Argument list too long")
-        # For large directory counts (>1000), use a file list instead of command args
-        local tar_file="/tmp/fluentd_${ns}_$$.tar.gz"
-        local tar_list_file="/tmp/fluentd_${ns}_$$.list"
-        print_info "Archiving to: ${tar_file}"
+        # Download all directories for this namespace to local
+        print_info "Downloading ${dir_count} directories to local..."
+        local download_success_count=0
+        local download_failed_count=0
+        local current_dir=0
         
-        # Create a list file with directory names
-        local dir_list=""
-        while IFS= read -r full_path; do
-            # Extract just the directory name (e.g., kube.ntnx-system.pod1)
-            local dir_name=$(basename "$full_path")
-            dir_list="${dir_list}${dir_name}\n"
+        while IFS= read -r pod_dir; do
+            [ -z "$pod_dir" ] && continue
+            current_dir=$((current_dir + 1))
+            local dir_name=$(basename "$pod_dir")
+            
+            # Download this directory - show count and namespace
+            print_info "  [${ns}] Downloading ${current_dir}/${dir_count}..."
+            
+            set +e
+            cp_output=$(kubectl --kubeconfig="$kubeconfig_file" cp \
+                -n "$NAMESPACE" \
+                "${POD_NAME}:${pod_dir}" \
+                "${ns_output_dir}/${dir_name}" \
+                2>&1)
+            local cp_exit=$?
+            set -e
+            
+            # Filter output but show errors
+            filtered_output=$(echo "$cp_output" | grep -v "Defaulted container" | grep -v "tar: removing leading" || true)
+            
+            if [ $cp_exit -eq 0 ]; then
+                download_success_count=$((download_success_count + 1))
+                print_success "  ✓ [${ns}] ${current_dir}/${dir_count}"
+            else
+                download_failed_count=$((download_failed_count + 1))
+                print_error "  ✗ [${ns}] Failed ${current_dir}/${dir_count} - exit: $cp_exit"
+                if [ -n "$filtered_output" ]; then
+                    print_error "    Error: $filtered_output"
+                fi
+            fi
         done <<< "$matching_dirs"
         
-        # Create tar inside pod using file list to avoid "Argument list too long"
-        local tar_cmd="cd ${SOURCE_PATH} && printf '${dir_list}' > ${tar_list_file} && tar czf ${tar_file} -T ${tar_list_file} 2>/dev/null && rm -f ${tar_list_file} && echo 'TAR_SUCCESS' && ls -lh ${tar_file}"
+        if [ $download_success_count -eq 0 ]; then
+            print_error "Failed to download any directories for ${ns}"
+            total_failed=$((total_failed + 1))
+            rm -rf "$ns_output_dir"
+            continue
+        fi
         
-        local tar_output
-        tar_output=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$tar_cmd" 2>&1 || true)
+        if [ $download_failed_count -gt 0 ]; then
+            print_warning "Downloaded ${download_success_count}/${dir_count} directories (${download_failed_count} failed)"
+        else
+            print_success "Downloaded ${download_success_count}/${dir_count} directories"
+        fi
         
-        if echo "$tar_output" | grep -q "TAR_SUCCESS"; then
-            # Extract tar file size for progress reporting
-            local tar_size=$(echo "$tar_output" | grep "$tar_file" | awk '{print $5}')
-            print_success "Tar created successfully (size: ${tar_size})"
+        # Verify directories actually exist and have content
+        local actual_dir_count=$(find "$ns_output_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l || echo "0")
+        if [ $actual_dir_count -eq 0 ]; then
+            print_error "No directories found in ${ns_output_dir} after download"
+            print_error "This usually means kubectl cp failed silently"
+            total_failed=$((total_failed + 1))
+            rm -rf "$ns_output_dir"
+            continue
+        fi
+        print_info "Verified ${actual_dir_count} directories on disk"
+        
+        # Get total size to determine if chunking is needed
+        print_info "Calculating local size..."
+        local total_size_kb=$(du -sk "$ns_output_dir" 2>/dev/null | awk '{print $1}' || echo "0")
+        local total_size_mb=$((total_size_kb / 1024))
+        
+        # Chunk settings: split if total size > 3GB, target chunk size ~3GB
+        local chunk_size_mb=3000
+        local chunk_threshold_mb=3000
+        
+        if [ $total_size_mb -gt $chunk_threshold_mb ] && [ $download_success_count -gt 30 ]; then
+            # Split into chunks
+            local num_chunks=$(( (total_size_mb + chunk_size_mb - 1) / chunk_size_mb ))  # Ceiling division
+            print_info "Large namespace detected (${total_size_mb}MB, ${download_success_count} dirs)"
+            print_info "Splitting into ${num_chunks} chunks for better reliability..."
             
-            # Copy the tar file from pod to local
-            print_info "Downloading tar archive..."
-            local local_tar="${output_dir}/temp_${ns}.tar.gz"
+            # Get directory sizes from local
+            local dirs_with_sizes
+            dirs_with_sizes=$(du -sk "${ns_output_dir}"/* 2>/dev/null | sort -k2 || true)
             
-            kubectl --kubeconfig="$kubeconfig_file" cp \
-                -n "$NAMESPACE" \
-                "${POD_NAME}:${tar_file}" \
-                "$local_tar" \
-                2>&1 | grep -v "Defaulted container" || true
+            # Split directories into chunks
+            local chunk_num=1
+            local current_chunk_size=0
+            local chunk_dirs=""
+            local chunk_dir_count=0
             
-            local cp_exit_code=${PIPESTATUS[0]}
-            
-            if [ $cp_exit_code -eq 0 ] && [ -f "$local_tar" ]; then
-                print_success "Downloaded tar archive"
+            while IFS= read -r line; do
+                [ -z "$line" ] && continue
                 
-                # Extract tar locally
-                print_info "Extracting logs to ${output_dir}..."
-                tar xzf "$local_tar" -C "$output_dir" 2>/dev/null
+                local size_kb=$(echo "$line" | awk '{print $1}')
+                local dir_path=$(echo "$line" | awk '{print $2}')
+                local dir_name=$(basename "$dir_path")
                 
-                if [ $? -eq 0 ]; then
-                    print_success "Extracted ${dir_count} directory(ies) for ${ns}"
-                    total_copied=$((total_copied + dir_count))
-                    
-                    # Clean up local tar
-                    rm -f "$local_tar"
-                else
-                    print_error "Failed to extract tar for ${ns}"
-                    total_failed=$((total_failed + 1))
+                # Add directory to current chunk
+                chunk_dirs="${chunk_dirs}${dir_name}\n"
+                chunk_dir_count=$((chunk_dir_count + 1))
+                current_chunk_size=$((current_chunk_size + size_kb))
+                
+                # Check if chunk is full or this is the last directory
+                local should_create_chunk=0
+                if [ $((current_chunk_size / 1024)) -ge $chunk_size_mb ]; then
+                    should_create_chunk=1
                 fi
                 
-                # Clean up tar file in pod
-                kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- rm -f "$tar_file" 2>/dev/null || true
-            else
-                print_error "Failed to download tar for ${ns}"
-                total_failed=$((total_failed + 1))
-            fi
+                # Count remaining lines
+                local remaining_dirs=$(echo "$dirs_with_sizes" | grep -n "^${line}$" | cut -d: -f1)
+                local total_lines=$(echo "$dirs_with_sizes" | wc -l)
+                if [ "$remaining_dirs" = "$total_lines" ]; then
+                    should_create_chunk=1  # Last directory
+                fi
+                
+                if [ $should_create_chunk -eq 1 ] && [ -n "$chunk_dirs" ]; then
+                    # Create this chunk locally
+                    print_info ""
+                    print_info "  📦 Chunk ${chunk_num}/${num_chunks} (${chunk_dir_count} dirs, ~$((current_chunk_size / 1024))MB)"
+                    
+                    # Create tar locally from downloaded directories
+                    local local_tar="${output_dir}/${ns}_${chunk_num}.tar.gz"
+                    
+                    # Build list of directories for this chunk (remove trailing newlines)
+                    local dirs_array=()
+                    while IFS= read -r dir_entry; do
+                        [ -z "$dir_entry" ] && continue
+                        dirs_array+=("$dir_entry")
+                    done < <(echo -e "$chunk_dirs" | grep -v '^$')
+                    
+                    # Create tar locally
+                    print_info "  Creating tar locally..."
+                    tar_chunk_output=$(tar -czf "$local_tar" -C "$ns_output_dir" "${dirs_array[@]}" 2>&1)
+                    tar_chunk_exit=$?
+                    
+                    if [ $tar_chunk_exit -eq 0 ] && [ -f "$local_tar" ]; then
+                        local tar_size=$(du -sh "$local_tar" 2>/dev/null | cut -f1)
+                        print_success "  Created tar (${tar_size})"
+                        
+                        # Upload to filer
+                        local filer_filename="${ns}_${chunk_num}.tar.gz"
+                        print_info "  Uploading ${filer_filename}..."
+                        
+                        if upload_file_to_filer "$local_tar" "$FILER_TARGET_PATH"; then
+                            print_success "  ✓ Uploaded ${filer_filename}"
+                            UPLOADED_FILES+=("$filer_filename")
+                            total_copied=$((total_copied + chunk_dir_count))
+                            rm -f "$local_tar"
+                        else
+                            print_error "  ✗ Upload failed"
+                            total_failed=$((total_failed + 1))
+                            rm -f "$local_tar"
+                        fi
+                    else
+                        print_error "  ✗ Tar creation failed"
+                        if [ -n "$tar_chunk_output" ]; then
+                            print_error "  Tar error: $tar_chunk_output"
+                        fi
+                        total_failed=$((total_failed + 1))
+                    fi
+                    
+                    # Reset for next chunk
+                    chunk_num=$((chunk_num + 1))
+                    chunk_dirs=""
+                    chunk_dir_count=0
+                    current_chunk_size=0
+                    
+                    # Reset for next chunk
+                    chunk_num=$((chunk_num + 1))
+                    current_chunk_size=0
+                    chunk_dirs=""
+                    chunk_dir_count=0
+                fi
+            done <<< "$dirs_with_sizes"
+            
+            # Clean up namespace directory after all chunks uploaded
+            print_info "Cleaning up local directories for ${ns}..."
+            rm -rf "$ns_output_dir"
+            print_info "Deleted local directories (saved disk space)"
+            
         else
-            print_error "Failed to create tar archive for ${ns}"
-            print_error "Output: $tar_output"
-            total_failed=$((total_failed + 1))
+            # Single tar (small namespace)
+            print_info "Creating single tar archive locally (${total_size_mb}MB)..."
+            
+            # Create tar locally from downloaded directories
+            local local_tar="${output_dir}/${ns}.tar.gz"
+            
+            print_info "Compressing ${download_success_count} directories..."
+            
+            # Debug: Check what we're trying to tar
+            if [ ! -d "$ns_output_dir" ] || [ -z "$(ls -A "$ns_output_dir" 2>/dev/null)" ]; then
+                print_error "Namespace directory is empty or does not exist: $ns_output_dir"
+                total_failed=$((total_failed + 1))
+                rm -rf "$ns_output_dir"
+                continue
+            fi
+            
+            # Create tar with better error handling
+            tar_output=$(tar -czf "$local_tar" -C "$output_dir" "$ns" 2>&1)
+            tar_exit=$?
+            
+            if [ $tar_exit -eq 0 ] && [ -f "$local_tar" ]; then
+                local tar_size=$(du -sh "$local_tar" 2>/dev/null | cut -f1)
+                print_success "Tar created successfully (size: ${tar_size})"
+                
+                # Upload to filer
+                local filer_filename="${ns}.tar.gz"
+                print_info "Uploading ${filer_filename} to filer..."
+                
+                if upload_file_to_filer "$local_tar" "$FILER_TARGET_PATH"; then
+                    print_success "Uploaded ${filer_filename} to filer"
+                    total_copied=$((total_copied + download_success_count))
+                    UPLOADED_FILES+=("$filer_filename")
+                    rm -f "$local_tar"
+                    print_info "Deleted local tar (saved disk space)"
+                else
+                    print_error "Failed to upload ${filer_filename} to filer"
+                    total_failed=$((total_failed + 1))
+                    rm -f "$local_tar"
+                fi
+            else
+                print_error "Failed to create tar archive for ${ns}"
+                if [ -n "$tar_output" ]; then
+                    print_error "Tar error: $tar_output"
+                fi
+                total_failed=$((total_failed + 1))
+                rm -f "$local_tar"
+            fi
         fi
+        
+        # Clean up namespace directory after upload
+        print_info "Cleaning up local directories for ${ns}..."
+        rm -rf "$ns_output_dir"
+        print_info "Deleted local directories (saved disk space)"
     done
     
     print_info ""
@@ -903,6 +1078,26 @@ else
 fi
 echo ""
 
+# Initialize upload tracking arrays
+declare -a UPLOADED_FILES
+UPLOAD_SUCCESS_COUNT=0
+UPLOAD_FAILED_COUNT=0
+
+# Step 2.5: Prepare filer path and create directory
+if [ "${FLUENTD_NAMESPACES:-}" != "NONE" ]; then
+    print_header "Step 2.5/7: Preparing Filer Directory"
+    
+    # Create fluentd subfolder (like logbay does)
+    FILER_TARGET_PATH="$FILER_BASE_PATH/$BUG_FOLDER/fluentd"
+    print_info "Target path: $FILER_TARGET_PATH"
+    
+    if ! create_filer_folder "$FILER_TARGET_PATH"; then
+        print_error "Cannot proceed - filer directory creation failed"
+        exit 1
+    fi
+    echo ""
+fi
+
 # Step 3: Copy logs from pod (skip if no fluentd namespaces selected)
 if [ "${FLUENTD_NAMESPACES:-}" = "NONE" ]; then
     print_header "Step 3/7: Copying Fluentd Logs from Pod"
@@ -919,126 +1114,22 @@ else
     if copy_pod_logs "$KUBECONFIG_FILE" "$LOG_OUTPUT_DIR"; then
         print_success "Logs copied successfully from pod"
         
-        print_info "Verifying copied logs..."
+        print_info "Verifying operations..."
         
-        # Count namespace directories directly in output dir
-        print_info "Counting log directories in output folder..."
-        set +e
-        dir_count=$(find "$LOG_OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name "kube.*" 2>/dev/null | wc -l)
-        dir_find_exit=$?
-        set -e
+        # With new workflow, files are uploaded and cleaned during copy
+        # Check uploaded files array instead of local directories
+        uploaded_count=${#UPLOADED_FILES[@]}
         
-        # Trim all whitespace (spaces, tabs, newlines)
-        dir_count=$(echo "$dir_count" | tr -d '[:space:]')
-        
-        # Debug output
-        print_info "Raw count result: '$dir_count' (exit code: $dir_find_exit)"
-        
-        # Show which namespaces were copied
-        if [ -n "${FLUENTD_NAMESPACES:-}" ] && [ "$FLUENTD_NAMESPACES" != "NONE" ]; then
-            print_info "Selective copy mode - showing copied namespaces:"
-            find "$LOG_OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name "kube.*" | \
-                sed 's/.*kube\.\([^.]*\).*/\1/' | sort -u | while read ns; do
-                ns_count=$(find "$LOG_OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name "kube.${ns}.*" | wc -l | tr -d '[:space:]')
-                print_info "  • ${ns}: ${ns_count} pod director(y/ies)"
+        if [ $uploaded_count -gt 0 ]; then
+            print_success "Processed and uploaded ${uploaded_count} namespace(s):"
+            for uploaded_file in "${UPLOADED_FILES[@]}"; do
+                print_info "  ✓ ${uploaded_file}"
             done
-        fi
-        
-        # Validate it's a number using simple pattern matching (more portable)
-        case "$dir_count" in
-            ''|*[!0-9]*)
-                # Empty or contains non-digits
-                print_warning "Count is not a valid number: '$dir_count', setting to 0"
-                dir_count=0
-                ;;
-            *)
-                # Valid number, convert to integer
-                dir_count=$((dir_count + 0))
-                print_info "Valid count: $dir_count log directories"
-                ;;
-        esac
-        
-        # If we have directories, we have logs
-        if [ $dir_count -gt 0 ]; then
-            if [ -n "${FLUENTD_NAMESPACES:-}" ] && [ "$FLUENTD_NAMESPACES" != "NONE" ]; then
-                print_success "Found $dir_count log directories for selected namespaces"
-            else
-                print_success "Found $dir_count namespace log directories"
-            fi
-            
-            # Calculate size
-            print_info "Calculating total log size..."
-            set +e
-            log_size=$(du -sh "$LOG_OUTPUT_DIR" 2>/dev/null | cut -f1)
-            du_exit=$?
-            set -e
-            
-            if [ -z "$log_size" ] || [ $du_exit -ne 0 ]; then
-                log_size="unknown"
-                print_warning "Could not calculate log size (du exit code: $du_exit)"
-            else
-                print_info "Total log size: $log_size"
-            fi
-            
-            if [ -n "${FLUENTD_NAMESPACES:-}" ] && [ "$FLUENTD_NAMESPACES" != "NONE" ]; then
-                print_info "Selected namespace logs: $dir_count directories, $log_size"
-            else
-                print_info "Local logs: $dir_count directories, $log_size"
-            fi
-            print_success "Step 3 completed: Logs verified successfully"
+            print_success "Step 3 completed: All files uploaded to filer"
         else
-            print_error "No log directories found: dir_count=$dir_count"
-            print_error "Pod logs directory may be empty or copy failed"
-            print_info "Attempting alternative count method..."
-            
-            # Try alternative method: count with ls
-            set +e
-            alt_count=$(ls -1d "$LOG_OUTPUT_DIR"/kube.* 2>/dev/null | wc -l)
-            alt_count=$(echo "$alt_count" | tr -d '[:space:]')
-            set -e
-            
-            print_info "Alternative count: $alt_count directories"
-            
-            # If alternative method finds directories, use that
-            if [ -n "$alt_count" ] && [ "$alt_count" -gt 0 ] 2>/dev/null; then
-                print_success "Alternative method found $alt_count directories!"
-                print_info "Continuing with verification..."
-                dir_count=$alt_count
-                
-                # Calculate size
-                print_info "Calculating total log size..."
-                set +e
-                log_size=$(du -sh "$LOG_OUTPUT_DIR" 2>/dev/null | cut -f1)
-                du_exit=$?
-                set -e
-                
-                if [ -z "$log_size" ] || [ $du_exit -ne 0 ]; then
-                    log_size="unknown"
-                    print_warning "Could not calculate log size (du exit code: $du_exit)"
-                else
-                    print_info "Total log size: $log_size"
-                fi
-                
-                if [ -n "${FLUENTD_NAMESPACES:-}" ] && [ "$FLUENTD_NAMESPACES" != "NONE" ]; then
-                    print_info "Selected namespace logs: $dir_count directories, $log_size"
-                else
-                    print_info "Local logs: $dir_count directories, $log_size"
-                fi
-                print_success "Step 3 completed: Logs verified successfully"
-            else
-                print_error "Both counting methods failed"
-                print_info "Listing directory contents (first 50 items):"
-                ls -la "$LOG_OUTPUT_DIR" 2>&1 | head -50 || true
-                
-                print_info "Testing basic directory check..."
-                if [ "$(ls -A "$LOG_OUTPUT_DIR" 2>/dev/null)" ]; then
-                    print_warning "Directory is not empty, but counting failed"
-                    print_warning "Proceeding anyway - manual verification recommended"
-                else
-                    print_error "Directory appears to be empty"
-                    exit 1
-                fi
-            fi
+            print_error "No files were uploaded"
+            print_error "This usually means no matching namespaces were found or copy failed"
+            exit 1
         fi
     else
         print_error "Failed to copy logs from pod"
@@ -1047,64 +1138,29 @@ else
 fi
 echo ""
 
-# Steps 4 & 5: Create folder and compress/upload (skip if no fluentd namespaces selected)
-if [ "${FLUENTD_NAMESPACES:-}" = "NONE" ]; then
-    print_header "Step 4/7: Creating Folder on Filer"
-    print_info "No fluentd namespaces selected - skipping"
-    echo ""
-    
-    print_header "Step 5/7: Compress and Upload Logs by Namespace"
-    print_info "No fluentd namespaces selected - skipping"
+# Steps 4 & 5: Already completed in Step 3 (new workflow)
+print_header "Step 4/7: Filer Directory"
+print_info "Directory already created in Step 2.5"
+print_success "Filer ready: ${FILER_HOST}:${FILER_TARGET_PATH}/"
+echo ""
+
+print_header "Step 5/7: Compress and Upload"
+if [ ${#UPLOADED_FILES[@]} -gt 0 ]; then
+    print_info "Files were already uploaded during Step 3 (new workflow)"
+    print_success "${#UPLOADED_FILES[@]} file(s) uploaded and verified"
     echo ""
 else
-    # Step 4: Create folder on filer
-    print_header "Step 4/7: Creating Folder on Filer"
-
-    # Use fluentd subfolder if specified
-    FLUENTD_SUBFOLDER="${FLUENTD_SUBFOLDER:-}"
-    if [ -n "$FLUENTD_SUBFOLDER" ]; then
-        FILER_TARGET_PATH="$FILER_BASE_PATH/$BUG_FOLDER/$FLUENTD_SUBFOLDER"
-        print_info "Uploading to fluentd subfolder: $FILER_TARGET_PATH"
+    if [ "${FLUENTD_NAMESPACES:-}" = "NONE" ]; then
+        print_info "No fluentd namespaces selected - skipping"
     else
-        FILER_TARGET_PATH="$FILER_BASE_PATH/$BUG_FOLDER"
-    fi
-
-    if ! create_filer_folder "$FILER_TARGET_PATH"; then
-        print_error "Cannot proceed with upload"
-        print_warning "Local logs are available at: $LOG_OUTPUT_DIR"
-        exit 1
+        print_warning "No files were uploaded (check Step 3 for errors)"
     fi
     echo ""
-
-    # Step 5: Compress and Upload (one namespace at a time to save disk space)
-    print_header "Step 5/7: Compress and Upload Logs by Namespace"
-
-    # Verify log directories exist before attempting compression
-    dir_check=$(find "$LOG_OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name "kube.*" 2>/dev/null | wc -l | tr -d '[:space:]')
-    if [ -z "$dir_check" ] || [ "$dir_check" -eq 0 ]; then
-        print_error "No log directories found in: $LOG_OUTPUT_DIR"
-        print_error "Log copy from pod may have failed"
-        print_warning "Check if pod logs were copied successfully in Step 3"
-        exit 1
-    fi
-print_info "Found $dir_check log directories to process"
-
-# Check available disk space before compression
-print_info "Checking available disk space..."
-available_space=$(df -BG "$OUTPUT_DIR" | awk 'NR==2 {print $4}' | tr -d 'G')
-log_size=$(du -sm "$LOG_OUTPUT_DIR" 2>/dev/null | awk '{print $1}' || echo "0")
-
-if [ "$available_space" -lt 1 ]; then
-    print_error "⚠️  Insufficient disk space detected!"
-    print_error "   Available: ${available_space}GB"
-    print_error "   Estimated log size: ~${log_size}MB"
-    print_error "   Please free up disk space and try again"
-    print_warning "Local logs preserved at: $LOG_OUTPUT_DIR"
-    exit 1
 fi
 
-print_info "Available disk space: ${available_space}GB (Log size: ${log_size}MB)"
-
+# Original Step 5 logic (kept for fallback/non-selective mode)
+# This is now only used if selective copy didn't upload files
+if false; then  # Disabled - kept for reference
 COMPRESSED_DIR="${OUTPUT_DIR}/compressed_${TIMESTAMP}"
 mkdir -p "$COMPRESSED_DIR" || { print_error "Failed to create temp directory"; exit 1; }
 
@@ -1128,10 +1184,6 @@ if [ ${#namespaces[@]} -eq 0 ]; then
     print_warning "No namespaces to process"
 else
     print_info "Processing ${#namespaces[@]} namespace(s)"
-    
-    UPLOAD_SUCCESS_COUNT=0
-    UPLOAD_FAILED_COUNT=0
-    declare -a UPLOADED_FILES
     
     # Process each namespace: compress -> upload -> delete
     namespace_index=0
@@ -1211,8 +1263,8 @@ else
     fi
     
     print_success "All $UPLOAD_SUCCESS_COUNT file(s) uploaded successfully"
-    fi
 fi
+fi  # End of 'if false' block
 echo ""
 
 # Step 6: Cleanup
