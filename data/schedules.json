@@ -1,1 +1,87 @@
-{}
+{
+  "10.114.55.128": {
+    "schedule_id": "5975d529-2508-4f22-9d57-68af5f09040d",
+    "schedule_job_id": "schedule_1781579444_51ffcf",
+    "kind": "for_loop",
+    "pc_ip": "10.114.55.128",
+    "next_run_utc": "2026-06-16T03:10:44.933678+00:00",
+    "recurring_interval_minutes": null,
+    "schedule_job_kind": "full_pipeline",
+    "schedule_loop_mode": "continuous",
+    "schedule_cron_expr": "",
+    "remaining_runs": 2,
+    "executed_runs": 0,
+    "cfg": {
+      "base_url": "https://10.114.55.128:9440",
+      "pc_user": "admin",
+      "pc_password": "Nutanix.123",
+      "batch_size": 10,
+      "recovery_point_type": "RANDOM_CRASH_OR_APP",
+      "expiration_days": 30,
+      "poll_interval": 4.0,
+      "task_timeout_sec": 300,
+      "group_member_page": 500,
+      "sleep_before_task_poll_sec": 0.0,
+      "snapshot_trigger_mode": "series",
+      "skip_substrings": [
+        "auto_pc"
+      ],
+      "skip_regex_patterns": [
+        "nc-.+-default"
+      ]
+    },
+    "disk_payload": {
+      "pc_ip": "10.114.55.128",
+      "pc_user": "admin",
+      "pc_password": "Nutanix.123",
+      "disk_op_mode": "update",
+      "skip_substrings": "auto_pc",
+      "skip_regexes": "nc-.+-default",
+      "group_member_page": 500,
+      "guest_ssh_user": "root",
+      "guest_ssh_password": "nutanix/4u",
+      "guest_ssh_port": 22,
+      "guest_ssh_connect_timeout": 30.0,
+      "guest_ssh_command_timeout": 7200.0,
+      "guest_target_file": "/root/dummy_snapshot_data_1.img",
+      "guest_delete_glob": "/root/dummy_snapshot_data_*.img",
+      "guest_dd_bs": "1M",
+      "create_count_mib": 1024,
+      "churn_count_mib": 5,
+      "disk_run_limit": "",
+      "guest_min_memory_mib": 250,
+      "guest_ssh_parallel": 10,
+      "parallel_clusters": false,
+      "vm_per_cluster": 0,
+      "cluster_pe_top_monitor": true,
+      "cluster_adaptive_ssh_parallel": false,
+      "cluster_adaptive_cpu_threshold_pct": 70,
+      "cluster_adaptive_ssh_ceiling": 0,
+      "cluster_adaptive_cpu_spike_delta_pct": 10,
+      "cluster_adaptive_ramp": "180/5,300/3",
+      "cluster_adaptive_overload_pause_sec": 10.0,
+      "cluster_adaptive_cooldown_sec": 300.0,
+      "cluster_cpu_max_pct": 80,
+      "cluster_mem_max_pct": 85,
+      "pe_prism_rest_port": 9440,
+      "pe_cvm_ssh_user": "nutanix",
+      "pe_cvm_ssh_port": 22,
+      "pe_cvm_ssh_password": "RDMCluster.123"
+    },
+    "snapshot_payload": {
+      "pc_ip": "10.114.55.128",
+      "pc_user": "admin",
+      "pc_password": "Nutanix.123",
+      "skip_substrings": "auto_pc",
+      "skip_regexes": "nc-.+-default",
+      "batch_size": 10,
+      "expiration_days": 30,
+      "task_timeout_sec": 300,
+      "group_member_page": 500,
+      "poll_interval": 4.0,
+      "sleep_before_task_poll_sec": 0.0,
+      "snapshot_trigger_mode": "series",
+      "recovery_point_type": "RANDOM_CRASH_OR_APP"
+    }
+  }
+}

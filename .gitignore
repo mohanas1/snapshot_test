@@ -2,6 +2,7 @@
 data/inventory_cache/*.json
 kubeconfigs/*
 pc_logs/*
+temp_logbay/*
 # Python
 __pycache__/*
 *.pyc
