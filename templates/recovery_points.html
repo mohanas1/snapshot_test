@@ -750,7 +750,7 @@
                 <label for="size_filter">Size Filter (for bulk delete)</label>
                 <select id="size_filter" name="size_filter" style="padding: 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px; width: 100%; max-width: 300px;">
                   <option value="all">All Sizes</option>
-                  <option value="zero">Only 0 Bytes (Zero Space)</option>
+                  <option value="zero" selected>Only 0 Bytes (Zero Space)</option>
                   <option value="0-100KB">0 - 100 KB</option>
                   <option value="100KB-1MB">100 KB - 1 MB</option>
                   <option value="1MB-50MB">1 MB - 50 MB</option>
@@ -760,7 +760,7 @@
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Filter recovery points by size for bulk delete operations</div>
               </div>
               
-              <button id="bulkDeleteAllBtn" class="btn" style="background: #DC2626; color: white; margin-top: 1rem;" onclick="openBulkDeleteAllModal()">
+              <button id="bulkDeleteAllBtn" type="button" class="btn" style="background: #DC2626; color: white; margin-top: 1rem;" onclick="openBulkDeleteAllModal()">
                 🗑️ Bulk Delete All Recovery Points
               </button>
             </div>
@@ -866,6 +866,33 @@
                   <div class="summary-value" id="totalTimeTaken">-</div>
                 </div>
               </div>
+
+              <h3>Recovery Points by Size Range</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Size Range</th>
+                    <th>Recovery Points</th>
+                    <th>Total Size</th>
+                  </tr>
+                </thead>
+                <tbody id="sizeRangeTableBody">
+                </tbody>
+              </table>
+
+              <h3>Recovery Points Grouped by Cluster</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cluster</th>
+                    <th>VMs</th>
+                    <th>Recovery Points</th>
+                    <th>Total Size</th>
+                  </tr>
+                </thead>
+                <tbody id="clusterGroupTableBody">
+                </tbody>
+              </table>
               
               <h3>VMs by Reclaimable Space</h3>
               
@@ -1042,12 +1069,109 @@
       
       // Store all VMs for pagination
       allVMs = summary.vms || [];
+      renderSizeRangeTable(allVMs);
+      renderClusterGroupTable(allVMs);
       currentPage = 1;
       
       // Display first page
       renderPage();
       
       results.classList.add('active');
+    }
+
+    function renderSizeRangeTable(vms) {
+      const tbody = document.getElementById('sizeRangeTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const ranges = [
+        { label: '0 B', min: 0, max: 0 },
+        { label: '1 B - 100 KB', min: 1, max: 100 * 1024 },
+        { label: '100 KB - 1 MB', min: 100 * 1024 + 1, max: 1024 * 1024 },
+        { label: '1 MB - 50 MB', min: 1024 * 1024 + 1, max: 50 * 1024 * 1024 },
+        { label: '50 MB - 500 MB', min: 50 * 1024 * 1024 + 1, max: 500 * 1024 * 1024 },
+        { label: '500 MB+', min: 500 * 1024 * 1024 + 1, max: Number.MAX_SAFE_INTEGER },
+      ];
+
+      const stats = ranges.map(r => ({ label: r.label, count: 0, bytes: 0 }));
+      let totalCount = 0;
+      let totalBytes = 0;
+
+      (vms || []).forEach(vm => {
+        (vm.recovery_points || []).forEach(rp => {
+          const size = Number(rp.size_bytes || 0);
+          const idx = ranges.findIndex(r => size >= r.min && size <= r.max);
+          if (idx >= 0) {
+            stats[idx].count += 1;
+            stats[idx].bytes += size;
+            totalCount += 1;
+            totalBytes += size;
+          }
+        });
+      });
+
+      stats.forEach(s => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${s.label}</td>
+          <td>${s.count}</td>
+          <td>${formatBytes(s.bytes)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      const totalRow = document.createElement('tr');
+      totalRow.style.fontWeight = '700';
+      totalRow.innerHTML = `
+        <td>Total</td>
+        <td>${totalCount}</td>
+        <td>${formatBytes(totalBytes)}</td>
+      `;
+      tbody.appendChild(totalRow);
+    }
+
+    function renderClusterGroupTable(vms) {
+      const tbody = document.getElementById('clusterGroupTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const groups = {};
+      (vms || []).forEach(vm => {
+        const cluster = (vm.cluster_name || vm.pe_cluster || 'Unknown').trim() || 'Unknown';
+        if (!groups[cluster]) groups[cluster] = { vms: 0, rps: 0, bytes: 0 };
+        groups[cluster].vms += 1;
+        groups[cluster].rps += Number(vm.recovery_point_count || 0);
+        groups[cluster].bytes += Number(vm.reclaimable_bytes || 0);
+      });
+
+      const entries = Object.entries(groups).sort((a, b) => b[1].bytes - a[1].bytes);
+      let totalVms = 0;
+      let totalRps = 0;
+      let totalBytes = 0;
+
+      entries.forEach(([cluster, g]) => {
+        totalVms += g.vms;
+        totalRps += g.rps;
+        totalBytes += g.bytes;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${cluster}</td>
+          <td>${g.vms}</td>
+          <td>${g.rps}</td>
+          <td>${formatBytes(g.bytes)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      const totalRow = document.createElement('tr');
+      totalRow.style.fontWeight = '700';
+      totalRow.innerHTML = `
+        <td>Total</td>
+        <td>${totalVms}</td>
+        <td>${totalRps}</td>
+        <td>${formatBytes(totalBytes)}</td>
+      `;
+      tbody.appendChild(totalRow);
     }
     
     function renderPage() {
@@ -1229,6 +1353,15 @@
     
     function goToLastPage() {
       goToPage(totalPages);
+    }
+
+    function formatBytes(bytes) {
+      const num = Number(bytes || 0);
+      if (!Number.isFinite(num) || num <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+      const i = Math.min(Math.floor(Math.log(num) / Math.log(1024)), units.length - 1);
+      const value = num / Math.pow(1024, i);
+      return `${value.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
     }
     
     // Per page selector change handler
@@ -1522,8 +1655,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="modal-btn modal-btn-cancel" onclick="closeConfirmModal()">Cancel</button>
-        <button class="modal-btn" style="background: #DC2626; color: white;" id="confirmModalProceed" onclick="executeConfirmedAction()">Delete</button>
+        <button type="button" class="modal-btn modal-btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+        <button type="button" class="modal-btn" style="background: #DC2626; color: white;" id="confirmModalProceed" onclick="executeConfirmedAction()">Delete</button>
       </div>
     </div>
   </div>
@@ -1831,10 +1964,15 @@
       pendingAction = null;
     }
     
-    function executeConfirmedAction() {
+    async function executeConfirmedAction() {
       if (pendingAction) {
+        const action = pendingAction;
         closeConfirmModal();
-        pendingAction();
+        try {
+          await Promise.resolve(action());
+        } catch (e) {
+          alert(`❌ Action failed:\n${e && e.message ? e.message : e}`);
+        }
       }
     }
     
@@ -1876,6 +2014,21 @@
       });
     }
     
+    function filterRecoveryPointsBySizeClient(recoveryPoints, sizeFilter) {
+      const points = Array.isArray(recoveryPoints) ? recoveryPoints : [];
+      if (sizeFilter === 'all') return points;
+      return points.filter((rp) => {
+        const size = Number(rp && rp.size_bytes ? rp.size_bytes : 0);
+        if (sizeFilter === 'zero') return size === 0;
+        if (sizeFilter === '0-100KB') return size >= 0 && size <= 100 * 1024;
+        if (sizeFilter === '100KB-1MB') return size > 100 * 1024 && size <= 1024 * 1024;
+        if (sizeFilter === '1MB-50MB') return size > 1024 * 1024 && size <= 50 * 1024 * 1024;
+        if (sizeFilter === '50MB-500MB') return size > 50 * 1024 * 1024 && size <= 500 * 1024 * 1024;
+        if (sizeFilter === '500MB+') return size > 500 * 1024 * 1024;
+        return true;
+      });
+    }
+
     // Bulk delete all recovery points for a VM
     async function bulkDeleteVmRecoveryPoints(vmIndex) {
       const vm = allVMs[vmIndex];
@@ -1886,12 +2039,17 @@
       
       const sizeFilter = document.getElementById('size_filter').value;
       const concurrency = parseInt(document.getElementById('delete_concurrency').value);
+      const filteredRecoveryPoints = filterRecoveryPointsBySizeClient(vm.recovery_points, sizeFilter);
+      if (!filteredRecoveryPoints.length) {
+        alert(`No recovery points match selected filter (${sizeFilter}) for VM ${vm.vm_name}.`);
+        return;
+      }
       
       const message = `Are you sure you want to delete all recovery points for VM <strong>"${vm.vm_name}"</strong>?<br><br>This action cannot be undone.`;
-      const stats = `<div>• <strong>VM:</strong> ${vm.vm_name}</div><div>• <strong>Total Recovery Points:</strong> ${vm.recovery_points.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div>`;
+      const stats = `<div>• <strong>VM:</strong> ${vm.vm_name}</div><div>• <strong>Total Recovery Points:</strong> ${vm.recovery_points.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div>`;
       
       openConfirmModal('🗑️ Bulk Delete VM Recovery Points', message, stats, async () => {
-        await executeBulkDelete(vm.recovery_points, `VM: ${vm.vm_name}`, sizeFilter, concurrency);
+        await executeBulkDelete(filteredRecoveryPoints, `VM: ${vm.vm_name}`, sizeFilter, concurrency, vm.vm_uuid || null);
       });
     }
     
@@ -1919,37 +2077,30 @@
       
       const sizeFilter = document.getElementById('size_filter').value;
       const concurrency = parseInt(document.getElementById('delete_concurrency').value);
+      const filteredRecoveryPoints = filterRecoveryPointsBySizeClient(allRecoveryPoints, sizeFilter);
+      const vmsWithFilteredRps = allVMs.filter(vm => filterRecoveryPointsBySizeClient(vm.recovery_points || [], sizeFilter).length > 0).length;
+      if (!filteredRecoveryPoints.length) {
+        alert(`No recovery points match selected filter (${sizeFilter}).`);
+        return;
+      }
       
       const message = `<strong style="color: #DC2626;">⚠️ WARNING:</strong> You are about to delete <strong>ALL recovery points</strong> across <strong>ALL VMs</strong>!<br><br>This action cannot be undone.`;
-      const stats = `<div>• <strong>Total VMs with Recovery Points:</strong> ${vmsWithRPs}</div><div>• <strong>Total Recovery Points:</strong> ${allRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div><br><div style="color: #DC2626; font-weight: 600;">⚠️ THIS WILL DELETE ${allRecoveryPoints.length} RECOVERY POINTS FROM ${vmsWithRPs} VMs!</div>`;
+      const stats = `<div>• <strong>Total VMs with Recovery Points:</strong> ${vmsWithRPs}</div><div>• <strong>Total Recovery Points:</strong> ${allRecoveryPoints.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Selected Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div><br><div style="color: #DC2626; font-weight: 600;">⚠️ THIS WILL DELETE ${filteredRecoveryPoints.length} FILTERED RECOVERY POINTS FROM ${vmsWithFilteredRps} VMs!</div>`;
       
       openConfirmModal('🗑️ Bulk Delete All Recovery Points', message, stats, async () => {
-        await executeBulkDelete(allRecoveryPoints, 'All VMs', sizeFilter, concurrency);
+        await executeBulkDelete(filteredRecoveryPoints, 'All VMs', sizeFilter, concurrency, null);
       });
     }
     
-    // Execute bulk delete with streaming logs
-    async function executeBulkDelete(recoveryPoints, scope, sizeFilter, concurrency) {
+    // Execute bulk delete as background job and open job page
+    async function executeBulkDelete(recoveryPoints, scope, sizeFilter, concurrency, scopeVmUuid = null) {
       const pcIp = document.getElementById('pc_ip').value;
       const pcUser = document.getElementById('pc_user').value;
       const pcPassword = document.getElementById('pc_password').value;
       
-      // Create modal for progress
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;';
-      modal.innerHTML = `
-        <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow: auto;">
-          <h3 style="margin: 0 0 1rem 0;">🗑️ Bulk Delete Progress - ${scope}</h3>
-          <div id="bulkDeleteLogs" style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.75rem; max-height: 400px; overflow-y: auto; margin-bottom: 1rem;"></div>
-          <button id="closeBulkDeleteModal" class="btn" style="width: 100%;" disabled>Close</button>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      
-      const logsContainer = document.getElementById('bulkDeleteLogs');
-      const closeBtn = document.getElementById('closeBulkDeleteModal');
-      
       try {
+        const payloadPoints = Array.isArray(recoveryPoints) ? recoveryPoints : [];
+        const shouldSendFullList = payloadPoints.length > 0 && payloadPoints.length <= 1000;
         const response = await fetch('/api/bulk_delete_recovery_points', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1957,47 +2108,34 @@
             pc_ip: pcIp,
             pc_user: pcUser,
             pc_password: pcPassword,
-            recovery_points: recoveryPoints,
+            recovery_points: shouldSendFullList ? payloadPoints : [],
+            scope_vm_uuid: scopeVmUuid || '',
             size_filter: sizeFilter,
             concurrency: concurrency
           })
         });
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const {value, done} = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6));
-              
-              if (data.type === 'log') {
-                logsContainer.innerHTML += data.message + '<br>';
-                logsContainer.scrollTop = logsContainer.scrollHeight;
-              } else if (data.type === 'complete') {
-                const result = data.result;
-                logsContainer.innerHTML += `<br><strong style="color: #10b981;">✅ Bulk delete completed!</strong><br>`;
-                logsContainer.innerHTML += `Total: ${result.total} | Deleted: ${result.deleted} | Failed: ${result.failed}<br>`;
-                closeBtn.disabled = false;
-                closeBtn.onclick = () => {
-                  document.body.removeChild(modal);
-                  // Refresh analysis by fetching latest data
-                  document.getElementById('analyzeBtn').click();
-                };
-              }
-            }
-          }
+
+        const rawText = await response.text();
+        let result = {};
+        try {
+          result = rawText ? JSON.parse(rawText) : {};
+        } catch (_) {
+          result = {};
+        }
+        if (!response.ok || !result.ok) {
+          const detail = result.error || result.message || rawText || `HTTP ${response.status}`;
+          alert(`❌ Failed to start bulk delete job:\n${detail}`);
+          return;
+        }
+
+        const jobUrl = result.job_url || '';
+        if (jobUrl) {
+          window.location.assign(jobUrl);
+        } else {
+          alert(`✅ Bulk delete job started (${result.run_id || 'run created'})`);
         }
       } catch (error) {
-        logsContainer.innerHTML += `<br><strong style="color: #ef4444;">❌ Error: ${error.message}</strong><br>`;
-        closeBtn.disabled = false;
-        closeBtn.onclick = () => document.body.removeChild(modal);
+        alert(`❌ Failed to start bulk delete job:\n${error.message}`);
       }
     }
   </script>

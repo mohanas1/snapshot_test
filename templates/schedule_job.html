@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule Job</title>
+  <style>
+    :root {
+      --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      --bg: #f9fafb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --blue: #007cba;
+      --blue-soft: #dbeafe;
+      --ok: #065f46;
+      --ok-bg: #d1fae5;
+      --err: #991b1b;
+      --err-bg: #fee2e2;
+      --warn: #92400e;
+      --warn-bg: #fef3c7;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: linear-gradient(135deg, #007cba 0%, #0063a6 100%);
+      color: #fff;
+      border-bottom: 2px solid #0063a6;
+      padding: 0.8rem 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+    }
+    .topbar-title { font-weight: 700; font-size: 0.95rem; }
+    .topbar-sub { font-size: 0.8rem; opacity: 0.9; }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--font-mono); }
+    .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #1e40af;
+      font-weight: 600;
+      font-size: 0.84rem;
+    }
+    .two-col { display: grid; gap: 0.85rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stage {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+    .stage h4 { margin: 0 0 0.35rem 0; }
+    .stage-status {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .job-link {
+      display: inline-block;
+      margin-top: 0.45rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text);
+      background: #fff;
+      font-size: 0.83rem;
+      font-weight: 600;
+    }
+    .job-link:hover { border-color: #9ca3af; background: #f9fafb; }
+    .recent-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.45rem 0.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .recent-item:last-child { border-bottom: 0; }
+    .recent-run a { color: var(--blue); text-decoration: none; font-weight: 600; }
+    .ev {
+      border-top: 1px solid var(--border);
+      padding: 0.55rem 0;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .ev:first-child { border-top: 0; }
+    .status-ok { background: var(--ok-bg); color: var(--ok); }
+    .status-err { background: var(--err-bg); color: var(--err); }
+    .status-warn { background: var(--warn-bg); color: var(--warn); }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Scheduled Job Tracker</div>
+      <div class="topbar-sub">Live schedule + pipeline stage view</div>
+    </div>
+    <div class="topbar-sub">Auto refresh: 3s</div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <h2 style="margin:0 0 .5rem 0;">Schedule Job <span id="sid" class="mono muted"></span></h2>
+      <div id="meta" class="muted">Loading…</div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Schedule Status</h3>
+      <div class="grid">
+        <div><div class="muted">Status</div><div id="status" class="pill">—</div></div>
+        <div><div class="muted">Kind</div><div id="kind">—</div></div>
+        <div><div class="muted">Job Type</div><div id="job-type">—</div></div>
+        <div><div class="muted">Requested loops</div><div id="requested">—</div></div>
+        <div><div class="muted">Remaining loops</div><div id="remaining">—</div></div>
+      </div>
+      <div style="margin-top:.8rem;" class="muted">Next run (UTC): <span id="next-run" class="mono">—</span></div>
+    </div>
+
+    <div class="card" id="pipeline-card" style="display:none;">
+      <h3 style="margin-top:0;">Latest Full Pipeline Launch</h3>
+      <div class="two-col">
+        <div class="stage">
+          <h4>Disk Stage</h4>
+          <div id="pipe-disk-status" class="stage-status muted">Pending</div>
+          <a id="pipe-disk-link" class="job-link" href="#" style="display:none;">Open disk job</a>
+        </div>
+        <div class="stage">
+          <h4>Snapshot Stage</h4>
+          <div id="pipe-snap-status" class="stage-status muted">Pending</div>
+          <a id="pipe-snap-link" class="job-link" href="#" style="display:none;">Open snapshot job</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Recent Launches</h3>
+      <div id="recent" class="muted">—</div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Events</h3>
+      <div id="events" class="muted">No events yet.</div>
+    </div>
+  </div>
+
+  <script>
+    const sid = "{{ schedule_job_id }}";
+    document.getElementById("sid").textContent = sid;
+
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+    }
+
+    async function fetchRun(runId) {
+      if (!runId) return null;
+      try {
+        const r = await fetch(`/api/job/${encodeURIComponent(runId)}`);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (_e) {
+        return null;
+      }
+    }
+
+    async function refresh() {
+      try {
+        const r = await fetch(`/api/schedule_job/${encodeURIComponent(sid)}`);
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.message || "Failed");
+
+        document.getElementById("meta").innerHTML =
+          `PC: <span class="mono">${esc(j.pc_ip)}</span> · Created: <span class="mono">${esc(j.created_at || "—")}</span>`;
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = j.status || "—";
+        statusEl.className = "pill";
+        if (j.status === "completed") statusEl.classList.add("status-ok");
+        else if (j.status === "active") statusEl.classList.add("status-warn");
+        else if (j.status === "failed" || j.status === "error" || j.status === "aborted") statusEl.classList.add("status-err");
+        document.getElementById("kind").textContent = j.kind || "—";
+        document.getElementById("job-type").textContent = j.job_type || "snapshot";
+        document.getElementById("requested").textContent = (j.requested_runs || 0);
+        document.getElementById("remaining").textContent = (j.remaining_runs || 0);
+        document.getElementById("next-run").textContent = j.next_run_utc || "—";
+
+        const recent = Array.isArray(j.recent_jobs) ? j.recent_jobs.slice().reverse() : [];
+        document.getElementById("recent").innerHTML = recent.length
+          ? recent.map(x => (
+              `<div class="recent-item">
+                <div class="recent-run"><a href="${esc(x.job_url)}">${esc(x.run_id)}</a></div>
+                <div class="muted">${esc((x.status || "").toString())}</div>
+              </div>`
+            )).join("")
+          : "—";
+
+        const evs = Array.isArray(j.events) ? j.events : [];
+        document.getElementById("events").innerHTML = evs.length
+          ? evs.slice(-80).reverse().map(e => `<div class="ev"><span class="mono">${esc(e.ts)}</span> · <strong>${esc(e.type)}</strong> · ${esc(e.message)}</div>`).join("")
+          : "No events yet.";
+
+        const pipelineCard = document.getElementById("pipeline-card");
+        if ((j.job_type || "") === "full_pipeline" && recent.length) {
+          pipelineCard.style.display = "block";
+          const latest = recent[0];
+          const pj = await fetchRun(latest.run_id);
+          const pp = (pj && pj.pipeline_progress) || {};
+          const sm = (pj && pj.summary) || {};
+          const dId = pp.disk_run_id || sm.disk_run_id || "";
+          const sId = pp.snapshot_run_id || sm.snapshot_run_id || "";
+          const [dj, sj] = await Promise.all([fetchRun(dId), fetchRun(sId)]);
+
+          document.getElementById("pipe-disk-status").textContent = dId
+            ? `${dId} · ${dj && dj.status ? dj.status : "running"}`
+            : "Pending";
+          document.getElementById("pipe-snap-status").textContent = sId
+            ? `${sId} · ${sj && sj.status ? sj.status : "running"}`
+            : "Pending";
+
+          const dLink = document.getElementById("pipe-disk-link");
+          const sLink = document.getElementById("pipe-snap-link");
+          if (dId) { dLink.href = `/job/${encodeURIComponent(dId)}`; dLink.style.display = "inline-block"; }
+          else { dLink.style.display = "none"; }
+          if (sId) { sLink.href = `/job/${encodeURIComponent(sId)}`; sLink.style.display = "inline-block"; }
+          else { sLink.style.display = "none"; }
+        } else {
+          pipelineCard.style.display = "none";
+        }
+      } catch (e) {
+        document.getElementById("meta").textContent = String(e);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>

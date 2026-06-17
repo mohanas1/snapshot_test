@@ -50,6 +50,8 @@ class SnapshotConfig:
     snapshot_trigger_mode: str = "series"
     skip_substrings: Tuple[str, ...] = ()
     skip_regex_patterns: Tuple[str, ...] = ()
+    # Optional explicit VM UUID allow-list (used by scheduled full pipeline handoff).
+    target_vm_uuids: Tuple[str, ...] = ()
 
     _compiled_regexes: Tuple[Any, ...] = field(default_factory=tuple, repr=False)
 
@@ -117,6 +119,9 @@ def list_all_vm_uuids(
 ) -> Tuple[List[Tuple[str, Optional[str]]], int]:
     url = base + GROUPS_PATH
     seen: Dict[str, Optional[str]] = {}
+    allow: Optional[set[str]] = None
+    if cfg.target_vm_uuids:
+        allow = {str(v).strip() for v in cfg.target_vm_uuids if str(v).strip()}
     group_member_offset = 0
     ignored_by_name = 0
     page = cfg.group_member_page
@@ -140,6 +145,8 @@ def list_all_vm_uuids(
                     continue
                 page_n += 1
                 key = str(eid)
+                if allow is not None and key not in allow:
+                    continue
                 if key in seen:
                     continue
                 name = None

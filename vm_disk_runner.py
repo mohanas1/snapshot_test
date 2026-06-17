@@ -2663,6 +2663,7 @@ def run_disk_ops(
         "n_vms": n_run,
         "eligible_for_guest_ssh": eligible_total,
         "planned_guest_ssh_runs": n_run,
+        "target_vm_uuids": [str(uid) for uid, _name, _ip, _cname in candidates],
         "disk_run_limit": (cfg.disk_run_limit or "").strip(),
         "skipped_powered_off": skipped_power_off,
         "skipped_below_min_memory": skipped_below_min_memory,

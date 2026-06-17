@@ -1,0 +1,66 @@
+{
+  "schedule_1781666101_b6f057": {
+    "schedule_job_id": "schedule_1781666101_b6f057",
+    "pc_ip": "10.114.55.128",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "active",
+    "created_at": "2026-06-17T03:15:01.817450+00:00",
+    "next_run_utc": "2026-06-17T03:14:57.262328+00:00",
+    "requested_runs": 2,
+    "remaining_runs": 1,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-114-55-128-pipeline_20260617T031511_317050",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T031511_317050"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-06-17T03:15:01.817459+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.114.55.128 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-06-17T03:15:11.317731+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260617T031511_317050.",
+        "run_id": "10-114-55-128-pipeline_20260617T031511_317050",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T031511_317050"
+      }
+    ]
+  },
+  "schedule_1781666569_b3e053": {
+    "schedule_job_id": "schedule_1781666569_b3e053",
+    "pc_ip": "10.114.55.128",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "active",
+    "created_at": "2026-06-17T03:22:49.950693+00:00",
+    "next_run_utc": "2026-06-17T03:22:45.398201+00:00",
+    "requested_runs": 2,
+    "remaining_runs": 1,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-114-55-128-pipeline_20260617T032300_601033",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T032300_601033"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-06-17T03:22:49.950701+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.114.55.128 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-06-17T03:23:00.601699+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260617T032300_601033.",
+        "run_id": "10-114-55-128-pipeline_20260617T032300_601033",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T032300_601033"
+      }
+    ]
+  }
+}

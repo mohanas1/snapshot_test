@@ -142,11 +142,14 @@ app.logger.info("="*100)
 DATA_DIR = PROJECT_DIR / "data"
 HISTORY_FILE = DATA_DIR / "run_history.jsonl"
 SCHEDULES_FILE = DATA_DIR / "schedules.json"
+SCHEDULE_JOBS_FILE = DATA_DIR / "schedule_job_history.json"
 DATA_DIR.mkdir(exist_ok=True)
 
 runs_lock = threading.Lock()
 # run_id -> dict
 runs: dict[str, dict] = {}
+# Backup cancel handles for recovery delete jobs (defensive against row mutation/reload edge cases)
+_recovery_delete_cancel_events: dict[str, threading.Event] = {}
 
 # Disk job progress snapshots updated on a tight loop; kept out of ``runs_lock`` so ``/api/job`` polls
 # are not starved when many workers call the progress callback.
@@ -215,6 +218,9 @@ def _pop_power_progress_hot(run_id: str) -> None:
 schedules_lock = threading.Lock()
 # normalized_pc_host_key -> schedule record (see _persist_schedules)
 schedules: dict[str, dict] = {}
+schedule_jobs_lock = threading.Lock()
+# schedule_job_id -> schedule job record (status/events/recent runs)
+schedule_jobs: dict[str, dict] = {}
 
 # Rows from index **VM inventory** - stored on disk as JSON files (one per PC)
 INVENTORY_CACHE_DIR = os.path.join(os.path.dirname(__file__), "data", "inventory_cache")
@@ -887,6 +893,7 @@ def _cfg_to_dict(cfg: SnapshotConfig) -> dict:
         "snapshot_trigger_mode": cfg.snapshot_trigger_mode,
         "skip_substrings": list(cfg.skip_substrings),
         "skip_regex_patterns": list(cfg.skip_regex_patterns),
+        "target_vm_uuids": list(cfg.target_vm_uuids),
     }
 
 
@@ -905,6 +912,99 @@ def _cfg_from_dict(d: dict) -> SnapshotConfig:
         snapshot_trigger_mode=d["snapshot_trigger_mode"],
         skip_substrings=tuple(d.get("skip_substrings") or ()),
         skip_regex_patterns=tuple(d.get("skip_regex_patterns") or ()),
+        target_vm_uuids=tuple(d.get("target_vm_uuids") or ()),
+    )
+
+
+def _disk_cfg_to_dict(cfg: DiskOpConfig) -> dict:
+    return {
+        "base_url": cfg.base_url,
+        "pc_user": cfg.pc_user,
+        "pc_password": cfg.pc_password,
+        "group_member_page": int(cfg.group_member_page),
+        "skip_substrings": list(cfg.skip_substrings),
+        "skip_regex_patterns": list(cfg.skip_regex_patterns),
+        "random_seed": cfg.random_seed,
+        "mode": cfg.mode,
+        "guest_ssh_user": cfg.guest_ssh_user,
+        "guest_ssh_password": cfg.guest_ssh_password,
+        "guest_ssh_port": int(cfg.guest_ssh_port),
+        "guest_ssh_connect_timeout": float(cfg.guest_ssh_connect_timeout),
+        "guest_ssh_command_timeout": float(cfg.guest_ssh_command_timeout),
+        "guest_target_file": cfg.guest_target_file,
+        "guest_delete_glob": cfg.guest_delete_glob,
+        "guest_dd_bs": cfg.guest_dd_bs,
+        "create_count_mib": int(cfg.create_count_mib),
+        "churn_count_mib": int(cfg.churn_count_mib),
+        "disk_run_limit": cfg.disk_run_limit,
+        "guest_min_memory_mib": int(cfg.guest_min_memory_mib),
+        "guest_ssh_parallel": int(cfg.guest_ssh_parallel),
+        "parallel_clusters": bool(cfg.parallel_clusters),
+        "vm_per_cluster": int(cfg.vm_per_cluster),
+        "cluster_pe_top_monitor": bool(cfg.cluster_pe_top_monitor),
+        "cluster_cpu_max_pct": float(cfg.cluster_cpu_max_pct),
+        "cluster_mem_max_pct": float(cfg.cluster_mem_max_pct),
+        "cluster_adaptive_ssh_parallel": bool(cfg.cluster_adaptive_ssh_parallel),
+        "cluster_adaptive_cpu_threshold_pct": float(cfg.cluster_adaptive_cpu_threshold_pct),
+        "cluster_adaptive_ramp": cfg.cluster_adaptive_ramp,
+        "cluster_adaptive_ssh_step": int(cfg.cluster_adaptive_ssh_step),
+        "cluster_adaptive_ssh_ceiling": int(cfg.cluster_adaptive_ssh_ceiling),
+        "cluster_adaptive_cpu_spike_delta_pct": float(cfg.cluster_adaptive_cpu_spike_delta_pct),
+        "cluster_adaptive_overload_pause_sec": float(cfg.cluster_adaptive_overload_pause_sec),
+        "cluster_adaptive_cooldown_sec": float(cfg.cluster_adaptive_cooldown_sec),
+        "cluster_util_pause_sec": float(cfg.cluster_util_pause_sec),
+        "cluster_util_max_retry_sec": float(cfg.cluster_util_max_retry_sec),
+        "pe_cvm_ips_multiline": cfg.pe_cvm_ips_multiline,
+        "pe_prism_rest_port": int(cfg.pe_prism_rest_port),
+        "pe_cvm_ssh_user": cfg.pe_cvm_ssh_user,
+        "pe_cvm_ssh_password": cfg.pe_cvm_ssh_password,
+        "pe_cvm_ssh_port": int(cfg.pe_cvm_ssh_port),
+    }
+
+
+def _disk_cfg_from_dict(d: dict) -> DiskOpConfig:
+    return DiskOpConfig(
+        base_url=str(d.get("base_url") or "").strip(),
+        pc_user=str(d.get("pc_user") or "").strip(),
+        pc_password=str(d.get("pc_password") or ""),
+        group_member_page=int(d.get("group_member_page") or 500),
+        skip_substrings=tuple(d.get("skip_substrings") or ()),
+        skip_regex_patterns=tuple(d.get("skip_regex_patterns") or ()),
+        random_seed=d.get("random_seed"),
+        mode=str(d.get("mode") or "update").strip() or "update",
+        guest_ssh_user=str(d.get("guest_ssh_user") or "root").strip() or "root",
+        guest_ssh_password=str(d.get("guest_ssh_password") or ""),
+        guest_ssh_port=int(d.get("guest_ssh_port") or 22),
+        guest_ssh_connect_timeout=float(d.get("guest_ssh_connect_timeout") or 30.0),
+        guest_ssh_command_timeout=float(d.get("guest_ssh_command_timeout") or 7200.0),
+        guest_target_file=str(d.get("guest_target_file") or "/root/dummy_snapshot_data_1.img"),
+        guest_delete_glob=str(d.get("guest_delete_glob") or "/root/dummy_snapshot_data_*.img"),
+        guest_dd_bs=str(d.get("guest_dd_bs") or "1M").strip() or "1M",
+        create_count_mib=max(1, int(d.get("create_count_mib") or 1024)),
+        churn_count_mib=max(1, int(d.get("churn_count_mib") or 500)),
+        disk_run_limit=str(d.get("disk_run_limit") or "").strip(),
+        guest_min_memory_mib=max(0, int(d.get("guest_min_memory_mib") or 250)),
+        guest_ssh_parallel=max(1, int(d.get("guest_ssh_parallel") or 10)),
+        parallel_clusters=bool(d.get("parallel_clusters")),
+        vm_per_cluster=max(0, int(d.get("vm_per_cluster") or 0)),
+        cluster_pe_top_monitor=bool(d.get("cluster_pe_top_monitor", True)),
+        cluster_cpu_max_pct=float(d.get("cluster_cpu_max_pct") or 85.0),
+        cluster_mem_max_pct=float(d.get("cluster_mem_max_pct") or 0.0),
+        cluster_adaptive_ssh_parallel=bool(d.get("cluster_adaptive_ssh_parallel")),
+        cluster_adaptive_cpu_threshold_pct=float(d.get("cluster_adaptive_cpu_threshold_pct") or 90.0),
+        cluster_adaptive_ramp=str(d.get("cluster_adaptive_ramp") or "180/5,300/3"),
+        cluster_adaptive_ssh_step=int(d.get("cluster_adaptive_ssh_step") or 2),
+        cluster_adaptive_ssh_ceiling=int(d.get("cluster_adaptive_ssh_ceiling") or 0),
+        cluster_adaptive_cpu_spike_delta_pct=float(d.get("cluster_adaptive_cpu_spike_delta_pct") or 10.0),
+        cluster_adaptive_overload_pause_sec=float(d.get("cluster_adaptive_overload_pause_sec") or 10.0),
+        cluster_adaptive_cooldown_sec=float(d.get("cluster_adaptive_cooldown_sec") or 300.0),
+        cluster_util_pause_sec=float(d.get("cluster_util_pause_sec") or 30.0),
+        cluster_util_max_retry_sec=float(d.get("cluster_util_max_retry_sec") or 1800.0),
+        pe_cvm_ips_multiline=str(d.get("pe_cvm_ips_multiline") or ""),
+        pe_prism_rest_port=int(d.get("pe_prism_rest_port") or 9440),
+        pe_cvm_ssh_user=str(d.get("pe_cvm_ssh_user") or ""),
+        pe_cvm_ssh_password=str(d.get("pe_cvm_ssh_password") or ""),
+        pe_cvm_ssh_port=int(d.get("pe_cvm_ssh_port") or 22),
     )
 
 
@@ -926,6 +1026,49 @@ def _persist_schedules() -> None:
     tmp = SCHEDULES_FILE.with_suffix(".json.tmp")
     tmp.write_text(blob, encoding="utf-8")
     tmp.replace(SCHEDULES_FILE)
+
+
+def _load_schedule_jobs_from_disk() -> None:
+    global schedule_jobs
+    if not SCHEDULE_JOBS_FILE.is_file():
+        schedule_jobs = {}
+        return
+    try:
+        data = json.loads(SCHEDULE_JOBS_FILE.read_text(encoding="utf-8"))
+        schedule_jobs = data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        schedule_jobs = {}
+
+
+def _persist_schedule_jobs() -> None:
+    with schedule_jobs_lock:
+        blob = json.dumps(schedule_jobs, indent=2)
+    tmp = SCHEDULE_JOBS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(blob, encoding="utf-8")
+    tmp.replace(SCHEDULE_JOBS_FILE)
+
+
+def _append_schedule_job_event(schedule_job_id: str, event_type: str, message: str, **extra: Any) -> None:
+    sjid = str(schedule_job_id or "").strip()
+    if not sjid:
+        return
+    now_iso = dt.datetime.now(dt.timezone.utc).isoformat()
+    with schedule_jobs_lock:
+        rec = schedule_jobs.get(sjid)
+        if not rec:
+            return
+        events = rec.setdefault("events", [])
+        events.append(
+            {
+                "ts": now_iso,
+                "type": str(event_type),
+                "message": str(message),
+                **extra,
+            }
+        )
+        if len(events) > 400:
+            rec["events"] = events[-400:]
+    _persist_schedule_jobs()
 
 
 def _in_progress_runs_for_pc(host_key: str) -> list[dict]:
@@ -985,18 +1128,39 @@ def _schedule_summaries() -> list[dict]:
     for key, rec in items:
         pc = rec.get("pc_ip") or key
         kind = rec.get("kind") or "?"
+        job_type = rec.get("job_type") or "snapshot"
         nr = (rec.get("next_run_utc") or "").strip()
+        schedule_job_id = str(rec.get("schedule_job_id") or "").strip()
         extra = ""
         if kind == "recurring":
-            extra = f"every {int(rec.get('recurring_interval_minutes') or 60)} min"
+            cron_expr = str(rec.get("schedule_cron_expr") or "").strip()
+            if cron_expr:
+                extra = f"cron: {cron_expr}"
+            else:
+                extra = f"every {int(rec.get('recurring_interval_minutes') or 60)} min"
+        elif kind == "for_loop":
+            extra = (
+                f"{int(rec.get('remaining_runs') or 0)} remaining"
+                f" / {int(rec.get('requested_runs') or 0)} requested"
+            )
+        recent_jobs = []
+        if schedule_job_id:
+            with schedule_jobs_lock:
+                sj = schedule_jobs.get(schedule_job_id) or {}
+                recent_jobs = list(sj.get("recent_jobs") or [])[-5:]
+                recent_jobs.reverse()
         out.append(
             {
                 "pc_ip": pc,
                 "pc_host_key": key,
                 "kind": kind,
+                "job_type": job_type,
                 "next_run_utc": nr,
                 "detail": extra,
                 "in_progress": _in_progress_runs_for_pc(key),
+                "schedule_job_id": schedule_job_id,
+                "schedule_job_url": (f"/schedule_job/{schedule_job_id}" if schedule_job_id else ""),
+                "recent_jobs": recent_jobs,
                 "_sort": nr,
             }
         )
@@ -1004,6 +1168,33 @@ def _schedule_summaries() -> list[dict]:
     for row in out:
         row.pop("_sort", None)
     return out
+
+
+def _interval_from_cron_expr(expr: str) -> int | None:
+    """
+    Best-effort parser for minute-based cron patterns.
+    Supports:
+      - */N * * * *
+      - 0/N * * * *
+      - N * * * * (run at minute N each hour -> 60 min cadence)
+    Returns interval minutes when parseable, otherwise None.
+    """
+    raw = str(expr or "").strip()
+    if not raw:
+        return None
+    parts = raw.split()
+    if len(parts) != 5:
+        return None
+    minute = parts[0].strip()
+    if minute.startswith("*/") or minute.startswith("0/"):
+        try:
+            step = int(minute.split("/", 1)[1])
+        except (TypeError, ValueError):
+            return None
+        return max(1, min(step, 7 * 24 * 60))
+    if minute.isdigit():
+        return 60
+    return None
 
 
 def _enqueue_snapshot_run(cfg: SnapshotConfig, pc_host_display: str = "") -> str:
@@ -1061,7 +1252,11 @@ def _scheduler_loop() -> None:
 
             for key in due_keys:
                 cfg_payload = None
+                disk_cfg_payload = None
                 pc_disp = ""
+                schedule_kind = ""
+                schedule_job_type = "snapshot"
+                schedule_job_id = ""
                 with schedules_lock:
                     cur = schedules.get(key)
                     if not cur:
@@ -1078,10 +1273,16 @@ def _scheduler_loop() -> None:
                     if nr > dt.datetime.now(utc):
                         continue
                     cfg_payload = cur.get("cfg")
+                    disk_cfg_payload = cur.get("disk_cfg")
                     pc_disp = str(cur.get("pc_ip") or "")
-                    kind = cur.get("kind")
-                    if kind == "one_time":
+                    schedule_kind = str(cur.get("kind") or "")
+                    schedule_job_type = str(cur.get("job_type") or "snapshot")
+                    schedule_job_id = str(cur.get("schedule_job_id") or "")
+                    if schedule_kind == "one_time":
                         del schedules[key]
+                    elif schedule_kind == "for_loop":
+                        # For-loop state is updated only after successful enqueue.
+                        pass
                     else:
                         interval = int(cur.get("recurring_interval_minutes") or 60)
                         interval = max(1, interval)
@@ -1092,9 +1293,96 @@ def _scheduler_loop() -> None:
                 if cfg_payload:
                     _persist_schedules()
                     try:
+                        # Never overlap scheduled runs for the same PC host.
+                        # If one is already active, keep the schedule and retry soon.
+                        if _in_progress_runs_for_pc(key):
+                            _append_schedule_job_event(
+                                schedule_job_id,
+                                "loop_skipped_in_progress",
+                                "Previous scheduled run is still active; waiting.",
+                            )
+                            if schedule_kind == "one_time":
+                                with schedules_lock:
+                                    if key in schedules:
+                                        schedules[key]["next_run_utc"] = (
+                                            dt.datetime.now(utc) + dt.timedelta(minutes=1)
+                                        ).isoformat()
+                                _persist_schedules()
+                            continue
                         cfg = _cfg_from_dict(cfg_payload)
-                        _enqueue_snapshot_run(cfg, pc_disp)
+                        if schedule_job_type == "disk":
+                            if not isinstance(disk_cfg_payload, dict):
+                                raise RuntimeError("Scheduled disk job is missing disk_cfg.")
+                            dcfg = _disk_cfg_from_dict(disk_cfg_payload)
+                            run_id = _enqueue_disk_run(dcfg, pc_disp)
+                        elif schedule_job_type == "full_pipeline":
+                            if not isinstance(disk_cfg_payload, dict):
+                                raise RuntimeError("Scheduled full pipeline is missing disk_cfg.")
+                            dcfg = _disk_cfg_from_dict(disk_cfg_payload)
+                            run_id = _enqueue_full_pipeline_run(cfg, dcfg, pc_disp)
+                        else:
+                            run_id = _enqueue_snapshot_run(cfg, pc_disp)
+                        _append_schedule_job_event(
+                            schedule_job_id,
+                            "job_launched",
+                            f"Launched {schedule_job_type} run {run_id}.",
+                            run_id=run_id,
+                            job_url=f"/job/{run_id}",
+                        )
+                        if schedule_job_id:
+                            with schedule_jobs_lock:
+                                sj = schedule_jobs.get(schedule_job_id)
+                                if sj is not None:
+                                    rj = sj.setdefault("recent_jobs", [])
+                                    rj.append({"run_id": run_id, "job_url": f"/job/{run_id}"})
+                                    if len(rj) > 20:
+                                        sj["recent_jobs"] = rj[-20:]
+                                    if schedule_kind == "one_time":
+                                        sj["status"] = "completed"
+                                    else:
+                                        sj["status"] = "active"
+                            _persist_schedule_jobs()
+                        if schedule_kind == "for_loop":
+                            schedule_job_changed = False
+                            with schedules_lock:
+                                cur2 = schedules.get(key)
+                                if cur2:
+                                    rem = int(cur2.get("remaining_runs") or 0)
+                                    if rem <= 1:
+                                        schedules.pop(key, None)
+                                        _append_schedule_job_event(
+                                            schedule_job_id,
+                                            "loop_finished",
+                                            "All requested loops were queued.",
+                                        )
+                                        with schedule_jobs_lock:
+                                            sj = schedule_jobs.get(schedule_job_id)
+                                            if sj is not None:
+                                                sj["remaining_runs"] = 0
+                                                sj["status"] = "completed"
+                                                schedule_job_changed = True
+                                        _persist_schedule_jobs()
+                                    else:
+                                        cur2["remaining_runs"] = rem - 1
+                                        with schedule_jobs_lock:
+                                            sj = schedule_jobs.get(schedule_job_id)
+                                            if sj is not None:
+                                                sj["remaining_runs"] = rem - 1
+                                                schedule_job_changed = True
+                                        interval = int(cur2.get("recurring_interval_minutes") or 60)
+                                        interval = max(1, interval)
+                                        cur2["next_run_utc"] = (
+                                            dt.datetime.now(utc) + dt.timedelta(minutes=interval)
+                                        ).isoformat()
+                            _persist_schedules()
+                            if schedule_job_changed:
+                                _persist_schedule_jobs()
                     except Exception:
+                        _append_schedule_job_event(
+                            schedule_job_id,
+                            "launch_failed",
+                            f"Failed to launch scheduled run for host {key}.",
+                        )
                         log.exception("Scheduled run failed to start for %s", key)
         except Exception:
             log.exception("Scheduler loop error")
@@ -1342,6 +1630,7 @@ def _disk_job(
             "n_vms": int(result["n_vms"]),
             "eligible_for_guest_ssh": int(result.get("eligible_for_guest_ssh") or 0),
             "planned_guest_ssh_runs": int(result.get("planned_guest_ssh_runs") or 0),
+            "target_vm_uuids": list(result.get("target_vm_uuids") or []),
             "disk_run_limit": str(result.get("disk_run_limit") or ""),
             "skipped_powered_off": int(result.get("skipped_powered_off") or 0),
             "skipped_below_min_memory": int(result.get("skipped_below_min_memory") or 0),
@@ -1403,6 +1692,155 @@ def _disk_job(
         with runs_lock:
             if run_id in runs:
                 runs[run_id].pop("cancel_event", None)
+
+
+def _wait_for_run_terminal_state(
+    run_id: str,
+    *,
+    poll_sec: float = 2.0,
+    cancel_event: threading.Event | None = None,
+) -> tuple[str, dict]:
+    while True:
+        if cancel_event is not None and cancel_event.is_set():
+            return "aborted", {}
+        with runs_lock:
+            info = runs.get(run_id) or {}
+            status = str(info.get("status") or "").strip().lower()
+            if status in ("complete", "error", "aborted"):
+                return status, dict(info)
+        time.sleep(max(0.5, poll_sec))
+
+
+def _request_cancel_for_run(run_id: str) -> None:
+    with runs_lock:
+        info = runs.get(run_id) or {}
+        ev = info.get("cancel_event")
+        if isinstance(ev, threading.Event):
+            ev.set()
+
+
+def _enqueue_full_pipeline_run(
+    snap_cfg: SnapshotConfig,
+    disk_cfg: DiskOpConfig,
+    pc_host_display: str = "",
+) -> str:
+    label = (pc_host_display or disk_cfg.base_url or "pc").strip() or "pc"
+    run_id, log_path = _allocate_run_id_and_path(label + "-pipeline")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.touch(exist_ok=True)
+    cancel_ev = threading.Event()
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "error": "",
+            "log_path": str(log_path),
+            "queued_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "cfg": _cfg_to_dict(snap_cfg),
+            "disk_cfg": _disk_cfg_to_dict(disk_cfg),
+            "pc_host": pc_host_display,
+            "pc_host_key": _pc_host_key(pc_host_display or disk_cfg.base_url),
+            "job_kind": "pipeline",
+            "cancel_event": cancel_ev,
+            "pipeline_progress": {"stage": "queued", "disk_run_id": "", "snapshot_run_id": ""},
+        }
+
+    def _pipeline_job() -> None:
+        logger = logging.getLogger(f"bulk_snap.pipeline.{run_id}")
+        logger.handlers.clear()
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setFormatter(
+            logging.Formatter("%(asctime)s.%(msecs)03d %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S")
+        )
+        logger.addHandler(fh)
+        started = dt.datetime.now(dt.timezone.utc)
+        try:
+            with runs_lock:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = started.isoformat()
+            logger.info("Scheduled full pipeline started for %s", pc_host_display or "pc")
+
+            disk_run_id = _enqueue_disk_run(disk_cfg, pc_host_display)
+            logger.info("Disk stage launched: %s", disk_run_id)
+            with runs_lock:
+                runs[run_id]["pipeline_progress"]["stage"] = "disk_running"
+                runs[run_id]["pipeline_progress"]["disk_run_id"] = disk_run_id
+            d_status, d_info = _wait_for_run_terminal_state(disk_run_id, cancel_event=cancel_ev)
+            if cancel_ev.is_set():
+                _request_cancel_for_run(disk_run_id)
+                raise RunCancelled("Cancelled during disk stage.")
+            if d_status != "complete":
+                raise RuntimeError(f"Disk stage finished with status={d_status}.")
+
+            d_summary = d_info.get("summary") if isinstance(d_info, dict) else {}
+            target_vm_uuids = tuple((d_summary or {}).get("target_vm_uuids") or ())
+            snap_cfg2 = _cfg_from_dict(_cfg_to_dict(snap_cfg))
+            if target_vm_uuids:
+                snap_cfg2.target_vm_uuids = target_vm_uuids
+                logger.info("Snapshot stage constrained to %d VM(s) from disk stage.", len(target_vm_uuids))
+            else:
+                logger.warning("Disk summary did not include target VM UUIDs; snapshot uses default selection.")
+
+            if cancel_ev.is_set():
+                raise RunCancelled("Cancelled by user.")
+            snap_run_id = _enqueue_snapshot_run(snap_cfg2, pc_host_display)
+            logger.info("Snapshot stage launched: %s", snap_run_id)
+            with runs_lock:
+                runs[run_id]["pipeline_progress"]["stage"] = "snapshot_running"
+                runs[run_id]["pipeline_progress"]["snapshot_run_id"] = snap_run_id
+            s_status, _s_info = _wait_for_run_terminal_state(snap_run_id, cancel_event=cancel_ev)
+            if cancel_ev.is_set():
+                _request_cancel_for_run(snap_run_id)
+                raise RunCancelled("Cancelled during snapshot stage.")
+            if s_status != "complete":
+                raise RuntimeError(f"Snapshot stage finished with status={s_status}.")
+
+            finished = dt.datetime.now(dt.timezone.utc)
+            with runs_lock:
+                runs[run_id]["status"] = "complete"
+                runs[run_id]["finished_at"] = finished.isoformat()
+                runs[run_id]["pipeline_progress"]["stage"] = "complete"
+                runs[run_id]["summary"] = {
+                    "disk_run_id": disk_run_id,
+                    "snapshot_run_id": snap_run_id,
+                    "disk_job_url": f"/job/{disk_run_id}",
+                    "snapshot_job_url": f"/job/{snap_run_id}",
+                }
+            logger.info("Scheduled full pipeline completed.")
+        except RunCancelled as e:
+            finished = dt.datetime.now(dt.timezone.utc)
+            with runs_lock:
+                runs[run_id]["status"] = "aborted"
+                runs[run_id]["error"] = str(e)
+                runs[run_id]["finished_at"] = finished.isoformat()
+                runs[run_id]["pipeline_progress"]["stage"] = "aborted"
+            logger.info("Scheduled full pipeline aborted: %s", e)
+        except Exception as e:
+            finished = dt.datetime.now(dt.timezone.utc)
+            with runs_lock:
+                runs[run_id]["status"] = "error"
+                runs[run_id]["error"] = str(e)
+                runs[run_id]["finished_at"] = finished.isoformat()
+                runs[run_id]["pipeline_progress"]["stage"] = "error"
+            logger.exception("Scheduled full pipeline failed.")
+        finally:
+            for h in list(logger.handlers):
+                try:
+                    h.flush()
+                    h.close()
+                except Exception:
+                    pass
+                logger.removeHandler(h)
+            with runs_lock:
+                runs[run_id].pop("thread", None)
+                runs[run_id].pop("cancel_event", None)
+
+    t = threading.Thread(target=_pipeline_job, daemon=True, name=f"pipeline-{run_id[:10]}")
+    with runs_lock:
+        runs[run_id]["thread"] = t
+    t.start()
+    return run_id
 
 
 def _get_run_info(run_id: str):
@@ -1511,34 +1949,41 @@ def _index_recent_runs(limit: int = 10) -> list[dict[str, Any]]:
     # Process snapshot/disk jobs
     for r in rows:
         jk = str(r.get("job_kind") or "").strip() or "snapshot"
+        finished_at = str(r.get("at") or "")
         all_jobs.append(
             {
                 "run_id": str(r.get("run_id") or ""),
                 "job_kind": jk,
-                "at": str(r.get("at") or ""),
+                "at": finished_at,
+                "started_at_utc": "",
+                "finished_at_utc": finished_at,
                 "pc_host": str(r.get("pc_host") or ""),
                 "succeeded": r.get("succeeded"),
                 "failed": r.get("failed"),
                 "duration_sec": r.get("duration_sec"),
                 "status": "completed",  # Historical jobs are always completed
-                "sort_time": str(r.get("at") or ""),
+                "sort_time": finished_at,
             }
         )
     
     # Process log collection jobs
     for job in log_jobs:
         status = job.get("status", "running")
+        started_at = str(job.get("start_time") or "")
+        finished_at = str(job.get("end_time") or "")
         all_jobs.append(
             {
                 "run_id": job.get("job_id", ""),
                 "job_kind": "logs",
-                "at": job.get("start_time", ""),
+                "at": started_at,
+                "started_at_utc": started_at,
+                "finished_at_utc": finished_at,
                 "pc_host": job.get("pc_ip", ""),
                 "succeeded": 1 if status == "completed" else 0,
                 "failed": 1 if status == "failed" else 0,
                 "duration_sec": job.get("duration_sec"),
                 "status": status,
-                "sort_time": job.get("start_time", ""),
+                "sort_time": started_at,
             }
         )
     
@@ -1573,6 +2018,10 @@ def cancel_schedule():
     key = _pc_host_key(pc_ip)
     abort_jobs = request.form.get("abort_in_progress") == "1"
     if key:
+        schedule_job_id = ""
+        with schedules_lock:
+            cur = schedules.get(key) or {}
+            schedule_job_id = str(cur.get("schedule_job_id") or "")
         if abort_jobs:
             with runs_lock:
                 for _rid, info in list(runs.items()):
@@ -1587,12 +2036,56 @@ def cancel_schedule():
         with schedules_lock:
             schedules.pop(key, None)
         _persist_schedules()
+        if schedule_job_id:
+            _append_schedule_job_event(
+                schedule_job_id,
+                "schedule_cancelled",
+                "Schedule cancelled from UI.",
+            )
+            with schedule_jobs_lock:
+                if schedule_job_id in schedule_jobs:
+                    schedule_jobs[schedule_job_id]["status"] = "cancelled"
+            _persist_schedule_jobs()
     msg = (
         "Schedule removed and abort requested for in-progress job(s)."
         if abort_jobs
         else "Schedule removed."
     )
     return redirect(url_for("index", success=msg))
+
+
+@app.route("/schedule_job/<schedule_job_id>")
+def schedule_job_status(schedule_job_id: str):
+    return render_template("schedule_job.html", schedule_job_id=schedule_job_id)
+
+
+@app.route("/api/schedule_job/<schedule_job_id>")
+def api_schedule_job(schedule_job_id: str):
+    sid = str(schedule_job_id or "").strip()
+    if not sid:
+        return jsonify({"ok": False, "message": "Missing schedule job id."}), 400
+    with schedule_jobs_lock:
+        rec = dict(schedule_jobs.get(sid) or {})
+    if not rec:
+        return jsonify({"ok": False, "message": "Schedule job not found."}), 404
+    with schedules_lock:
+        for _key, srec in schedules.items():
+            if str(srec.get("schedule_job_id") or "") == sid:
+                rec["next_run_utc"] = srec.get("next_run_utc") or rec.get("next_run_utc")
+                rec["remaining_runs"] = int(srec.get("remaining_runs") or rec.get("remaining_runs") or 0)
+                rec["requested_runs"] = int(srec.get("requested_runs") or rec.get("requested_runs") or 0)
+                rec["status"] = "active"
+                break
+        else:
+            # No longer present in active schedules.
+            if rec.get("status") == "active":
+                rec["status"] = "completed"
+                with schedule_jobs_lock:
+                    if sid in schedule_jobs:
+                        schedule_jobs[sid]["status"] = "completed"
+                _persist_schedule_jobs()
+    rec["ok"] = True
+    return jsonify(rec)
 
 
 @app.route("/start", methods=["POST"])
@@ -1678,8 +2171,42 @@ def start():
                 ),
                 400,
             )
+        utc = dt.timezone.utc
+        now = dt.datetime.now(utc)
+        stale_schedule_removed = False
         with schedules_lock:
+            existing = schedules.get(host_key)
+            if existing:
+                kind = str(existing.get("kind") or "").strip().lower()
+                next_run_raw = str(existing.get("next_run_utc") or "").strip()
+                next_run_dt = None
+                if next_run_raw:
+                    try:
+                        next_run_dt = dt.datetime.fromisoformat(next_run_raw.replace("Z", "+00:00"))
+                        if next_run_dt.tzinfo is None:
+                            next_run_dt = next_run_dt.replace(tzinfo=utc)
+                        else:
+                            next_run_dt = next_run_dt.astimezone(utc)
+                    except (TypeError, ValueError):
+                        next_run_dt = None
+                # Auto-clean stale schedules so users don't get blocked by old records.
+                if kind == "one_time" and (
+                    (next_run_dt is not None and next_run_dt <= now) or next_run_dt is None
+                ):
+                    schedules.pop(host_key, None)
+                    stale_schedule_removed = True
+                elif kind == "recurring" and not next_run_raw:
+                    schedules.pop(host_key, None)
+                    stale_schedule_removed = True
             conflict = host_key in schedules
+        if stale_schedule_removed:
+            _persist_schedules()
+        # Only block when a run is actually active for this PC.
+        # Existing schedule records alone should not prevent saving a new schedule.
+        if _in_progress_runs_for_pc(host_key):
+            conflict = True
+        else:
+            conflict = False
         if conflict:
             return (
                 render_template(
@@ -1692,14 +2219,47 @@ def start():
                 ),
                 400,
             )
-        sk = (request.form.get("schedule_kind") or "one_time").strip()
-        if sk not in ("one_time", "recurring"):
+        sk_raw = str(request.form.get("schedule_kind") or "").strip()
+        schedule_job_type = str(request.form.get("schedule_job_type") or "snapshot").strip().lower()
+        if schedule_job_type not in ("snapshot", "disk", "full_pipeline"):
+            schedule_job_type = "snapshot"
+        sk_norm = sk_raw.lower().replace("-", "_").replace(" ", "_")
+        one_time_raw = str(request.form.get("schedule_one_time_utc") or "").strip()
+        recurring_raw = str(request.form.get("recurring_interval_minutes") or "").strip()
+        cron_raw = str(request.form.get("schedule_cron_expr") or "").strip()
+        if sk_norm in ("", "one_time", "onetime", "one_time_(utc)"):
+            sk = "one_time"
+        elif sk_norm in ("for_loop", "forloop", "loop"):
+            sk = "for_loop"
+        elif sk_norm in ("recurring", "repeat", "interval"):
+            sk = "recurring"
+        else:
+            # Graceful fallback: infer from fields instead of rejecting the request.
+            # Prefer recurring if one-time value is missing/stale.
+            has_one_time = bool(one_time_raw)
+            has_recurring = bool(recurring_raw or cron_raw)
+            one_time_in_future = False
+            if has_one_time:
+                try:
+                    _ot = dt.datetime.fromisoformat(one_time_raw.replace("Z", "+00:00"))
+                    if _ot.tzinfo is None:
+                        _ot = _ot.replace(tzinfo=utc)
+                    else:
+                        _ot = _ot.astimezone(utc)
+                    one_time_in_future = _ot > now
+                except (TypeError, ValueError):
+                    one_time_in_future = False
+            if has_recurring and not one_time_in_future:
+                sk = "recurring"
+            elif one_time_in_future:
+                sk = "one_time"
+            else:
+                sk = "recurring"
+        if sk not in ("one_time", "recurring", "for_loop"):
             return (
-                render_template("index.html", error="Schedule type must be one-time or recurring."),
+                render_template("index.html", error="Schedule type must be one-time, for-loop, or recurring."),
                 400,
             )
-        utc = dt.timezone.utc
-        now = dt.datetime.now(utc)
         if sk == "one_time":
             utc_raw = (request.form.get("schedule_one_time_utc") or "").strip()
             if not utc_raw:
@@ -1734,22 +2294,130 @@ def start():
                 )
             next_run = run_at
             interval_minutes = None
-        else:
+        elif sk == "recurring":
+            cron_expr = str(request.form.get("schedule_cron_expr") or "").strip()
+            parsed_from_cron = _interval_from_cron_expr(cron_expr)
+            if parsed_from_cron is not None:
+                interval_minutes = parsed_from_cron
+            else:
+                try:
+                    interval_minutes = int(request.form.get("recurring_interval_minutes") or 60)
+                except ValueError:
+                    interval_minutes = 60
+            interval_minutes = max(1, min(interval_minutes, 7 * 24 * 60))
+            next_run = now + dt.timedelta(minutes=interval_minutes)
+            requested_runs = None
+            remaining_runs = None
+        else:  # for_loop
+            try:
+                loop_count = int(request.form.get("schedule_loop_count") or 1)
+            except ValueError:
+                loop_count = 1
+            loop_count = max(1, min(loop_count, 1000))
             try:
                 interval_minutes = int(request.form.get("recurring_interval_minutes") or 60)
             except ValueError:
                 interval_minutes = 60
             interval_minutes = max(1, min(interval_minutes, 7 * 24 * 60))
-            next_run = now + dt.timedelta(minutes=interval_minutes)
+            next_run = now
+            requested_runs = loop_count
+            remaining_runs = loop_count
+
+        disk_cfg_dict: dict | None = None
+        if schedule_job_type in ("disk", "full_pipeline"):
+            try:
+                mode = str(request.form.get("disk_op_mode") or "update").strip().lower()
+                if mode not in _DISK_OP_MODES:
+                    mode = "update"
+                guest_ssh_password = str(request.form.get("guest_ssh_password") or "")
+                if not guest_ssh_password.strip():
+                    return (
+                        render_template(
+                            "index.html",
+                            error="guest_ssh_password is required for scheduled disk/full-pipeline jobs.",
+                        ),
+                        400,
+                    )
+                group_member_page = int(request.form.get("group_member_page") or 500)
+                guest_ssh_port = int(request.form.get("guest_ssh_port") or 22)
+                guest_ssh_connect_timeout = float(request.form.get("guest_ssh_connect_timeout") or 30)
+                guest_ssh_command_timeout = float(request.form.get("guest_ssh_command_timeout") or 7200)
+                create_count_mib = int(request.form.get("create_count_mib") or 1024)
+                churn_count_mib = int(request.form.get("churn_count_mib") or 500)
+                guest_dd_bs = normalize_guest_dd_bs(str(request.form.get("guest_dd_bs") or ""))
+            except (TypeError, ValueError) as e:
+                return render_template("index.html", error=f"Invalid disk schedule config: {e}"), 400
+
+            dclus = _disk_cluster_fields_from_payload(request.form)
+            dclus, pe_err = _merge_disk_cluster_with_resolved_pe(dclus, pc_ip)
+            if pe_err:
+                return render_template("index.html", error=pe_err), 400
+            dcfg = DiskOpConfig(
+                base_url=base_url,
+                pc_user=pc_user,
+                pc_password=pc_password,
+                mode=mode,
+                group_member_page=max(1, min(group_member_page, 2000)),
+                skip_substrings=skip_subs,
+                skip_regex_patterns=skip_rx,
+                random_seed=None,
+                guest_ssh_user=str(request.form.get("guest_ssh_user") or "root").strip() or "root",
+                guest_ssh_password=guest_ssh_password,
+                guest_ssh_port=max(1, min(guest_ssh_port, 65535)),
+                guest_ssh_connect_timeout=max(5.0, guest_ssh_connect_timeout),
+                guest_ssh_command_timeout=max(60.0, guest_ssh_command_timeout),
+                guest_target_file=str(request.form.get("guest_target_file") or "").strip() or "/root/dummy_snapshot_data_1.img",
+                guest_delete_glob=str(request.form.get("guest_delete_glob") or "").strip() or "/root/dummy_snapshot_data_*.img",
+                guest_dd_bs=guest_dd_bs,
+                create_count_mib=max(1, create_count_mib),
+                churn_count_mib=max(1, churn_count_mib),
+                disk_run_limit=_disk_run_limit_from_payload(request.form),
+                guest_min_memory_mib=_parse_guest_min_memory_mib(request.form),
+                guest_ssh_parallel=_guest_ssh_parallel_from_payload(request.form),
+                **dclus,
+            )
+            disk_cfg_dict = _disk_cfg_to_dict(dcfg)
 
         rec = {
+            "schedule_job_id": f"schedule_{int(time.time())}_{uuid.uuid4().hex[:6]}",
             "schedule_id": str(uuid.uuid4()),
             "kind": sk,
+            "job_type": schedule_job_type,
             "pc_ip": pc_ip.strip(),
             "next_run_utc": next_run.isoformat(),
             "recurring_interval_minutes": interval_minutes,
             "cfg": _cfg_to_dict(cfg),
         }
+        if disk_cfg_dict is not None:
+            rec["disk_cfg"] = disk_cfg_dict
+        if sk == "recurring":
+            rec["schedule_cron_expr"] = cron_raw
+        if sk == "for_loop":
+            rec["requested_runs"] = int(requested_runs or 0)
+            rec["remaining_runs"] = int(remaining_runs or 0)
+        schedule_job_id = str(rec.get("schedule_job_id") or "")
+        with schedule_jobs_lock:
+            schedule_jobs[schedule_job_id] = {
+                "schedule_job_id": schedule_job_id,
+                "pc_ip": pc_ip.strip(),
+                "kind": sk,
+                "job_type": schedule_job_type,
+                "status": "active",
+                "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "next_run_utc": rec.get("next_run_utc"),
+                "requested_runs": int(rec.get("requested_runs") or 0),
+                "remaining_runs": int(rec.get("remaining_runs") or 0),
+                "schedule_cron_expr": str(rec.get("schedule_cron_expr") or ""),
+                "recent_jobs": [],
+                "events": [
+                    {
+                        "ts": dt.datetime.now(dt.timezone.utc).isoformat(),
+                        "type": "schedule_saved",
+                        "message": f"Schedule saved for {pc_ip.strip()} as {sk} ({schedule_job_type}).",
+                    }
+                ],
+            }
+        _persist_schedule_jobs()
         with schedules_lock:
             schedules[host_key] = rec
         _persist_schedules()
@@ -1759,6 +2427,7 @@ def start():
                 "Schedule saved. Snapshots will run automatically at the chosen time "
                 "(check the list below)."
             ),
+            success_schedule_job_url=f"/schedule_job/{schedule_job_id}",
         )
 
     run_id = _enqueue_snapshot_run(cfg, pc_ip.strip())
@@ -1944,12 +2613,14 @@ def api_job(run_id: str):
             "elapsed_running_sec": _elapsed_running_seconds(info),
             "queued_at": info.get("queued_at", ""),
             "running_started_at": info.get("running_started_at") or "",
+            "finished_at": info.get("finished_at") or "",
             "job_kind": jk,
             "disk_op_mode": disk_mode,
             "summary": summ,
             "disk_progress": info.get("disk_progress"),
             "snapshot_progress": info.get("snapshot_progress"),
             "power_progress": info.get("power_progress"),
+            "pipeline_progress": info.get("pipeline_progress"),
         }
     )
 
@@ -1961,9 +2632,14 @@ def api_job_cancel(run_id: str):
         if not info:
             return jsonify({"ok": False, "message": "Run not found (only active session jobs can be cancelled)."}), 404
         ev = info.get("cancel_event")
+        if not isinstance(ev, threading.Event):
+            ev = _recovery_delete_cancel_events.get(run_id)
         if isinstance(ev, threading.Event):
             ev.set()
         else:
+            st = str(info.get("status") or "").lower()
+            if st in ("complete", "error", "aborted"):
+                return jsonify({"ok": False, "message": f"Run already finished ({st})."}), 400
             return jsonify({"ok": False, "message": "This run cannot be cancelled."}), 400
     return jsonify({"ok": True, "message": "Cancel requested."})
 
@@ -3556,9 +4232,7 @@ def api_delete_recovery_point():
 
 @app.route("/api/bulk_delete_recovery_points", methods=["POST"])
 def api_bulk_delete_recovery_points():
-    """Bulk delete recovery points with streaming progress."""
-    from flask import Response
-    import queue
+    """Start bulk delete as background job and return job URL."""
     import recovery_points_deleter
     
     data = request.get_json()
@@ -3566,65 +4240,234 @@ def api_bulk_delete_recovery_points():
     pc_user = data.get('pc_user', '').strip()
     pc_password = data.get('pc_password', '').strip()
     recovery_points = data.get('recovery_points', [])
+    scope_vm_uuid = str(data.get('scope_vm_uuid', '') or '').strip()
     size_filter = data.get('size_filter', 'all')
     concurrency = min(int(data.get('concurrency', 5)), 5)  # Max 5
     
     if not all([pc_ip, pc_user, pc_password]):
         return jsonify({'ok': False, 'error': 'Missing PC credentials'}), 400
     
+    if not isinstance(recovery_points, list):
+        recovery_points = []
+
+    # Fallback: if frontend sends no RP payload, build from cached analysis results.
     if not recovery_points:
-        return jsonify({'ok': False, 'error': 'No recovery points provided'}), 400
+        cached = recovery_points_cache.get_cached_result(pc_ip)
+        summary = (cached or {}).get("summary") if isinstance(cached, dict) else None
+        vms = summary.get("vms", []) if isinstance(summary, dict) else []
+        for vm in vms:
+            if not isinstance(vm, dict):
+                continue
+            if scope_vm_uuid and str(vm.get("vm_uuid") or "").strip() != scope_vm_uuid:
+                continue
+            vm_rps = vm.get("recovery_points", [])
+            if isinstance(vm_rps, list):
+                vm_name = str(vm.get("vm_name") or "")
+                cluster_name = str(vm.get("cluster_name") or vm.get("pe_cluster") or "Unknown")
+                for rp in vm_rps:
+                    if not isinstance(rp, dict):
+                        continue
+                    rec = dict(rp)
+                    if not rec.get("vm_name"):
+                        rec["vm_name"] = vm_name
+                    if not rec.get("cluster_name"):
+                        rec["cluster_name"] = cluster_name
+                    recovery_points.append(rec)
+        if recovery_points:
+            RECOVERY_LOGGER.info(
+                "[bulk_delete_recovery_points|%s] Rebuilt RP list from cache: %d entries",
+                pc_ip,
+                len(recovery_points),
+            )
+
+    if not recovery_points:
+        return jsonify({
+            'ok': False,
+            'error': (
+                'No recovery points provided. Run Recovery Points Analysis (or Fetch Latest Apps Data) '
+                'and retry bulk delete.'
+            )
+        }), 400
+
+    # Preview the effective set after size filtering so job cards show accurate targets immediately.
+    filtered_preview = recovery_points_deleter.filter_recovery_points_by_size(
+        recovery_points, size_filter
+    )
+    cluster_preview: dict[str, dict[str, int]] = {}
+    for rp in filtered_preview:
+        if not isinstance(rp, dict):
+            continue
+        c = str(rp.get("cluster_name") or rp.get("pe_cluster") or "Unknown").strip() or "Unknown"
+        row = cluster_preview.setdefault(c, {"target_total": 0, "deleted": 0, "failed": 0})
+        row["target_total"] += 1
     
-    def generate():
-        progress_queue = queue.Queue()
-        result_container = [None]
-        
-        def progress_callback(message: str):
-            progress_queue.put(message)
-            # Also log to recovery_points.log
-            RECOVERY_LOGGER.info(f"[bulk_delete_recovery_points|{pc_ip}] {message}")
-        
-        def worker():
-            try:
-                result = recovery_points_deleter.bulk_delete_recovery_points(
-                    pc_ip=pc_ip,
-                    pc_user=pc_user,
-                    pc_password=pc_password,
-                    recovery_points=recovery_points,
-                    size_filter=size_filter,
-                    concurrency=concurrency,
-                    progress_callback=progress_callback
-                )
-                result_container[0] = result
-                progress_queue.put(None)  # Signal completion
-            except Exception as e:
-                RECOVERY_LOGGER.error(f"[bulk_delete_recovery_points|{pc_ip}] Bulk delete error: {e}", exc_info=True)
-                result_container[0] = {'ok': False, 'error': str(e)}
-                progress_queue.put(None)
-        
-        # Start worker thread
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-        
-        # Stream progress
-        while True:
-            try:
-                message = progress_queue.get(timeout=1)
-                if message is None:
-                    break
-                yield f"data: {json.dumps({'type': 'log', 'message': message})}\n\n"
-            except queue.Empty:
-                yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-        
-        # Send final result
-        if result_container[0]:
-            yield f"data: {json.dumps({'type': 'complete', 'result': result_container[0]})}\n\n"
-    
-    return Response(generate(), mimetype='text/event-stream')
+    run_id, log_path = _allocate_run_id_and_path(f"{pc_ip}_rpdel")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    with runs_lock:
+        _recovery_delete_cancel_events[run_id] = cancel_ev
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": f"https://{pc_ip}:9440",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "recovery_delete",
+            "summary": {
+                "target_total": int(len(filtered_preview)),
+                "processed": 0,
+                "deleted": 0,
+                "failed": 0,
+                "size_filter": size_filter,
+                "concurrency": concurrency,
+                "cluster_breakdown": [
+                    {
+                        "cluster": c,
+                        "target_total": int(v.get("target_total", 0)),
+                        "deleted": 0,
+                        "failed": 0,
+                    }
+                    for c, v in sorted(cluster_preview.items(), key=lambda x: x[0].lower())
+                ],
+            },
+        }
+
+    def _worker() -> None:
+        logger = logging.getLogger(f"recovery_delete.{run_id}")
+        logger.setLevel(logging.DEBUG)
+        logger.handlers.clear()
+        logger.propagate = False
+
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(fh)
+        for handler in RECOVERY_LOGGER.handlers:
+            if isinstance(handler, logging.handlers.RotatingFileHandler):
+                logger.addHandler(handler)
+                break
+
+        with runs_lock:
+            runs[run_id]["status"] = "running"
+            runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        logger.info(
+            "Starting recovery bulk delete: pc=%s, size_filter=%s, concurrency=%s, requested=%s",
+            pc_ip,
+            size_filter,
+            concurrency,
+            len(filtered_preview),
+        )
+        try:
+            cluster_stats: dict[str, dict[str, int]] = {}
+            for rp in filtered_preview:
+                if not isinstance(rp, dict):
+                    continue
+                cluster = str(rp.get("cluster_name") or rp.get("pe_cluster") or "Unknown").strip() or "Unknown"
+                row = cluster_stats.setdefault(cluster, {"total": 0, "deleted": 0, "failed": 0})
+                row["total"] += 1
+
+            live_counts = {"deleted": 0, "failed": 0}
+
+            def _on_progress(message: str) -> None:
+                logger.info("%s", message)
+                if message.startswith("  ✓ Deleted:"):
+                    live_counts["deleted"] += 1
+                elif message.startswith("  ✗ Failed:"):
+                    live_counts["failed"] += 1
+                else:
+                    return
+                with runs_lock:
+                    rr = runs.get(run_id)
+                    if not rr:
+                        return
+                    sm = dict(rr.get("summary") or {})
+                    sm["deleted"] = int(live_counts["deleted"])
+                    sm["failed"] = int(live_counts["failed"])
+                    sm["processed"] = int(live_counts["deleted"] + live_counts["failed"])
+                    rr["summary"] = sm
+
+            result = recovery_points_deleter.bulk_delete_recovery_points(
+                pc_ip=pc_ip,
+                pc_user=pc_user,
+                pc_password=pc_password,
+                recovery_points=recovery_points,
+                size_filter=size_filter,
+                concurrency=concurrency,
+                progress_callback=_on_progress,
+                cancel_event=cancel_ev,
+            )
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            for row in result.get("results", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                cluster = str(row.get("cluster_name") or "Unknown").strip() or "Unknown"
+                stat = cluster_stats.setdefault(cluster, {"total": 0, "deleted": 0, "failed": 0})
+                if row.get("success"):
+                    stat["deleted"] += 1
+                else:
+                    stat["failed"] += 1
+
+            summary = {
+                "target_total": int(result.get("total", 0)),
+                "processed": int(result.get("total", 0)),
+                "deleted": int(result.get("deleted", 0)),
+                "failed": int(result.get("failed", 0)),
+                "size_filter": size_filter,
+                "concurrency": concurrency,
+                "cluster_breakdown": [
+                    {
+                        "cluster": c,
+                        "target_total": int(v.get("total", 0)),
+                        "deleted": int(v.get("deleted", 0)),
+                        "failed": int(v.get("failed", 0)),
+                    }
+                    for c, v in sorted(cluster_stats.items(), key=lambda x: x[0].lower())
+                ],
+            }
+            hist = {
+                "run_id": run_id,
+                "job_kind": "recovery_delete",
+                "pc_host": pc_ip,
+                "pc_host_key": _pc_host_key(pc_ip),
+                "at": finished_at,
+                "duration_sec": 0.0,
+                "n_vms": int(summary["target_total"]),
+                "succeeded": int(summary["deleted"]),
+                "failed": int(summary["failed"]),
+            }
+            append_record(HISTORY_FILE, hist)
+            with runs_lock:
+                if result.get("cancelled"):
+                    runs[run_id]["status"] = "aborted"
+                    runs[run_id]["error"] = "Cancelled by user."
+                else:
+                    runs[run_id]["status"] = "complete" if result.get("ok") else "error"
+                runs[run_id]["finished_at"] = finished_at
+                runs[run_id]["summary"] = summary
+                if not result.get("ok"):
+                    runs[run_id]["error"] = str(result.get("error") or "Bulk delete failed")
+        except Exception as e:
+            logger.exception("Recovery bulk delete failed")
+            with runs_lock:
+                runs[run_id]["status"] = "error"
+                runs[run_id]["error"] = str(e)
+                runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        finally:
+            with runs_lock:
+                _recovery_delete_cancel_events.pop(run_id, None)
+                if run_id in runs:
+                    runs[run_id].pop("cancel_event", None)
+
+    threading.Thread(target=_worker, daemon=True, name=f"rpdel-{run_id[:10]}").start()
+    return jsonify({"ok": True, "run_id": run_id, "job_url": url_for("job_status", run_id=run_id)})
 
 
 def _start_scheduler_worker() -> None:
     _load_schedules_from_disk()
+    _load_schedule_jobs_from_disk()
     t = threading.Thread(target=_scheduler_loop, daemon=True, name="bulk-snap-scheduler")
     t.start()
 

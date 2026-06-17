@@ -955,11 +955,11 @@
     }
   </style>
 </head>
-<body{% if info.get('job_kind') == 'disk' %} class="disk-job-page"{% elif info.get('job_kind') == 'power' %} class="power-job-page"{% endif %}>
+<body{% if info.get('job_kind') == 'disk' %} class="disk-job-page"{% elif info.get('job_kind') == 'power' %} class="power-job-page"{% elif info.get('job_kind') == 'pipeline' %} class="pipeline-job-page"{% endif %}>
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -992,10 +992,36 @@
     <p class="meta">Prism Central: {{ info.base_url }}</p>
     {% endif %}
     <p id="job-started-at" class="meta"></p>
+    <p id="job-ended-at" class="meta"></p>
   </div>
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
+
+  {% if info.get('job_kind') == 'pipeline' %}
+  <div id="pipeline-live-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>Pipeline Live Status</strong>
+    <p class="meta" style="margin: 0.35rem 0 0.9rem 0;">Disk stage starts first. Snapshot stage starts only after disk stage completes.</p>
+    <div style="display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 0.85rem;">
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Disk Stage</div>
+        <div id="pipeline-disk-status" class="disk-summary-card-value" style="font-size: 1rem;">Pending</div>
+        <div id="pipeline-disk-meta" class="disk-summary-card-sub"></div>
+        <div style="margin-top: 0.5rem;">
+          <a id="pipeline-disk-link" class="btn secondary disabled" href="#" style="font-size:0.82rem; padding:0.35rem 0.65rem;">Open disk job</a>
+        </div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Snapshot Stage</div>
+        <div id="pipeline-snap-status" class="disk-summary-card-value" style="font-size: 1rem;">Pending</div>
+        <div id="pipeline-snap-meta" class="disk-summary-card-sub"></div>
+        <div style="margin-top: 0.5rem;">
+          <a id="pipeline-snap-link" class="btn secondary disabled" href="#" style="font-size:0.82rem; padding:0.35rem 0.65rem;">Open snapshot job</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if info.get('job_kind') == 'disk' %}
    <div id="disk-progress-wrap" class="disk-progress" style="display:none;">
@@ -1180,6 +1206,49 @@
   </div>
   {% endif %}
 
+  {% if info.get('job_kind') == 'recovery_delete' %}
+  <div id="rpdel-summary-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>Recovery Delete Progress</strong>
+    <div id="rpdel-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1rem 0;">
+      <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 1rem; border-radius: 8px; border: 1px solid #3b82f6;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Target RPs</div>
+        <div id="rpdel-stat-target" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
+      </div>
+      <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 1rem; border-radius: 8px; border: 1px solid #10b981;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Deleted</div>
+        <div id="rpdel-stat-deleted" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
+      </div>
+      <div style="background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%); padding: 1rem; border-radius: 8px; border: 1px solid #ef4444;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Failed</div>
+        <div id="rpdel-stat-failed" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
+      </div>
+      <div style="background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%); padding: 1rem; border-radius: 8px; border: 1px solid #8b5cf6;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Pending</div>
+        <div id="rpdel-stat-pending" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
+      </div>
+    </div>
+    <div class="disk-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="rpdel-progress-bar-track">
+      <div class="disk-progress-bar-fill" id="rpdel-progress-bar-fill"></div>
+    </div>
+    <p id="rpdel-progress-text" class="meta" style="margin-top: 0.5rem;">Waiting for first update…</p>
+    <div style="overflow-x:auto; margin-top: 1rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>Cluster</th>
+            <th>Target RPs</th>
+            <th>Deleted</th>
+            <th>Failed</th>
+          </tr>
+        </thead>
+        <tbody id="rpdel-cluster-tbody">
+          <tr><td colspan="4" class="meta">No cluster data yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
   <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
 
   <script>
@@ -1192,6 +1261,13 @@
     const errBox = document.getElementById('run-error');
     const hint = document.getElementById('poll-hint');
     const diskWrap = document.getElementById('disk-progress-wrap');
+    const isPipelineJob = {{ (info.get('job_kind') == 'pipeline') | tojson }};
+    const pipelineDiskStatusEl = document.getElementById('pipeline-disk-status');
+    const pipelineDiskMetaEl = document.getElementById('pipeline-disk-meta');
+    const pipelineDiskLinkEl = document.getElementById('pipeline-disk-link');
+    const pipelineSnapStatusEl = document.getElementById('pipeline-snap-status');
+    const pipelineSnapMetaEl = document.getElementById('pipeline-snap-meta');
+    const pipelineSnapLinkEl = document.getElementById('pipeline-snap-link');
     
     // HTML escape helper
     function escapeHtml(text) {
@@ -1211,6 +1287,14 @@
     const diskMetricsWrap = document.getElementById('disk-metrics-timeline-wrap');
     const diskMetricsPre = document.getElementById('disk-metrics-timeline');
     const diskSummary = document.getElementById('disk-summary-line');
+    const rpdelTarget = document.getElementById('rpdel-stat-target');
+    const rpdelDeleted = document.getElementById('rpdel-stat-deleted');
+    const rpdelFailed = document.getElementById('rpdel-stat-failed');
+    const rpdelPending = document.getElementById('rpdel-stat-pending');
+    const rpdelProgressFill = document.getElementById('rpdel-progress-bar-fill');
+    const rpdelProgressTrack = document.getElementById('rpdel-progress-bar-track');
+    const rpdelProgressText = document.getElementById('rpdel-progress-text');
+    const rpdelClusterTbody = document.getElementById('rpdel-cluster-tbody');
     const diskLogHint = document.getElementById('disk-log-hint');
     const diskVmWrap = document.getElementById('disk-vm-table-wrap');
     const diskVmSecInprogress = document.getElementById('disk-vm-inprogress-section');
@@ -2038,6 +2122,87 @@
       }
     }
 
+    function renderRecoveryDeleteSummary(s) {
+      if (!s || !rpdelTarget) return;
+      const total = Number(s.target_total || 0);
+      const deleted = Number(s.deleted || 0);
+      const failed = Number(s.failed || 0);
+      const processed = Number(s.processed || (deleted + failed));
+      const pending = Math.max(0, total - processed);
+      rpdelTarget.textContent = String(total);
+      if (rpdelDeleted) rpdelDeleted.textContent = String(deleted);
+      if (rpdelFailed) rpdelFailed.textContent = String(failed);
+      if (rpdelPending) rpdelPending.textContent = String(pending);
+      if (rpdelProgressFill) {
+        const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((processed / total) * 100))) : 0;
+        rpdelProgressFill.style.width = pct + '%';
+        if (rpdelProgressTrack) rpdelProgressTrack.setAttribute('aria-valuenow', String(pct));
+      }
+      if (rpdelProgressText) {
+        rpdelProgressText.textContent = `Processed ${processed} / ${total} · Deleted ${deleted} · Failed ${failed}`;
+      }
+      if (rpdelClusterTbody) {
+        const rows = Array.isArray(s.cluster_breakdown) ? s.cluster_breakdown : [];
+        if (!rows.length) {
+          rpdelClusterTbody.innerHTML = '<tr><td colspan="4" class="meta">No cluster data yet.</td></tr>';
+        } else {
+          rpdelClusterTbody.innerHTML = rows.map((r) => (
+            '<tr><td>' + escapeHtml(String(r.cluster || 'Unknown')) + '</td>' +
+            '<td>' + Number(r.target_total || 0) + '</td>' +
+            '<td>' + Number(r.deleted || 0) + '</td>' +
+            '<td>' + Number(r.failed || 0) + '</td></tr>'
+          )).join('');
+        }
+      }
+    }
+
+    async function fetchRunStatusLite(runId) {
+      if (!runId) return null;
+      try {
+        const r = await fetch('/api/job/' + encodeURIComponent(runId));
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (_e) {
+        return null;
+      }
+    }
+
+    function setPipelineStageCard(linkEl, statusEl, metaEl, runId, j) {
+      if (!statusEl || !metaEl || !linkEl) return;
+      if (!runId) {
+        statusEl.textContent = 'Pending';
+        metaEl.textContent = 'Waiting for stage launch.';
+        linkEl.classList.add('disabled');
+        linkEl.removeAttribute('href');
+        return;
+      }
+      const st = j && j.status ? String(j.status) : 'running';
+      statusEl.textContent = st;
+      const done = j && j.summary && Number.isFinite(Number(j.summary.succeeded)) && Number.isFinite(Number(j.summary.failed))
+        ? ('OK ' + Number(j.summary.succeeded) + ', Failed ' + Number(j.summary.failed))
+        : '';
+      const elapsed = j && Number.isFinite(Number(j.elapsed_running_sec))
+        ? ('Running for ' + formatElapsed(Number(j.elapsed_running_sec)))
+        : '';
+      metaEl.textContent = [runId, done, elapsed].filter(Boolean).join(' | ');
+      linkEl.classList.remove('disabled');
+      linkEl.href = '/job/' + encodeURIComponent(runId);
+    }
+
+    async function renderPipelineProgress(j) {
+      if (!isPipelineJob) return;
+      const pp = (j && j.pipeline_progress) || {};
+      const sm = (j && j.summary) || {};
+      const diskRunId = pp.disk_run_id || sm.disk_run_id || '';
+      const snapRunId = pp.snapshot_run_id || sm.snapshot_run_id || '';
+      const [dj, sj] = await Promise.all([
+        fetchRunStatusLite(diskRunId),
+        fetchRunStatusLite(snapRunId),
+      ]);
+      setPipelineStageCard(pipelineDiskLinkEl, pipelineDiskStatusEl, pipelineDiskMetaEl, diskRunId, dj);
+      setPipelineStageCard(pipelineSnapLinkEl, pipelineSnapStatusEl, pipelineSnapMetaEl, snapRunId, sj);
+    }
+
     async function poll() {
       try {
         const r = await fetch(apiUrl);
@@ -2074,12 +2239,21 @@
           }
           renderVmActivity(j.power_progress && j.power_progress.vm_activity);
         }
+        if (j.job_kind === 'recovery_delete') {
+          renderRecoveryDeleteSummary(j.summary || {});
+        }
         if (j.status === 'running' && (j.elapsed_running_sec != null)) {
           hint.textContent =
             'Running for ' + formatElapsed(j.elapsed_running_sec) + '… (updates every 2s)';
         }
         if (j.running_started_at) {
           setJobStartedAtDisplay(j.running_started_at);
+        }
+        if (j.finished_at) {
+          setJobEndedAtDisplay(j.finished_at);
+        }
+        if (j.job_kind === 'pipeline' || isPipelineJob) {
+          await renderPipelineProgress(j);
         }
         if (!(j.job_kind === 'disk' || isDiskJob || j.job_kind === 'power')) {
           logEl.textContent = j.log || '(empty)';
@@ -2103,19 +2277,11 @@
 
     setCancelVisible({{ info.status | tojson }});
 
-    function setJobStartedAtDisplay(isoUtc) {
-      var el = document.getElementById('job-started-at');
-      if (!el) return;
+    function formatUtcWithLocal(isoUtc) {
       var raw = (isoUtc || '').trim();
-      if (!raw) {
-        el.textContent = '';
-        return;
-      }
+      if (!raw) return '';
       var ms = Date.parse(raw);
-      if (Number.isNaN(ms)) {
-        el.textContent = '';
-        return;
-      }
+      if (Number.isNaN(ms)) return '';
       var dt = new Date(ms);
       var localPart;
       try {
@@ -2134,8 +2300,21 @@
           localPart = dt.toString();
         }
       }
-      el.textContent =
-        'Job started: ' + localPart + ' · ' + dt.toISOString() + ' (UTC)';
+      return localPart + ' · ' + dt.toISOString() + ' (UTC)';
+    }
+
+    function setJobStartedAtDisplay(isoUtc) {
+      var el = document.getElementById('job-started-at');
+      if (!el) return;
+      var fmt = formatUtcWithLocal(isoUtc);
+      el.textContent = fmt ? ('Job started: ' + fmt) : '';
+    }
+
+    function setJobEndedAtDisplay(isoUtc) {
+      var el = document.getElementById('job-ended-at');
+      if (!el) return;
+      var fmt = formatUtcWithLocal(isoUtc);
+      el.textContent = fmt ? ('Job ended: ' + fmt) : '';
     }
 
     if (btnCancel && cancelUrl) {
@@ -2163,6 +2342,7 @@
     initDiskVmDoneControls();
     poll();
     setJobStartedAtDisplay({{ (info.get('running_started_at') or '') | tojson }});
+    setJobEndedAtDisplay({{ (info.get('finished_at') or '') | tojson }});
   </script>
   
   <!-- VM Logs Modal -->

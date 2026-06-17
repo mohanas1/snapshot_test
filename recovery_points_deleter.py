@@ -152,7 +152,8 @@ def bulk_delete_recovery_points(
     recovery_points: List[Dict],
     size_filter: str = "all",
     concurrency: int = 5,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    cancel_event: Optional[threading.Event] = None,
 ) -> Dict:
     """
     Delete multiple recovery points with concurrency control and size filtering.
@@ -198,9 +199,37 @@ def bulk_delete_recovery_points(
     semaphore = threading.Semaphore(concurrency)
     processed_count = [0]
     
+    def _is_cancelled() -> bool:
+        return isinstance(cancel_event, threading.Event) and cancel_event.is_set()
+
+    def _wait_task_terminal(task_ext_id: str, rp_name: str, max_wait_sec: int = 600) -> Dict:
+        started = time.time()
+        last_status = "UNKNOWN"
+        while True:
+            if _is_cancelled():
+                return {"ok": False, "status": "CANCELLED", "error": "Cancelled by user"}
+            if (time.time() - started) >= max_wait_sec:
+                return {"ok": False, "status": "TIMEOUT", "error": "Task status wait timed out"}
+
+            st = check_task_status(base_url, auth_header, task_ext_id)
+            if not st.get("ok"):
+                time.sleep(2)
+                continue
+
+            last_status = str(st.get("status") or "UNKNOWN").upper()
+            if last_status in ("SUCCEEDED", "FAILED", "ABORTED", "CANCELLED"):
+                return st
+            if progress_callback:
+                progress_callback(f"    ↻ Task {task_ext_id[:12]} for {rp_name}: {last_status}")
+            time.sleep(2)
+
     def delete_single_rp(rp: Dict, idx: int):
         """Delete a single recovery point with semaphore control."""
         with semaphore:
+            if _is_cancelled():
+                with lock:
+                    processed_count[0] += 1
+                return
             rp_ext_id = rp.get('ext_id', '')
             rp_name = rp.get('name', 'Unknown')
             rp_size = rp.get('size_formatted', 'Unknown')
@@ -210,6 +239,8 @@ def bulk_delete_recovery_points(
                     results.append({
                         'rp_name': rp_name,
                         'rp_ext_id': rp_ext_id,
+                        'cluster_name': rp.get('cluster_name', 'Unknown'),
+                        'vm_name': rp.get('vm_name', ''),
                         'success': False,
                         'error': 'Missing ext_id'
                     })
@@ -218,8 +249,45 @@ def bulk_delete_recovery_points(
             
             if progress_callback:
                 progress_callback(f"[{idx}/{len(filtered_rps)}] Deleting: {rp_name} ({rp_size})")
-            
-            delete_result = delete_recovery_point(base_url, auth_header, rp_ext_id)
+
+            delete_result = None
+            for attempt in range(1, 6):
+                if _is_cancelled():
+                    break
+                delete_result = delete_recovery_point(base_url, auth_header, rp_ext_id)
+                if delete_result.get("ok"):
+                    break
+                if int(delete_result.get("status_code") or 0) == 429:
+                    backoff = min(30, 2 ** attempt)
+                    if progress_callback:
+                        progress_callback(
+                            f"  ⚠️ 429 for {rp_name}; retry {attempt}/5 after {backoff}s"
+                        )
+                    slept = 0
+                    while slept < backoff:
+                        if _is_cancelled():
+                            break
+                        time.sleep(1)
+                        slept += 1
+                    if _is_cancelled():
+                        break
+                    continue
+                break
+            if delete_result is None:
+                delete_result = {'ok': False, 'error': 'Delete did not run', 'status_code': 0}
+            task_terminal = None
+            if delete_result.get('ok') and delete_result.get('task_ext_id'):
+                task_terminal = _wait_task_terminal(delete_result['task_ext_id'], rp_name)
+                if not task_terminal.get('ok') or str(task_terminal.get('status', '')).upper() != 'SUCCEEDED':
+                    delete_result = {
+                        'ok': False,
+                        'error': (
+                            task_terminal.get('error')
+                            or f"Task status: {task_terminal.get('status', 'UNKNOWN')}"
+                        ),
+                        'task_ext_id': delete_result.get('task_ext_id', ''),
+                        'status_code': 0,
+                    }
             
             with lock:
                 processed_count[0] += 1
@@ -227,6 +295,8 @@ def bulk_delete_recovery_points(
                     'rp_name': rp_name,
                     'rp_ext_id': rp_ext_id,
                     'rp_size': rp_size,
+                    'cluster_name': rp.get('cluster_name', 'Unknown'),
+                    'vm_name': rp.get('vm_name', ''),
                     'success': delete_result['ok'],
                     'task_ext_id': delete_result.get('task_ext_id', ''),
                     'error': delete_result.get('error', '')
@@ -241,6 +311,8 @@ def bulk_delete_recovery_points(
     # Create threads
     threads = []
     for idx, rp in enumerate(filtered_rps, 1):
+        if _is_cancelled():
+            break
         t = threading.Thread(target=delete_single_rp, args=(rp, idx))
         t.daemon = True
         t.start()
@@ -253,20 +325,22 @@ def bulk_delete_recovery_points(
     # Calculate statistics
     deleted_count = sum(1 for r in results if r['success'])
     failed_count = len(results) - deleted_count
+    cancelled = _is_cancelled()
     
     if progress_callback:
         progress_callback("=" * 80)
-        progress_callback(f"Bulk delete completed:")
+        progress_callback("Bulk delete completed:" if not cancelled else "Bulk delete cancelled by user:")
         progress_callback(f"  Total recovery points: {len(filtered_rps)}")
         progress_callback(f"  Successfully deleted: {deleted_count}")
         progress_callback(f"  Failed: {failed_count}")
         progress_callback("=" * 80)
     
     return {
-        'ok': True,
+        'ok': not cancelled,
         'total': len(filtered_rps),
         'deleted': deleted_count,
         'failed': failed_count,
         'results': results,
-        'size_filter': size_filter
+        'size_filter': size_filter,
+        'cancelled': cancelled,
     }

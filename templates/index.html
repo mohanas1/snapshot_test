@@ -2849,6 +2849,35 @@
       color: #FFFFFF;
       font-weight: 600;
     }
+    .confirm-modal-body .schedule-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    .confirm-modal-body .schedule-two-card {
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 0.75rem;
+      background: #16181a;
+    }
+    .confirm-modal-body .schedule-two-card h4 {
+      margin: 0 0 0.5rem 0;
+      color: #8ab4f8;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .confirm-modal.wide {
+      max-width: 980px;
+    }
+    @media (max-width: 980px) {
+      .confirm-modal-body .schedule-two-col {
+        grid-template-columns: 1fr;
+      }
+      .confirm-modal.wide {
+        max-width: 640px;
+      }
+    }
     .confirm-modal-actions {
       display: flex;
       gap: 0.75rem;
@@ -3570,10 +3599,10 @@
         <button type="submit" class="action-center-btn-secondary" id="btn-start-snapshot-run-top">
           Start Snapshot Run
         </button>
-        <button type="button" class="action-center-btn-secondary" onclick="window.location.href='{{ url_for('recovery_points') }}'">
+        <button type="button" class="action-center-btn-secondary" onclick="window.location.href='/recovery_points'">
           Recovery Points Analysis
         </button>
-        <button type="button" class="action-center-btn-secondary" onclick="window.location.href='{{ url_for('fetch_logs') }}'">
+        <button type="button" class="action-center-btn-secondary" onclick="window.location.href='/fetch_logs'">
           Fluentd Log Fetcher
         </button>
       </div>
@@ -3613,7 +3642,12 @@
     <!-- Content Area -->
     <div class="content-area">
       {% if success %}
-      <div class="message success">{{ success }}</div>
+      <div class="message success">
+        {{ success }}
+        {% if success_schedule_job_url %}
+        · <a href="{{ success_schedule_job_url }}">Open schedule job</a>
+        {% endif %}
+      </div>
       {% endif %}
       {% if error %}
       <div class="message error">{{ error }}{% if error_schedule_conflict %} Use "Cancel schedule" for that host first.{% endif %}</div>
@@ -4133,11 +4167,11 @@
       <div class="row">
         <div>
           <label for="guest_ssh_user">Guest SSH user</label>
-          <input id="guest_ssh_user" type="text" value="root" autocomplete="off" />
+          <input id="guest_ssh_user" name="guest_ssh_user" type="text" value="root" autocomplete="off" />
         </div>
         <div>
           <label for="guest_ssh_password">Guest SSH password</label>
-          <input id="guest_ssh_password" type="password" value="nutanix/4u" autocomplete="off" />
+          <input id="guest_ssh_password" name="guest_ssh_password" type="password" value="nutanix/4u" autocomplete="off" />
         </div>
         <div>
           <label for="guest_ssh_port">Guest SSH port</label>
@@ -4333,7 +4367,7 @@
         <div>
           <label for="churn_count_mib">Add / update: dd count</label>
           <div class="input-with-suffix">
-            <input id="churn_count_mib" type="number" min="1" value="500" title="Number of bs-sized blocks for add/update." />
+            <input id="churn_count_mib" type="number" min="1" value="5" title="Number of bs-sized blocks for add/update." />
             <span class="input-suffix">blocks</span>
           </div>
         </div>
@@ -4490,8 +4524,19 @@
           <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: center;">
             <label for="schedule_kind" style="font-weight: 500; color: var(--text-dark); text-align: right;">Schedule type</label>
             <select id="schedule_kind" name="schedule_kind" style="padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem; background: white;">
-              <option value="one_time">One-time (UTC)</option>
-              <option value="recurring">Recurring</option>
+              <option value="one_time" selected>One-time (UTC)</option>
+              <option value="for_loop">For loop</option>
+              <option value="recurring">Recurring (Cron)</option>
+            </select>
+          </div>
+
+          <!-- Job Type -->
+          <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: center;">
+            <label for="schedule_job_type" style="font-weight: 500; color: var(--text-dark); text-align: right;">Job type</label>
+            <select id="schedule_job_type" name="schedule_job_type" style="padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem; background: white;">
+              <option value="snapshot" selected>Snapshot</option>
+              <option value="disk">Disk</option>
+              <option value="full_pipeline">Full pipeline (Disk + Snapshot)</option>
             </select>
           </div>
           
@@ -4503,6 +4548,17 @@
               <input id="schedule_one_time_utc" name="schedule_one_time_utc" type="hidden" />
               <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
                 📅 Select date and time (automatically converted to UTC ISO-8601 format)
+              </p>
+            </div>
+          </div>
+
+          <!-- Recurring Cron Schedule Section -->
+          <div id="schedule-cron-section" style="display: none; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start;">
+            <label for="schedule_cron_expr" style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Cron (UTC)</label>
+            <div>
+              <input id="schedule_cron_expr" name="schedule_cron_expr" type="text" value="*/30 * * * *" placeholder="*/30 * * * *" style="width: 100%; max-width: 320px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
+              <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                ⏱️ Cron format: minute hour day month weekday (UTC). Example: <code>*/30 * * * *</code>
               </p>
             </div>
           </div>
@@ -4624,12 +4680,79 @@
             </div>
             
           </div>
+
+          <!-- For-loop Schedule Section -->
+          <div id="schedule-for-loop-section" style="display: none; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start;">
+            <label for="schedule_loop_count" style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Loop count</label>
+            <div>
+              <input id="schedule_loop_count" name="schedule_loop_count" type="number" min="1" value="2" style="width: 140px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
+              <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                🔁 Run the selected job this many times (same interval setting is reused).
+              </p>
+            </div>
+          </div>
           
           <!-- Info Box -->
           <div style="padding: 1rem 1.25rem; background: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 6px;">
             <p style="margin: 0; font-size: 0.9rem; color: #1E40AF; line-height: 1.6;">
               <strong>💡 Note:</strong> When schedule is enabled, use <strong>Start run</strong> in the sticky <strong>Actions</strong> bar to save the schedule. No job starts until the chosen time. Prism Central address must be unique per active schedule.
             </p>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" id="btn-save-schedule-inline" class="btn-impact-cta" style="min-width: 180px;">
+              Save Schedule
+            </button>
+          </div>
+
+          <div style="padding: 1rem; border: 1px solid #E5E7EB; border-radius: 8px; background: #FFFFFF;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:0.6rem;">
+              <h3 style="margin:0; font-size:1rem; color:var(--text-dark);">Active Scheduled Jobs</h3>
+              <span style="font-size:0.85rem; color:var(--text-muted);">{{ active_schedules|length }} active</span>
+            </div>
+            {% if not active_schedules %}
+            <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">No active schedules.</p>
+            {% else %}
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+              {% for row in active_schedules %}
+              <div style="padding:0.8rem; border:1px solid #E5E7EB; border-radius:8px; background:#F9FAFB;">
+                <div style="display:flex; flex-wrap:wrap; gap:0.5rem 0.8rem; align-items:center; margin-bottom:0.45rem;">
+                  <strong style="color:var(--text-dark);">{{ row.pc_ip }}</strong>
+                  <span style="font-size:0.85rem; color:var(--text-muted);">type: {{ row.kind }}</span>
+                  <span style="font-size:0.85rem; color:var(--text-muted);">· job: {{ row.job_type or 'snapshot' }}</span>
+                  {% if row.detail %}
+                  <span style="font-size:0.85rem; color:var(--text-muted);">· {{ row.detail }}</span>
+                  {% endif %}
+                  <span style="font-size:0.85rem; color:var(--text-muted);">· next: <code>{{ row.next_run_utc }}</code></span>
+                  {% if row.schedule_job_url %}
+                  <a href="{{ row.schedule_job_url }}" style="font-size:0.85rem;">Open schedule job</a>
+                  {% endif %}
+                </div>
+                {% if row.in_progress %}
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.45rem;">
+                  Running:
+                  {% for j in row.in_progress %}
+                  <a href="{{ j.job_url }}">{{ j.run_id[:8] }}… ({{ j.status }})</a>{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                </div>
+                {% endif %}
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                  <form method="post" action="{{ url_for('cancel_schedule') }}" style="margin:0;">
+                    <input type="hidden" name="pc_ip" value="{{ row.pc_ip }}" />
+                    <button type="submit" class="secondary">Cancel schedule</button>
+                  </form>
+                  <form method="post" action="{{ url_for('cancel_schedule') }}" style="margin:0;">
+                    <input type="hidden" name="pc_ip" value="{{ row.pc_ip }}" />
+                    <input type="hidden" name="abort_in_progress" value="1" />
+                    <button type="submit" class="secondary" style="border-color:#F59E0B; color:#92400E;">
+                      Abort running + cancel
+                    </button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
           
         </div>
@@ -4641,22 +4764,66 @@
       (function() {
         const scheduleKind = document.getElementById('schedule_kind');
         const oneTimeSection = document.getElementById('schedule-one-time-section');
+        const cronSection = document.getElementById('schedule-cron-section');
         const recurringSection = document.getElementById('schedule-recurring-section');
+        const forLoopSection = document.getElementById('schedule-for-loop-section');
         const datetimePicker = document.getElementById('schedule_datetime_picker');
         const hiddenUtcField = document.getElementById('schedule_one_time_utc');
         const recurringInput = document.getElementById('recurring_interval_minutes');
+        const cronInput = document.getElementById('schedule_cron_expr');
+        const loopCountInput = document.getElementById('schedule_loop_count');
         const presetButtons = document.querySelectorAll('.schedule-preset-btn');
+        let scheduleSummaryReady = false;
+
+        // Browser restore/autofill can occasionally corrupt select options/state.
+        // Ensure one-time is always available and default for fresh forms.
+        function ensureScheduleTypeOptions() {
+          const hasOneTime = Array.from(scheduleKind.options).some(o => o.value === 'one_time');
+          const hasForLoop = Array.from(scheduleKind.options).some(o => o.value === 'for_loop');
+          const hasRecurring = Array.from(scheduleKind.options).some(o => o.value === 'recurring');
+          if (!hasOneTime) {
+            const opt = document.createElement('option');
+            opt.value = 'one_time';
+            opt.textContent = 'One-time (UTC)';
+            scheduleKind.insertBefore(opt, scheduleKind.firstChild);
+          }
+          if (!hasForLoop) {
+            const opt = document.createElement('option');
+            opt.value = 'for_loop';
+            opt.textContent = 'For loop';
+            scheduleKind.appendChild(opt);
+          }
+          if (!hasRecurring) {
+            const opt = document.createElement('option');
+            opt.value = 'recurring';
+            opt.textContent = 'Recurring';
+            scheduleKind.appendChild(opt);
+          }
+          if (scheduleKind.value !== 'one_time' && scheduleKind.value !== 'for_loop' && scheduleKind.value !== 'recurring') {
+            scheduleKind.value = 'one_time';
+          }
+        }
         
         // Function to show/hide sections based on schedule type
         function updateScheduleSections() {
           const kind = scheduleKind.value;
           if (kind === 'one_time') {
             oneTimeSection.style.display = 'grid';
+            cronSection.style.display = 'none';
             recurringSection.style.display = 'none';
+            forLoopSection.style.display = 'none';
+          } else if (kind === 'for_loop') {
+            oneTimeSection.style.display = 'none';
+            cronSection.style.display = 'none';
+            recurringSection.style.display = 'none';
+            forLoopSection.style.display = 'grid';
           } else {
             oneTimeSection.style.display = 'none';
-            recurringSection.style.display = 'block';
+            cronSection.style.display = 'grid';
+            recurringSection.style.display = 'none';
+            forLoopSection.style.display = 'none';
           }
+          updateScheduleSummary();
         }
         
         // Function to convert datetime-local to ISO-8601 UTC format
@@ -4673,6 +4840,7 @@
         }
         
         // Initialize on page load
+        ensureScheduleTypeOptions();
         updateScheduleSections();
         
         // Set default datetime to current time + 1 hour
@@ -4861,9 +5029,11 @@
         
         // Update schedule summary
         function updateScheduleSummary() {
+          if (!scheduleSummaryReady) return;
           const summary = document.getElementById('schedule-summary');
           if (!summary) return;
           
+          const kind = scheduleKind.value;
           const interval = recurringInput.value;
           const intervalText = interval == 1440 ? 'daily' : 
                                interval == 720 ? 'every 12 hours' :
@@ -4889,10 +5059,21 @@
             startText = `, starting ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}`;
           }
           
-          summary.textContent = `Job will run ${intervalText}${daysText}${timeText}${startText}`;
+          if (kind === 'one_time') {
+            summary.textContent = `Job will run one-time at selected UTC date/time`;
+          } else if (kind === 'for_loop') {
+            const lc = Math.max(1, parseInt((loopCountInput && loopCountInput.value) || '1', 10) || 1);
+            summary.textContent = `Job will run ${lc} loop(s) using interval ${intervalText}`;
+          } else {
+            const cronExpr = (cronInput && cronInput.value ? cronInput.value.trim() : '') || '*/30 * * * *';
+            summary.textContent = `Job will run on cron: ${cronExpr} (UTC)`;
+          }
         }
         
+        scheduleSummaryReady = true;
         updateScheduleSummary();
+        if (loopCountInput) loopCountInput.addEventListener('input', updateScheduleSummary);
+        if (cronInput) cronInput.addEventListener('input', updateScheduleSummary);
         
       })();
     </script>
@@ -4914,10 +5095,20 @@
       <strong>{{ row.pc_ip }}</strong>
       · {{ row.kind }}{% if row.detail %} · {{ row.detail }}{% endif %}
       · next (UTC): <code>{{ row.next_run_utc }}</code>
+      {% if row.schedule_job_url %}
+      · <a href="{{ row.schedule_job_url }}">Open schedule job</a>
+      {% endif %}
       {% if row.in_progress %}
       <span class="muted">· In progress:
         {% for j in row.in_progress %}
         <a href="{{ j.job_url }}">{{ j.run_id[:8] }}… ({{ j.status }})</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </span>
+      {% endif %}
+      {% if row.recent_jobs %}
+      <span class="muted">· Recent:
+        {% for j in row.recent_jobs %}
+        <a href="{{ j.job_url }}">{{ j.run_id[:8] }}…</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </span>
       {% endif %}
@@ -4947,7 +5138,7 @@
     aria-modal="true"
     aria-labelledby="disk-confirm-title"
   >
-    <div class="confirm-modal">
+    <div class="confirm-modal" id="disk-confirm-dialog">
       <h2 id="disk-confirm-title" class="confirm-modal-title"></h2>
       <div id="disk-confirm-body" class="confirm-modal-body"></div>
       <div class="confirm-modal-actions">
@@ -5000,6 +5191,12 @@
     // DEFINE BUTTON HANDLERS EARLY - These need to be available for onclick attributes in HTML
     window.handleStartDiskJob = async function() {
       console.log("🔵 handleStartDiskJob called!");
+      const se = $("schedule_enabled");
+      if (se && se.checked) {
+        const mf = $("main-form");
+        if (mf) mf.requestSubmit();
+        return;
+      }
       const c = readConn();
       const diskJobErr = $("disk-job-err");
       if (diskJobErr) diskJobErr.style.display = "none";
@@ -5054,6 +5251,12 @@
     
     window.handleRunFullPipeline = async function() {
       console.log("🔵 handleRunFullPipeline called!");
+      const se = $("schedule_enabled");
+      if (se && se.checked) {
+        const mf = $("main-form");
+        if (mf) mf.requestSubmit();
+        return;
+      }
       const gs = $("pipeline-global-status");
       const stagesEl = $("pipeline-stages");
       const dock = $("pipeline-progress-dock");
@@ -6292,6 +6495,11 @@
     function openDiskConfirmModal(title, html, okText, okIsDangerous, onConfirm, onCancel) {
       $("disk-confirm-title").textContent = title;
       $("disk-confirm-body").innerHTML = html;
+      const dialog = $("disk-confirm-dialog");
+      if (dialog) {
+        const isWide = !!$("disk-confirm-body").querySelector('[data-confirm-layout="pipeline-two-col"]');
+        dialog.classList.toggle("wide", isWide);
+      }
       const okBtn = $("disk-confirm-ok");
       okBtn.textContent = okText;
       okBtn.className = okIsDangerous ? "btn-confirm-danger" : "btn-impact-cta";
@@ -7617,8 +7825,217 @@
         closeDiskConfirmModal(false);
       }
     });
+    let scheduleConfirmBypass = false;
+    function fieldValue(id, fallback = "—") {
+      const el = $(id);
+      if (!el) return fallback;
+      const v = (el.value == null ? "" : String(el.value)).trim();
+      return v || fallback;
+    }
+    function kvRow(label, value) {
+      return "<li><strong>" + escHtml(label) + "</strong><span>" + escHtml(value) + "</span></li>";
+    }
+    function kvList(rows) {
+      return "<ul>" + rows.map((r) => kvRow(r[0], r[1])).join("") + "</ul>";
+    }
+    function selectedDiskOpModeValue() {
+      const sel = document.querySelector("input[name='disk_op_mode']:checked");
+      if (sel && sel.value) return String(sel.value);
+      const fallback = fieldValue("disk_op_mode", "update");
+      return fallback === "—" ? "update" : fallback;
+    }
+    function selectedDiskOpModeText() {
+      return diskOpModeLabel();
+    }
+
+    function affectedVmText(jobType) {
+      // Always prefer disk-preview selected set for disk/full-pipeline.
+      // This is the VM set actually targeted by disk ops and must match snapshot target for pipeline.
+      const diskBase = lastDiskPreviewNorm || lastDiskPreviewPipe || null;
+      if (diskBase) {
+        const planned = Number(diskBase.planned_guest_ssh_runs);
+        if (Number.isFinite(planned) && planned >= 0) return String(planned);
+        const eligible = Number(diskBase.eligible_for_guest_ssh);
+        if (Number.isFinite(eligible) && eligible >= 0) return String(eligible);
+      }
+      const invFiltered = Array.isArray(inventoryCurrentRows) ? inventoryCurrentRows.length : 0;
+      const invTotal = Array.isArray(window.inventoryUnfilteredRows) ? window.inventoryUnfilteredRows.length : invFiltered;
+      if (invFiltered > 0 || invTotal > 0) return invFiltered + " (filtered) / " + invTotal + " (total)";
+      return "—";
+    }
+
+    function schedulePayloadCommonHtml(jobType) {
+      return [
+        ["Affected VMs", affectedVmText(jobType)],
+        ["Guest SSH user", fieldValue("guest_ssh_user")],
+        ["SSH parallel", fieldValue("guest_ssh_parallel")],
+        ["Batch size", fieldValue("batch_size")],
+        ["Task timeout", fieldValue("task_timeout_sec") + " sec"],
+        ["Poll interval", fieldValue("poll_interval") + " sec"],
+        ["Expiration", fieldValue("expiration_days") + " day(s)"],
+        ["VMs per cluster", fieldValue("vm_per_cluster")],
+      ];
+    }
+
+    function scheduleJobDetailsHtml(jobType) {
+      if (jobType === "disk") {
+        const rows = schedulePayloadCommonHtml(jobType).concat([
+          ["Disk op mode", selectedDiskOpModeText()],
+          ["Disk op type", selectedDiskOpModeValue()],
+          ["Target file", fieldValue("guest_target_file")],
+          ["Delete glob", fieldValue("guest_delete_glob")],
+          ["dd block size", fieldValue("guest_dd_bs")],
+          ["dd create count", fieldValue("create_count_mib") + " blocks"],
+          ["dd churn count", fieldValue("churn_count_mib") + " blocks"],
+          ["Adaptive SSH", fieldValue("cluster_adaptive_ssh_parallel")],
+          ["Adaptive ramp", fieldValue("cluster_adaptive_ramp")],
+        ]);
+        return kvList(rows);
+      }
+      if (jobType === "full_pipeline") {
+        const common = schedulePayloadCommonHtml(jobType);
+        const leftRows = common.concat([
+          ["Disk op mode", selectedDiskOpModeText()],
+          ["Disk op type", selectedDiskOpModeValue()],
+          ["Disk target file", fieldValue("guest_target_file")],
+          ["Delete glob", fieldValue("guest_delete_glob")],
+          ["dd block size", fieldValue("guest_dd_bs")],
+          ["dd create count", fieldValue("create_count_mib") + " blocks"],
+          ["dd churn count", fieldValue("churn_count_mib") + " blocks"],
+          ["Adaptive SSH", fieldValue("cluster_adaptive_ssh_parallel")],
+          ["Adaptive ramp", fieldValue("cluster_adaptive_ramp")],
+        ]);
+        const rightRows = [
+          ["Affected VMs", affectedVmText(jobType)],
+          ["Snapshot trigger mode", fieldValue("snapshot_trigger_mode")],
+          ["Recovery point type", fieldValue("recovery_point_type")],
+          ["Batch size", fieldValue("batch_size")],
+          ["Task timeout", fieldValue("task_timeout_sec") + " sec"],
+          ["Poll interval", fieldValue("poll_interval") + " sec"],
+          ["Group member page", fieldValue("group_member_page")],
+          ["Expiration", fieldValue("expiration_days") + " day(s)"],
+          ["Skip substrings", fieldValue("skip_substrings")],
+          ["Skip regexes", fieldValue("skip_regexes")],
+        ];
+        return "<div class=\"schedule-two-col\" data-confirm-layout=\"pipeline-two-col\">"
+          + "<div class=\"schedule-two-card\"><h4>Disk</h4>" + kvList(leftRows) + "</div>"
+          + "<div class=\"schedule-two-card\"><h4>Snapshot</h4>" + kvList(rightRows) + "</div>"
+          + "</div>";
+      }
+      const rows = schedulePayloadCommonHtml(jobType).concat([
+        ["Snapshot trigger mode", fieldValue("snapshot_trigger_mode")],
+        ["Recovery point type", fieldValue("recovery_point_type")],
+        ["Group member page", fieldValue("group_member_page")],
+      ]);
+      return kvList(rows);
+    }
+
+    function formatScheduleSaveConfirmHtml() {
+      const kind = ($("schedule_kind") && $("schedule_kind").value) || "one_time";
+      const jobType = ($("schedule_job_type") && $("schedule_job_type").value) || "snapshot";
+      const pcIp = fieldValue("pc_ip");
+      const oneTimeUtc = ($("schedule_one_time_utc") && $("schedule_one_time_utc").value) || "";
+      const interval = ($("recurring_interval_minutes") && $("recurring_interval_minutes").value) || "60";
+      const loops = ($("schedule_loop_count") && $("schedule_loop_count").value) || "1";
+      const cronExpr = ($("schedule_cron_expr") && $("schedule_cron_expr").value) || "*/30 * * * *";
+      const schedulePart = kind === "one_time"
+        ? "<li><strong>Schedule</strong><span>One-time</span></li><li><strong>UTC time</strong><span>" + escHtml(oneTimeUtc || "—") + "</span></li>"
+        : (kind === "for_loop"
+          ? "<li><strong>Schedule</strong><span>For loop</span></li><li><strong>Loops</strong><span>" + escHtml(loops) + "</span></li><li><strong>Interval</strong><span>" + escHtml(interval) + " min</span></li>"
+          : "<li><strong>Schedule</strong><span>Recurring (Cron)</span></li><li><strong>Cron</strong><span><code>" + escHtml(cronExpr) + "</code> (UTC)</span></li>");
+
+      const title = kind === "one_time"
+        ? "Save one-time schedule?"
+        : (kind === "for_loop" ? "Save for-loop schedule?" : "Save recurring schedule?");
+
+      const headerRows = kvList([
+        ["Prism Central", pcIp],
+        ["Job type", jobType],
+      ]);
+      return "<p><strong>" + title + "</strong></p>"
+        + headerRows
+        + kvList(
+          kind === "one_time"
+            ? [["Schedule", "One-time"], ["UTC time", oneTimeUtc || "—"]]
+            : (kind === "for_loop"
+              ? [["Schedule", "For loop"], ["Loops", loops], ["Interval", interval + " min"]]
+              : [["Schedule", "Recurring (Cron)"], ["Cron", cronExpr + " (UTC)"]])
+        )
+        + scheduleJobDetailsHtml(jobType);
+    }
     const mainFormEl = $("main-form");
     if (mainFormEl) {
+      function syncDetachedControlsIntoMainForm() {
+        // Mirror named controls that live outside #main-form into hidden inputs
+        // so POST /start receives the actual user-selected values.
+        mainFormEl.querySelectorAll('input[data-mirrored-input="1"]').forEach((n) => n.remove());
+        const allNamed = document.querySelectorAll("input[name], select[name], textarea[name]");
+        allNamed.forEach((el) => {
+          const name = String(el.name || "").trim();
+          if (!name) return;
+          if (el.form === mainFormEl) return;
+          const owner = el.closest("form");
+          if (owner && owner !== mainFormEl && owner.id !== "main-form-advanced") return;
+          if (el.disabled) return;
+          if (mainFormEl.elements.namedItem(name)) return;
+          const tag = (el.tagName || "").toLowerCase();
+          const type = String(el.type || "").toLowerCase();
+          if (type === "file") return;
+          if ((type === "checkbox" || type === "radio") && !el.checked) return;
+          if (tag === "select" && el.multiple) {
+            Array.from(el.selectedOptions || []).forEach((opt) => {
+              const h = document.createElement("input");
+              h.type = "hidden";
+              h.name = name;
+              h.value = String(opt.value || "");
+              h.setAttribute("data-mirrored-input", "1");
+              mainFormEl.appendChild(h);
+            });
+            return;
+          }
+          const h = document.createElement("input");
+          h.type = "hidden";
+          h.name = name;
+          h.value = String(el.value || "");
+          h.setAttribute("data-mirrored-input", "1");
+          mainFormEl.appendChild(h);
+        });
+      }
+
+      const inlineSaveBtn = $("btn-save-schedule-inline");
+      if (inlineSaveBtn) {
+        inlineSaveBtn.addEventListener("click", () => {
+          const se = $("schedule_enabled");
+          if (!se || !se.checked) {
+            showToast("warning", "Scheduling Disabled", "Enable schedule first, then save.");
+            return;
+          }
+          syncDetachedControlsIntoMainForm();
+          mainFormEl.requestSubmit();
+        });
+      }
+      mainFormEl.addEventListener("submit", (ev) => {
+        syncDetachedControlsIntoMainForm();
+        const se = $("schedule_enabled");
+        if (scheduleConfirmBypass || !se || !se.checked) return;
+        ev.preventDefault();
+        openDiskConfirmModal(
+          "Save schedule?",
+          formatScheduleSaveConfirmHtml(),
+          "Save schedule",
+          false,
+          () => {
+            scheduleConfirmBypass = true;
+            try {
+              mainFormEl.requestSubmit();
+            } finally {
+              setTimeout(() => {
+                scheduleConfirmBypass = false;
+              }, 0);
+            }
+          }
+        );
+      });
       // Only sync button states, don't constantly re-run disk preview
       // Users can manually refresh by clicking "Fetch VMs" if needed
       mainFormEl.addEventListener("input", () => {
@@ -8661,7 +9078,17 @@
               <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
               
               <span style="color: #6B7280; font-size: 0.875rem;">
-                {{ job.at[:19] if job.at else '' }}
+                Start:
+                <span class="js-utc-ts" data-utc="{{ job.started_at_utc or job.at or '' }}">
+                  {{ (job.started_at_utc or job.at or '')[:19] if (job.started_at_utc or job.at) else '—' }}
+                </span>
+              </span>
+
+              <span style="color: #6B7280; font-size: 0.875rem;">
+                End:
+                <span class="js-utc-ts" data-utc="{{ job.finished_at_utc or '' }}">
+                  {{ job.finished_at_utc[:19] if job.finished_at_utc else '—' }}
+                </span>
               </span>
               
               {% if job.duration_sec %}
@@ -8695,6 +9122,43 @@
       </div>
     </section>
   </div>
+
+  <script>
+    (function renderRecentHistoryTimestamps() {
+      function formatUtcWithLocal(raw) {
+        var s = (raw || '').trim();
+        if (!s) return '';
+        var ms = Date.parse(s);
+        if (Number.isNaN(ms)) return '';
+        var dt = new Date(ms);
+        var localPart;
+        try {
+          localPart = dt.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'medium',
+            timeZoneName: 'short',
+          });
+        } catch (e1) {
+          try {
+            localPart = dt.toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'medium',
+            });
+          } catch (e2) {
+            localPart = dt.toString();
+          }
+        }
+        return localPart + ' · ' + dt.toISOString() + ' (UTC)';
+      }
+
+      var nodes = document.querySelectorAll('.js-utc-ts[data-utc]');
+      nodes.forEach(function (el) {
+        var raw = el.getAttribute('data-utc') || '';
+        var fmt = formatUtcWithLocal(raw);
+        if (fmt) el.textContent = fmt;
+      });
+    })();
+  </script>
 
 </body>
 </html>

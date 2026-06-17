@@ -173,8 +173,8 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
     return all_recovery_points
 
 
-def get_vm_name(base_url: str, auth_header: str, vm_uuid: str) -> str:
-    """Get VM name from UUID using v3 API with short timeout."""
+def get_vm_metadata(base_url: str, auth_header: str, vm_uuid: str) -> Dict[str, str]:
+    """Get VM metadata (name + cluster hints) from UUID using v3 API."""
     headers = {
         'Content-Type': 'application/json',
         'Authorization': auth_header
@@ -191,9 +191,42 @@ def get_vm_name(base_url: str, auth_header: str, vm_uuid: str) -> str:
         )
         response.raise_for_status()
         data = response.json()
-        return data.get('spec', {}).get('name', f"VM-{vm_uuid[:8]}")
+        vm_name = data.get('spec', {}).get('name', f"VM-{vm_uuid[:8]}")
+
+        # Prefer v3 status.cluster_reference, fallback to other common locations.
+        status = data.get('status', {}) or {}
+        spec = data.get('spec', {}) or {}
+        status_cluster_ref = status.get('cluster_reference', {}) or {}
+        status_resources = status.get('resources', {}) or {}
+        spec_resources = spec.get('resources', {}) or {}
+        res_cluster_ref = status_resources.get('cluster_reference', {}) or spec_resources.get('cluster_reference', {}) or {}
+
+        cluster_name = (
+            status_cluster_ref.get('name')
+            or res_cluster_ref.get('name')
+            or ""
+        )
+        cluster_uuid = (
+            status_cluster_ref.get('uuid')
+            or res_cluster_ref.get('uuid')
+            or ""
+        )
+
+        return {
+            'vm_name': vm_name,
+            'cluster_name': cluster_name,
+            'cluster_uuid': cluster_uuid,
+            # Keep dedicated field for UI compatibility.
+            'pe_cluster': cluster_name or cluster_uuid or 'Unknown',
+        }
     except:
-        return f"VM-{vm_uuid[:8]}"
+        fallback = f"VM-{vm_uuid[:8]}"
+        return {
+            'vm_name': fallback,
+            'cluster_name': "",
+            'cluster_uuid': "",
+            'pe_cluster': "Unknown",
+        }
 
 
 def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str, 
@@ -248,11 +281,16 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             if progress_callback:
                 progress_callback(f"[{idx}/{len(vms)}] Processing VM: {vm_uuid[:8]}... (Expected: {expected_count} recovery points)")
             
-            # Get VM name (with shorter timeout)
+            # Get VM metadata (with shorter timeout)
             try:
-                vm_name = get_vm_name(base_url, auth_header, vm_uuid)
+                vm_meta = get_vm_metadata(base_url, auth_header, vm_uuid)
             except:
-                vm_name = f"VM-{vm_uuid[:8]}"
+                vm_meta = {
+                    'vm_name': f"VM-{vm_uuid[:8]}",
+                    'cluster_name': "",
+                    'cluster_uuid': "",
+                    'pe_cluster': "Unknown",
+                }
             
             # Get recovery point details (with timeout handling in the function)
             recovery_points = get_vm_recovery_points_details(base_url, auth_header, vm_uuid)
@@ -274,7 +312,10 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                     'size_bytes': size_bytes,
                     'size_formatted': format_bytes(size_bytes),
                     'expiration_time': rp.get('expirationTime', 'N/A'),
-                    'status': rp.get('status', 'UNKNOWN')
+                    'status': rp.get('status', 'UNKNOWN'),
+                    'cluster_name': vm_meta.get('cluster_name') or 'Unknown',
+                    'pe_cluster': vm_meta.get('pe_cluster') or 'Unknown',
+                    'vm_name': vm_meta.get('vm_name') or f"VM-{vm_uuid[:8]}",
                 })
             
             with lock:
@@ -283,8 +324,11 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                 processed_count[0] += 1
                 
                 vm_details.append({
-                    'vm_name': vm_name,
+                    'vm_name': vm_meta.get('vm_name') or f"VM-{vm_uuid[:8]}",
                     'vm_uuid': vm_uuid,
+                    'cluster_name': vm_meta.get('cluster_name') or 'Unknown',
+                    'cluster_uuid': vm_meta.get('cluster_uuid') or '',
+                    'pe_cluster': vm_meta.get('pe_cluster') or 'Unknown',
                     'recovery_point_count': len(recovery_points),
                     'reclaimable_bytes': vm_reclaimable,
                     'reclaimable_formatted': format_bytes(vm_reclaimable),
@@ -292,7 +336,11 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                 })
                 
                 if progress_callback:
-                    progress_callback(f"  ✓ VM: {vm_name} ({len(recovery_points)} RPs, {format_bytes(vm_reclaimable)})")
+                    progress_callback(
+                        f"  ✓ VM: {vm_meta.get('vm_name', vm_uuid[:8])} "
+                        f"[{vm_meta.get('cluster_name') or 'Unknown'}] "
+                        f"({len(recovery_points)} RPs, {format_bytes(vm_reclaimable)})"
+                    )
         
         except Exception as e:
             # Log error but continue processing other VMs
