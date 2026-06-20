@@ -9,6 +9,8 @@ import uuid
 from typing import Dict, List, Optional, Callable
 import time
 
+from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
+
 
 def make_auth_header(username: str, password: str) -> str:
     """Create basic auth header."""
@@ -17,7 +19,13 @@ def make_auth_header(username: str, password: str) -> str:
     return f"Basic {b64_credentials}"
 
 
-def delete_recovery_point(base_url: str, auth_header: str, rp_ext_id: str) -> Dict:
+def delete_recovery_point(
+    session: requests.Session,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
+    rp_ext_id: str,
+) -> Dict:
     """
     Delete a single recovery point.
     Returns task UUID for tracking.
@@ -27,7 +35,6 @@ def delete_recovery_point(base_url: str, auth_header: str, rp_ext_id: str) -> Di
     
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': auth_header,
         'Accept': 'application/json',
         'ntnx-request-id': request_id
     }
@@ -35,7 +42,14 @@ def delete_recovery_point(base_url: str, auth_header: str, rp_ext_id: str) -> Di
     url = f"{base_url}/api/dataprotection/v4.3/config/recovery-points/{rp_ext_id}"
     
     try:
-        response = requests.delete(url, headers=headers, verify=False, timeout=60)
+        get_cookie(
+            session,
+            base_url,
+            pc_user,
+            pc_password,
+            refresh_sec=COOKIE_REFRESH_SEC,
+        )
+        response = session.delete(url, headers=headers, verify=False, timeout=60)
         response.raise_for_status()
         
         # DELETE returns 202 with task info
@@ -66,20 +80,32 @@ def delete_recovery_point(base_url: str, auth_header: str, rp_ext_id: str) -> Di
         }
 
 
-def check_task_status(base_url: str, auth_header: str, task_ext_id: str) -> Dict:
+def check_task_status(
+    session: requests.Session,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
+    task_ext_id: str,
+) -> Dict:
     """
     Check the status of a delete task.
     """
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': auth_header,
         'Accept': 'application/json'
     }
     
     url = f"{base_url}/api/prism/v4.1/config/tasks/{task_ext_id}"
     
     try:
-        response = requests.get(url, headers=headers, verify=False, timeout=30)
+        get_cookie(
+            session,
+            base_url,
+            pc_user,
+            pc_password,
+            refresh_sec=COOKIE_REFRESH_SEC,
+        )
+        response = session.get(url, headers=headers, verify=False, timeout=30)
         response.raise_for_status()
         
         data = response.json()
@@ -171,7 +197,6 @@ def bulk_delete_recovery_points(
         Dict with deletion results
     """
     base_url = f"https://{pc_ip}:9440"
-    auth_header = make_auth_header(pc_user, pc_password)
     
     # Apply size filter
     filtered_rps = filter_recovery_points_by_size(recovery_points, size_filter)
@@ -202,7 +227,12 @@ def bulk_delete_recovery_points(
     def _is_cancelled() -> bool:
         return isinstance(cancel_event, threading.Event) and cancel_event.is_set()
 
-    def _wait_task_terminal(task_ext_id: str, rp_name: str, max_wait_sec: int = 600) -> Dict:
+    def _wait_task_terminal(
+        session: requests.Session,
+        task_ext_id: str,
+        rp_name: str,
+        max_wait_sec: int = 600,
+    ) -> Dict:
         started = time.time()
         last_status = "UNKNOWN"
         while True:
@@ -211,7 +241,7 @@ def bulk_delete_recovery_points(
             if (time.time() - started) >= max_wait_sec:
                 return {"ok": False, "status": "TIMEOUT", "error": "Task status wait timed out"}
 
-            st = check_task_status(base_url, auth_header, task_ext_id)
+            st = check_task_status(session, base_url, pc_user, pc_password, task_ext_id)
             if not st.get("ok"):
                 time.sleep(2)
                 continue
@@ -250,11 +280,27 @@ def bulk_delete_recovery_points(
             if progress_callback:
                 progress_callback(f"[{idx}/{len(filtered_rps)}] Deleting: {rp_name} ({rp_size})")
 
+            session = requests.Session()
+            get_cookie(
+                session,
+                base_url,
+                pc_user,
+                pc_password,
+                force=True,
+                refresh_sec=COOKIE_REFRESH_SEC,
+            )
+
             delete_result = None
             for attempt in range(1, 6):
                 if _is_cancelled():
                     break
-                delete_result = delete_recovery_point(base_url, auth_header, rp_ext_id)
+                delete_result = delete_recovery_point(
+                    session,
+                    base_url,
+                    pc_user,
+                    pc_password,
+                    rp_ext_id,
+                )
                 if delete_result.get("ok"):
                     break
                 if int(delete_result.get("status_code") or 0) == 429:
@@ -277,7 +323,7 @@ def bulk_delete_recovery_points(
                 delete_result = {'ok': False, 'error': 'Delete did not run', 'status_code': 0}
             task_terminal = None
             if delete_result.get('ok') and delete_result.get('task_ext_id'):
-                task_terminal = _wait_task_terminal(delete_result['task_ext_id'], rp_name)
+                task_terminal = _wait_task_terminal(session, delete_result['task_ext_id'], rp_name)
                 if not task_terminal.get('ok') or str(task_terminal.get('status', '')).upper() != 'SUCCEEDED':
                     delete_result = {
                         'ok': False,

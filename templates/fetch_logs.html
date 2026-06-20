@@ -994,15 +994,32 @@
           <div class="form-group" id="folderLevel2Group" style="display: none;">
             <label class="form-label" for="folderLevel2">Select Folder Level 2</label>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-              <select id="folderLevel2" name="folderLevel2" class="form-input" style="flex: 1;">
-                <option value="">-- Select Level 1 first --</option>
-              </select>
+              <div style="position: relative; flex: 1;">
+                <input type="text"
+                       id="folderLevel2Search"
+                       class="form-input"
+                       placeholder="🔍 Type to search folders..."
+                       autocomplete="off"
+                       disabled
+                       style="padding-right: 2.5rem;">
+                <select id="folderLevel2"
+                        name="folderLevel2"
+                        class="form-input"
+                        disabled
+                        style="position: absolute; top: 0; left: 0; width: 100%; opacity: 0; pointer-events: none;">
+                  <option value="">-- Select Level 1 first --</option>
+                </select>
+                <div id="folderLevel2Dropdown"
+                     class="search-dropdown"
+                     style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 300px; overflow-y: auto; background: white; border: 1px solid #D1D5DB; border-radius: 4px; margin-top: 0.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 1000;">
+                </div>
+              </div>
               <button type="button" id="refreshLevel2Btn" class="btn-refresh" title="Refresh folders" disabled>
                 🔄
               </button>
             </div>
             <div class="form-help-text">
-              📁 Select second level folder (e.g., NCM2_1, NCM2_2)
+              📁 Type to search or pick from dropdown (e.g., NCM2_1, NCM2_2)
             </div>
             <div id="level2CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
               📦 Using cached folders from <strong id="level2CacheTime"></strong>
@@ -1161,7 +1178,7 @@
                   </label>
                 </div>
               </div>
-              
+
               <!-- Logbay Section -->
               <div style="padding-top: 1.5rem; border-top: 1px solid #E5E7EB;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
@@ -1204,6 +1221,30 @@
                            style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
                     <span style="font-size: 0.875rem;">cvm_logs</span>
                   </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="iam" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">iam</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="aplos" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">aplos</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="idf" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">idf</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="nginx" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">nginx</span>
+                  </label>
                 </div>
                 
                 <!-- Logbay Duration Options -->
@@ -1221,7 +1262,7 @@
                     </label>
                     <div id="recentDurationOptions" style="margin-left: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
                       <label style="font-size: 0.8125rem; color: var(--text-muted);">Hours:</label>
-                      <input type="number" id="recentHours" value="24" min="1" max="168" 
+                      <input type="number" id="recentHours" value="24" min="1" max="240" 
                              style="width: 80px; padding: 0.375rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;">
                       <span style="font-size: 0.8125rem; color: var(--text-muted);">(e.g., 24 for last 24 hours)</span>
                     </div>
@@ -1247,10 +1288,77 @@
                         </div>
                         <div>
                           <label style="font-size: 0.8125rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Duration (hours):</label>
-                          <input type="number" id="customDurationHours" value="2" min="1" max="168"
+                          <input type="number" id="customDurationHours" value="2" min="1" max="240"
                                  style="width: 80px; padding: 0.375rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;">
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  <div id="longDurationWarning" style="display: none; margin-top: 0.75rem; padding: 0.625rem; border-radius: 6px; border: 1px solid #F59E0B; background: #FFFBEB; color: #92400E; font-size: 0.8125rem;">
+                    ⚠️ Long duration selected (&gt;168h). Collection may take longer and produce large archives.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Microservice Logs Section -->
+              <div style="padding-top: 1.5rem; border-top: 1px solid #E5E7EB; margin-top: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                  <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #8B5CF6;">🧩</span>
+                    <span>Microservice Logs (*.log*)</span>
+                  </div>
+                  <button type="button" onclick="toggleAllCheckboxes('microservice')" style="padding: 0.375rem 0.75rem; background: #8B5CF6; color: white; border: none; border-radius: 4px; font-size: 0.8125rem; cursor: pointer; font-weight: 500;">
+                    Select All / Deselect All
+                  </button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="microservice" value="epsilon"
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
+                    <span style="font-size: 0.875rem;">epsilon</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="microservice" value="calm"
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
+                    <span style="font-size: 0.875rem;">calm</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="microservice" value="policy"
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
+                    <span style="font-size: 0.875rem;">policy</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="microservice" value="scheduler"
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
+                    <span style="font-size: 0.875rem;">scheduler</span>
+                  </label>
+                </div>
+                <div style="margin-top: 0.625rem; font-size: 0.8125rem; color: var(--text-muted);">
+                  Pod names are auto-discovered on every run; only files matching <code>*.log*</code> are collected.
+                </div>
+                <div style="margin-top: 0.875rem; padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 8px; background: #FAFAFA;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600; color: #111827;">
+                    <input type="checkbox" id="microserviceLiveOnlyToggle" style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
+                    <span>Only collect live logs (tail -F, no older logs)</span>
+                  </label>
+                  <div id="microserviceLiveOnlyOptions" style="display: none; margin-top: 0.75rem; margin-left: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap;">
+                      <label for="microserviceLiveDurationMinutes" style="font-size: 0.8125rem; color: #374151;">Live collection time (minutes):</label>
+                      <input
+                        type="number"
+                        id="microserviceLiveDurationMinutes"
+                        value="30"
+                        min="1"
+                        max="240"
+                        style="width: 90px; padding: 0.375rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;"
+                      >
+                    </div>
+                    <div style="margin-top: 0.625rem; padding: 0.625rem; border: 1px solid #F59E0B; border-radius: 6px; background: #FFFBEB; color: #92400E; font-size: 0.8125rem;">
+                      ⚠️ Live streaming can increase CPU usage on pods and PC. Use cautiously and select as few microservice components as possible.
                     </div>
                   </div>
                 </div>
@@ -1265,7 +1373,7 @@
             <button type="button" class="btn-secondary" id="abortBtn" onclick="abortLogFetch()" style="display: none; background: #DC2626;">
               ⚠️ Abort Collection
             </button>
-            <button type="button" class="btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">
+            <button type="button" class="btn-secondary" data-home-url="{{ url_for('index') }}" onclick="window.location.href=this.dataset.homeUrl">
               Back to Home
             </button>
           </div>
@@ -1374,6 +1482,7 @@
               
               const fluentdCount = (job.fluentd_namespaces || []).length;
               const logbayCount = (job.logbay_services || []).length;
+              const microserviceCount = (job.microservice_services || []).length;
               const filesCount = (job.files_collected || []).length;
               const totalSizeMB = ((job.total_size_bytes || 0) / (1024 * 1024)).toFixed(2);
               
@@ -1395,6 +1504,7 @@
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; font-size: 0.8125rem; color: #4B5563;">
                     <div>📦 Fluentd: ${fluentdCount} namespace(s)</div>
                     <div>🔧 Logbay: ${logbayCount} service(s)</div>
+                    <div>🧩 Microservice: ${microserviceCount} service(s)</div>
                     <div>📁 Files: ${filesCount}</div>
                     <div>💾 Size: ${totalSizeMB} MB</div>
                   </div>
@@ -1421,6 +1531,26 @@
     // Load recent jobs on page load
     document.addEventListener('DOMContentLoaded', function() {
       loadRecentJobs();
+      updateLogbayDurationWarning();
+
+      const recentHoursInput = document.getElementById('recentHours');
+      const customDurationInput = document.getElementById('customDurationHours');
+      if (recentHoursInput) {
+        recentHoursInput.addEventListener('input', updateLogbayDurationWarning);
+      }
+      if (customDurationInput) {
+        customDurationInput.addEventListener('input', updateLogbayDurationWarning);
+      }
+
+      const liveOnlyToggle = document.getElementById('microserviceLiveOnlyToggle');
+      const liveDurationInput = document.getElementById('microserviceLiveDurationMinutes');
+      if (liveOnlyToggle) {
+        liveOnlyToggle.addEventListener('change', updateMicroserviceLiveOnlyUI);
+      }
+      if (liveDurationInput) {
+        liveDurationInput.addEventListener('input', updateMicroserviceLiveOnlyUI);
+      }
+      updateMicroserviceLiveOnlyUI();
     });
     
     // Toggle all checkboxes for a specific type (fluentd or logbay)
@@ -1442,6 +1572,35 @@
         recentDiv.style.display = 'none';
         customDiv.style.display = 'flex';
       }
+      updateLogbayDurationWarning();
+    }
+
+    function updateLogbayDurationWarning() {
+      const warningDiv = document.getElementById('longDurationWarning');
+      if (!warningDiv) return;
+
+      const durationTypeInput = document.querySelector('input[name="logbayDurationType"]:checked');
+      if (!durationTypeInput) {
+        warningDiv.style.display = 'none';
+        return;
+      }
+
+      const durationType = durationTypeInput.value;
+      let hours = 0;
+      if (durationType === 'recent') {
+        hours = parseInt(document.getElementById('recentHours')?.value || '0', 10);
+      } else {
+        hours = parseInt(document.getElementById('customDurationHours')?.value || '0', 10);
+      }
+
+      warningDiv.style.display = hours > 168 ? 'block' : 'none';
+    }
+
+    function updateMicroserviceLiveOnlyUI() {
+      const toggle = document.getElementById('microserviceLiveOnlyToggle');
+      const options = document.getElementById('microserviceLiveOnlyOptions');
+      if (!toggle || !options) return;
+      options.style.display = toggle.checked ? 'block' : 'none';
     }
     
     // Step tracker configuration
@@ -1453,14 +1612,25 @@
       { id: 'step5', label: 'Compressing Logs by Namespace', substeps: ['Analyze logs structure', 'Organize by namespace', 'Create tar.gz archives', 'Calculate compressed sizes'] },
       { id: 'step6', label: 'Uploading Files to Filer', substeps: ['Upload compressed files', 'Track upload progress'] },
       { id: 'step7', label: 'Verification and Cleanup', substeps: ['Verify uploaded files', 'Clean up local files'] },
-      { id: 'step8', label: 'Logbay Collection', substeps: [], optional: true }  // Substeps are dynamic based on selected services
+      { id: 'step8', label: 'Optional Collections (Microservice / Logbay)', substeps: [], optional: true }  // Substeps are dynamic
     ];
+
+    function getExpectedTotalSteps() {
+      const fromState = window.operationTimes?.expectedTotalSteps;
+      if (typeof fromState === 'number' && fromState >= 7) return fromState;
+      const hasLogbay = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]:checked')).length > 0;
+      const hasMicroservice = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]:checked')).length > 0;
+      return (hasLogbay || hasMicroservice) ? 8 : 7;
+    }
     
     function initializeStepTracker() {
       const stepsList = document.getElementById('stepsList');
       stepsList.innerHTML = '';
       
-      stepTrackerSteps.forEach((step, index) => {
+      const expectedTotal = getExpectedTotalSteps();
+      const visibleSteps = stepTrackerSteps.filter((step, index) => !step.optional || (index + 1) <= expectedTotal);
+
+      visibleSteps.forEach((step, index) => {
         const stepDiv = document.createElement('div');
         stepDiv.id = `tracker-${step.id}`;
         stepDiv.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem;';
@@ -2227,6 +2397,8 @@
     
     // Initialize searchable dropdown for Level 1
     setupSearchableDropdown('folderLevel1Search', 'folderLevel1', 'folderLevel1Dropdown');
+    // Initialize searchable dropdown for Level 2
+    setupSearchableDropdown('folderLevel2Search', 'folderLevel2', 'folderLevel2Dropdown');
     
     // Initialize on page load - moved to after filer server event listener setup
     
@@ -2387,11 +2559,18 @@
           editableFolderNameInput.removeEventListener('keypress', handleKeyPress);
           const finalFolderName = editableFolderNameInput.value.trim() || folderName;
           modal.classList.remove('active');
-          document.getElementById('bugFolder').value = finalFolderName;
+          const bugFolderEl = document.getElementById('bugFolder');
+          bugFolderEl.value = finalFolderName;
+          // Keep dependent path/url previews in sync before submit.
+          bugFolderEl.dispatchEvent(new Event('input', { bubbles: true }));
+          bugFolderEl.dispatchEvent(new Event('change', { bubbles: true }));
+          if (typeof updatePathPreview === 'function') {
+            updatePathPreview();
+          }
           confirmOkBtn.removeEventListener('click', handleOk);
           confirmCancelBtn.removeEventListener('click', handleCancel);
-          // Trigger form submission again with the folder name set
-          document.getElementById('fetchLogsForm').dispatchEvent(new Event('submit'));
+          // Trigger form submission again with the folder name set.
+          document.getElementById('fetchLogsForm').requestSubmit();
           resolve(true);
         };
         
@@ -2448,6 +2627,9 @@
       
       // Disable form and show logs section
       document.getElementById('startBtn').disabled = true;
+      document.getElementById('abortBtn').style.display = 'inline-block';
+      document.getElementById('abortBtn').disabled = false;
+      document.getElementById('abortBtn').textContent = '⚠️ Abort Collection';
       document.getElementById('logsSection').classList.add('active');
       document.getElementById('logsContainer').innerHTML = '';
       document.getElementById('logsStatus').className = 'logs-status running';
@@ -2492,7 +2674,9 @@
         currentStep: 'Initializing',
         currentStepNumber: 0,
         currentSubstep: null,
-        currentTotalSubsteps: null
+        currentTotalSubsteps: null,
+        expectedTotalSteps: 7,
+        lastProgressPct: 0
       };
       
       // Collect filter selections
@@ -2500,6 +2684,28 @@
         .map(cb => cb.value);
       const logbayServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]:checked'))
         .map(cb => cb.value);
+      const microserviceServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]:checked'))
+        .map(cb => cb.value);
+      const microserviceLiveOnly = document.getElementById('microserviceLiveOnlyToggle')?.checked || false;
+      const microserviceLiveDurationMinutes = parseInt(
+        document.getElementById('microserviceLiveDurationMinutes')?.value || '30',
+        10
+      );
+      const expectedTotalSteps = (logbayServices.length > 0 || microserviceServices.length > 0) ? 8 : 7;
+      window.operationTimes.expectedTotalSteps = expectedTotalSteps;
+
+      if (microserviceLiveOnly) {
+        if (microserviceServices.length === 0) {
+          alert('Please select at least one microservice when "Only collect live logs" is enabled.');
+          document.getElementById('startBtn').disabled = false;
+          return;
+        }
+        if (!Number.isInteger(microserviceLiveDurationMinutes) || microserviceLiveDurationMinutes <= 0) {
+          alert('Please enter a valid positive duration in minutes for live logs.');
+          document.getElementById('startBtn').disabled = false;
+          return;
+        }
+      }
       
       // Collect logbay duration settings
       const durationType = document.querySelector('input[name="logbayDurationType"]:checked').value;
@@ -2529,13 +2735,27 @@
         };
       }
       
+      // Ensure destination path preview reflects the final bug folder value.
+      if (typeof updatePathPreview === 'function') {
+        updatePathPreview();
+      }
+
       // Handle custom filer destination path
-      const customDestPath = document.getElementById('filerDestPath').value.trim();
+      let customDestPath = document.getElementById('filerDestPath').value.trim();
       let filerBasePathOverride = currentFilerConfig.basePath;
       let bugFolderOverride = fullBugFolder;
       
       // Check if user manually edited the path (doesn't match auto-generated)
       const expectedPath = `${currentFilerConfig.basePath}/${fullBugFolder}`;
+      // Normalize stale placeholder if UI still has "<pc>_timestamp" from pre-confirm state.
+      if (bugFolder && pcIp) {
+        const staleSuffix = `${pcIp}_timestamp`;
+        if (customDestPath.endsWith('/' + staleSuffix)) {
+          customDestPath = customDestPath.slice(0, -staleSuffix.length) + bugFolder;
+        } else if (customDestPath === staleSuffix) {
+          customDestPath = bugFolder;
+        }
+      }
       if (customDestPath !== expectedPath) {
         // User edited the path - try to parse it intelligently
         // Look for common base paths
@@ -2611,6 +2831,9 @@
           filer_user: currentFilerConfig.user,
           filer_base_path: filerBasePathOverride,
           fluentd_namespaces: fluentdNamespaces,
+          microservice_services: microserviceServices,
+          microservice_live_only: microserviceLiveOnly,
+          microservice_live_duration_minutes: microserviceLiveDurationMinutes,
           logbay_services: logbayServices,
           logbay_duration: logbayDuration
         })
@@ -2627,6 +2850,7 @@
           reader.read().then(({ done, value }) => {
             if (done) {
               document.getElementById('startBtn').disabled = false;
+              document.getElementById('abortBtn').style.display = 'none';
               return;
             }
             
@@ -2819,6 +3043,7 @@
         document.getElementById('logsStatus').className = 'logs-status error';
         document.getElementById('logsStatus').textContent = 'Error';
         document.getElementById('startBtn').disabled = false;
+        document.getElementById('abortBtn').style.display = 'none';
         updateProgress(100, 'Error: ' + error.message);
         
         // Add error to log batch
@@ -2914,18 +3139,25 @@
       'Done': 100
     };
     
-    function updateProgress(percentage, stepText, stepNumber = null, totalSteps = 7, substep = null, totalSubsteps = null, substepName = null) {
+    function updateProgress(percentage, stepText, stepNumber = null, totalSteps = null, substep = null, totalSubsteps = null, substepName = null) {
       const progressBarFill = document.getElementById('progressBarFill');
       const progressBarText = document.getElementById('progressBarText');
       const progressPercentage = document.getElementById('progressPercentage');
       const progressStep = document.getElementById('progressStep');
       
-      // FIX #1: Prevent loop boundary overflow
-      const displayedTotal = Math.max(totalSteps, stepNumber || 0);
+      // Keep totals and percentages stable across optional-step configurations.
+      const expectedTotal = getExpectedTotalSteps();
+      const inputTotal = (typeof totalSteps === 'number' && totalSteps > 0) ? totalSteps : expectedTotal;
+      const displayedTotal = Math.max(expectedTotal, inputTotal, stepNumber || 0);
       const safePercentage = Math.min(Math.max(percentage, 0), 100);
+      const prevPct = Number(window.operationTimes?.lastProgressPct || 0);
+      const monotonicPct = Math.max(prevPct, safePercentage);
+      if (window.operationTimes) {
+        window.operationTimes.lastProgressPct = monotonicPct;
+      }
       
       // Switch from indeterminate to deterministic mode once we have real progress
-      if (safePercentage > 0 && safePercentage < 100) {
+      if (monotonicPct > 0 && monotonicPct < 100) {
         progressBarFill.classList.remove('indeterminate');
       }
       
@@ -2942,13 +3174,13 @@
       }
       
       // Update progress bar
-      progressBarFill.style.width = safePercentage + '%';
-      progressPercentage.textContent = safePercentage + '%';
+      progressBarFill.style.width = monotonicPct + '%';
+      progressPercentage.textContent = monotonicPct + '%';
       progressStep.textContent = displayText;
       
       // Update text inside bar if there's enough space
-      if (safePercentage > 20) {
-        progressBarText.textContent = safePercentage + '%';
+      if (monotonicPct > 20) {
+        progressBarText.textContent = monotonicPct + '%';
       } else {
         progressBarText.textContent = '';
       }
@@ -3314,7 +3546,7 @@
         // Build error message with step, substep name, and specific error
         let errorMessage;
         if (stepNum > 0) {
-          const totalSteps = stepNum === 8 ? 8 : 7; // Dynamic total based on whether logbay is included
+          const totalSteps = getExpectedTotalSteps();
           errorMessage = `❌ Step ${stepNum}/${totalSteps} Failed: ${currentStep}`;
           if (substep && totalSubsteps) {
             // Include substep name in error message
@@ -3659,12 +3891,40 @@
         window.operationTimes.currentStep = 'Fluentd Steps Skipped';
         window.operationTimes.currentStepNumber = 7;
         updateProgress(90, 'Fluentd Steps Skipped', 7);
-      } else if (message.includes('Step 8/8') || message.includes('Logbay Collection')) {
+      } else if (message.includes('Starting microservice-level log collection') || message.includes('Microservice collection:')) {
+        updateStepTracker(7, null, true, true);
+        updateStepTracker(8, null, false, false, true);
+        window.operationTimes.currentStep = 'Collecting Microservice Logs';
+        window.operationTimes.currentStepNumber = 8;
+        updateProgress(94, 'Collecting Microservice Logs', 8, getExpectedTotalSteps());
+      } else if (message.includes('Microservice ') && message.includes(':')) {
+        updateStepTracker(8, null, false, false, true);
+        window.operationTimes.currentStep = 'Collecting Microservice Logs';
+        window.operationTimes.currentStepNumber = 8;
+        const subMatch = message.match(/Microservice\s+(\d+)\/(\d+):\s*(\S+)/);
+        if (subMatch) {
+          const currentSubstep = parseInt(subMatch[1]);
+          const totalSubsteps = parseInt(subMatch[2]);
+          const serviceName = subMatch[3];
+          window.operationTimes.currentSubstep = currentSubstep;
+          window.operationTimes.currentTotalSubsteps = totalSubsteps;
+          window.operationTimes.currentSubstepName = `Collecting ${serviceName}`;
+          updateProgress(
+            94 + (currentSubstep / totalSubsteps * 2),
+            'Collecting Microservice Logs',
+            8,
+            getExpectedTotalSteps(),
+            currentSubstep,
+            totalSubsteps,
+            `Collecting ${serviceName}`
+          );
+        }
+      } else if (message.includes('Step 8/8') || message.includes('Logbay Collection') || message.includes('Starting Logbay collection')) {
         updateStepTracker(7, null, true, true); // Mark step 7 complete with all substeps
         updateStepTracker(8, null, false, false, true); // Mark step 8 as in-progress
         window.operationTimes.currentStep = 'Collecting Logbay Logs';
         window.operationTimes.currentStepNumber = 8;
-        updateProgress(95, 'Collecting Logbay Logs', 8, 8); // Pass 8 as totalSteps
+        updateProgress(96, 'Collecting Logbay Logs', 8, getExpectedTotalSteps());
         
         // Detect substeps for logbay
         const substepMatch = message.match(/Substep (\d+)\/(\d+):\s*Collecting\s+(\S+)\s+logs/);
@@ -3676,14 +3936,14 @@
           window.operationTimes.currentTotalSubsteps = totalSubsteps;
           window.operationTimes.currentSubstepName = `Collecting ${serviceName}`;
           // Parameters: percentage, stepText, stepNumber, totalSteps, substep, totalSubsteps, substepName
-          updateProgress(95 + (currentSubstep / totalSubsteps * 4), 'Collecting Logbay Logs', 8, 8, currentSubstep, totalSubsteps, `Collecting ${serviceName}`);
+          updateProgress(96 + (currentSubstep / totalSubsteps * 3), 'Collecting Logbay Logs', 8, getExpectedTotalSteps(), currentSubstep, totalSubsteps, `Collecting ${serviceName}`);
         }
       } else if (message.includes('Fluentd log fetch completed successfully')) {
         // Fluentd completed, prepare for logbay if applicable
         updateProgress(94, 'Fluentd Collection Complete', 7);
       } else if (message.includes('completed successfully') || message.includes('✅') || message.includes('Success - All Operations Completed')) {
         // Mark final step complete (7 or 8 depending on whether logbay ran) with all substeps
-        const finalStep = window.operationTimes.currentStepNumber || 7;
+        const finalStep = window.operationTimes.currentStepNumber || getExpectedTotalSteps();
         updateStepTracker(finalStep, null, true, true);
         
         window.operationTimes.currentStep = 'Completed Successfully';
@@ -3696,7 +3956,7 @@
         const progressBarFill = document.getElementById('progressBarFill');
         progressBarFill.style.background = ''; // Reset to default green
         // Use the current step number (8 if logbay ran, 7 otherwise)
-        const finalStepNumber = window.operationTimes.currentStepNumber || 7;
+        const finalStepNumber = window.operationTimes.currentStepNumber || getExpectedTotalSteps();
         updateProgress(100, 'Completed Successfully', finalStepNumber);
       }
     }

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 import threading
 import time
@@ -11,6 +10,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import requests
 import urllib3
+
+from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -58,11 +59,19 @@ vm_power_completed: List[Dict[str, Any]] = []
 _vm_power_completed_cap = 8000
 
 
-def _make_auth_header(username: str, password: str) -> str:
-    """Create basic auth header."""
-    credentials = f"{username}:{password}"
-    b64_credentials = base64.b64encode(credentials.encode()).decode()
-    return f"Basic {b64_credentials}"
+def _new_pc_session(config: PowerOpConfig, *, force: bool = False) -> requests.Session:
+    """Create a session with fresh PC cookie auth."""
+    session = requests.Session()
+    session.headers["Content-Type"] = "application/json"
+    get_cookie(
+        session,
+        f"https://{config.pc_host}:9440",
+        config.pc_user,
+        config.pc_password,
+        force=force,
+        refresh_sec=COOKIE_REFRESH_SEC,
+    )
+    return session
 
 
 def _power_operation_vm(
@@ -84,10 +93,7 @@ def _power_operation_vm(
         - duration: float
     """
     base_url = f"https://{config.pc_host}:9440"
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': _make_auth_header(config.pc_user, config.pc_password)
-    }
+    session = _new_pc_session(config)
     
     act_key = vm_uuid
     t_start = time.perf_counter()
@@ -115,9 +121,15 @@ def _power_operation_vm(
         
         logger.info(f"Sending power {power_action} request for VM: {vm_name} ({vm_uuid})")
         
-        response = requests.post(
+        get_cookie(
+            session,
+            base_url,
+            config.pc_user,
+            config.pc_password,
+            refresh_sec=COOKIE_REFRESH_SEC,
+        )
+        response = session.post(
             power_url,
-            headers=headers,
             json=payload,
             verify=False,
             timeout=config.timeout
@@ -155,7 +167,7 @@ def _power_operation_vm(
             task_uuid,
             vm_name,
             config,
-            headers,
+            session,
             base_url,
             cancel_event
         )
@@ -222,7 +234,7 @@ def _wait_for_task_completion(
     task_uuid: str,
     vm_name: str,
     config: PowerOpConfig,
-    headers: Dict[str, str],
+    session: requests.Session,
     base_url: str,
     cancel_event: Optional[threading.Event] = None,
 ) -> bool:
@@ -240,9 +252,15 @@ def _wait_for_task_completion(
         
         try:
             params = {'filterCriteria': f'uuid=={task_uuid}'}
-            response = requests.get(
+            get_cookie(
+                session,
+                base_url,
+                config.pc_user,
+                config.pc_password,
+                refresh_sec=COOKIE_REFRESH_SEC,
+            )
+            response = session.get(
                 progress_url,
-                headers=headers,
                 params=params,
                 verify=False,
                 timeout=config.timeout
@@ -417,10 +435,7 @@ def _fetch_vm_names(config: PowerOpConfig) -> Dict[str, str]:
     vm_map = {}
     
     base_url = f"https://{config.pc_host}:9440"
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': _make_auth_header(config.pc_user, config.pc_password)
-    }
+    session = _new_pc_session(config, force=True)
     
     try:
         # Use v1 API to fetch VM names
@@ -430,9 +445,15 @@ def _fetch_vm_names(config: PowerOpConfig) -> Dict[str, str]:
             'projection': 'basicInfo'
         }
         
-        response = requests.get(
+        get_cookie(
+            session,
+            base_url,
+            config.pc_user,
+            config.pc_password,
+            refresh_sec=COOKIE_REFRESH_SEC,
+        )
+        response = session.get(
             vms_url,
-            headers=headers,
             params=params,
             verify=False,
             timeout=60

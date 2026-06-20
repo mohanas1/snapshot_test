@@ -656,6 +656,63 @@
     .modal-progress.active {
       display: block;
     }
+
+    .recovery-health-widget {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 1200;
+      width: min(360px, calc(100vw - 2rem));
+      background: #111827;
+      color: #F9FAFB;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      padding: 0.75rem 0.875rem;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+
+    .recovery-health-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .recovery-health-pill {
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .recovery-health-pill.ok {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
+    }
+
+    .recovery-health-pill.warn {
+      background: rgba(245, 158, 11, 0.2);
+      color: #FBBF24;
+    }
+
+    .recovery-health-pill.err {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+    }
+
+    .recovery-health-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem 0.75rem;
+      font-family: var(--font-mono);
+    }
+
+    .recovery-health-label {
+      color: #9CA3AF;
+    }
   </style>
 </head>
 <body>
@@ -664,6 +721,22 @@
     <a href="{{ url_for('index') }}" class="action-center-brand">
       ⚡ Nutanix Operations
     </a>
+  </div>
+
+  <div class="recovery-health-widget" id="recoveryHealthWidget">
+    <div class="recovery-health-header">
+      <span>📡 Recovery Health</span>
+      <span id="recoveryNetPill" class="recovery-health-pill warn">idle</span>
+    </div>
+    <div class="recovery-health-grid">
+      <span class="recovery-health-label">PC</span><span id="healthPcIp">-</span>
+      <span class="recovery-health-label">HTTP</span><span id="healthHttp">-</span>
+      <span class="recovery-health-label">Latency</span><span id="healthLatency">-</span>
+      <span class="recovery-health-label">429 Count</span><span id="health429">0</span>
+      <span class="recovery-health-label">Cookie</span><span id="healthCookie">unknown</span>
+      <span class="recovery-health-label">Cookie Refresh</span><span id="healthCookieAt">-</span>
+      <span class="recovery-health-label">Last Error</span><span id="healthErr">-</span>
+    </div>
   </div>
 
   <div class="body-content">
@@ -966,6 +1039,49 @@
     let currentPage = 1;
     let perPage = 20;
     let totalPages = 1;
+    let recoveryHealthInterval = null;
+
+    function truncateText(value, maxLen = 64) {
+      const text = String(value || '').trim();
+      if (!text) return '-';
+      return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
+    }
+
+    function applyHealthPill(status) {
+      const pill = document.getElementById('recoveryNetPill');
+      if (!pill) return;
+      pill.classList.remove('ok', 'warn', 'err');
+      const st = String(status || 'idle').toLowerCase();
+      if (st === 'ok' || st === 'complete') {
+        pill.classList.add('ok');
+      } else if (st === 'error') {
+        pill.classList.add('err');
+      } else {
+        pill.classList.add('warn');
+      }
+      pill.textContent = st || 'idle';
+    }
+
+    async function refreshRecoveryHealthWidget() {
+      try {
+        const response = await fetch('/api/recovery_health', { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!payload.ok || !payload.health) return;
+        const h = payload.health;
+
+        document.getElementById('healthPcIp').textContent = h.last_pc_ip || '-';
+        document.getElementById('healthHttp').textContent = h.last_http_status ?? '-';
+        document.getElementById('healthLatency').textContent = h.last_latency_ms != null ? `${h.last_latency_ms} ms` : '-';
+        document.getElementById('health429').textContent = h.throttle_429_count ?? 0;
+        document.getElementById('healthCookie').textContent = h.cookie_status || 'unknown';
+        document.getElementById('healthCookieAt').textContent = h.cookie_last_refresh_iso || '-';
+        document.getElementById('healthErr').textContent = truncateText(h.last_error || h.cookie_last_error || '-', 80);
+        applyHealthPill(h.network_status);
+      } catch (_) {
+        // Keep widget best-effort and non-blocking.
+      }
+    }
     
     function updateStats() {
       document.getElementById('statTotalVMs').textContent = stats.totalVMs || '-';
@@ -1370,6 +1486,8 @@
         currentPage = 1;
         renderPage();
       });
+      refreshRecoveryHealthWidget();
+      recoveryHealthInterval = window.setInterval(refreshRecoveryHealthWidget, 5000);
     });
     
     async function checkCacheAvailability() {

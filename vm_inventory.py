@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
 from snapshot_runner import GROUPS_PATH, TLS_VERIFY
 
 GROUP_MEMBER_ATTRIBUTES: List[Dict[str, str]] = [
@@ -108,6 +109,8 @@ def fetch_vm_inventory_rows(
     base_url: str,
     *,
     page_size: int = 500,
+    pc_user: Optional[str] = None,
+    pc_password: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Page through all non-CVM mh_vm entities; return one row per VM (deduped by entity_id)
@@ -121,6 +124,19 @@ def fetch_vm_inventory_rows(
     offset = 0
 
     while True:
+        # Ensure cookie auth is refreshed every 15 minutes for PC APIs.
+        user = str(pc_user or "").strip()
+        pwd = str(pc_password or "")
+        if not user and isinstance(getattr(session, "auth", None), tuple):
+            try:
+                user = str(session.auth[0] or "").strip()
+                pwd = str(session.auth[1] or "")
+            except Exception:
+                user = ""
+                pwd = ""
+        if user and pwd:
+            get_cookie(session, base, user, pwd, refresh_sec=COOKIE_REFRESH_SEC)
+
         body = _group_body(page, offset)
         r = session.post(url, json=body, verify=TLS_VERIFY, timeout=120)
         r.raise_for_status()

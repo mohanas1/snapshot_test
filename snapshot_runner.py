@@ -17,8 +17,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 
+from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
+
 GROUPS_PATH = "/api/nutanix/v3/groups"
 TASKS_LIST_PATH = "/api/prism/v4.1/config/tasks"
+VERSIONS_PATH = "/api/nutanix/v3/versions"
 ERGON_PREFIX = base64.b64encode(b"ergon").decode("ascii")
 TERMINAL = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "CANCELED", "CANCELLED"})
 # Lab/self-signed PC: never verify TLS for requests.
@@ -28,10 +31,62 @@ RECOVERY_CRASH = "CRASH_CONSISTENT"
 RECOVERY_APP = "APPLICATION_CONSISTENT"
 # Config / form value: pick CRASH vs APP independently per VM.
 RANDOM_CRASH_OR_APP = "RANDOM_CRASH_OR_APP"
+SNAPSHOT_API_RETRY_HTTP_CODES = frozenset({401, 429})
+SNAPSHOT_API_MAX_RETRIES = 1
+SNAPSHOT_API_429_BACKOFF_BASE_SEC = 0.8
 
 
 class RunCancelled(Exception):
     """Raised when the UI requests an abort (cancel_event is set)."""
+
+
+def _ensure_fresh_pc_cookie(
+    session: requests.Session,
+    base: str,
+    cfg: "SnapshotConfig",
+    *,
+    force: bool = False,
+) -> None:
+    get_cookie(
+        session,
+        base.rstrip("/"),
+        cfg.pc_user,
+        cfg.pc_password,
+        force=force,
+        refresh_sec=COOKIE_REFRESH_SEC,
+    )
+
+
+def _request_with_cookie_retry(
+    session: requests.Session,
+    method: str,
+    url: str,
+    *,
+    base: str,
+    cfg: "SnapshotConfig",
+    log: Optional[logging.Logger] = None,
+    timeout: float = 120,
+    **kwargs: Any,
+) -> requests.Response:
+    """Issue request with one forced-cookie retry on 401/429."""
+    _ensure_fresh_pc_cookie(session, base, cfg)
+    resp = session.request(method, url, timeout=timeout, **kwargs)
+    if resp.status_code not in SNAPSHOT_API_RETRY_HTTP_CODES:
+        return resp
+    if log:
+        log.warning(
+            "Snapshot API %s %s got HTTP %s; forcing cookie refresh and retrying once.",
+            method.upper(),
+            url,
+            resp.status_code,
+        )
+    if resp.status_code == 429:
+        backoff = SNAPSHOT_API_429_BACKOFF_BASE_SEC * (1.0 + random.random() * 0.25)
+        if log:
+            log.warning("429 backoff %.2fs before retry.", backoff)
+        time.sleep(backoff)
+    _ensure_fresh_pc_cookie(session, base, cfg, force=True)
+    return session.request(method, url, timeout=timeout, **kwargs)
 
 
 @dataclass
@@ -116,6 +171,7 @@ def list_all_vm_uuids(
     session: requests.Session,
     base: str,
     cfg: SnapshotConfig,
+    log: Optional[logging.Logger] = None,
 ) -> Tuple[List[Tuple[str, Optional[str]]], int]:
     url = base + GROUPS_PATH
     seen: Dict[str, Optional[str]] = {}
@@ -130,7 +186,16 @@ def list_all_vm_uuids(
         body = dict(_group_payload(page))
         body["group_member_offset"] = group_member_offset
         body["group_member_count"] = page
-        r = session.post(url, json=body, verify=TLS_VERIFY, timeout=120)
+        r = _request_with_cookie_retry(
+            session,
+            "POST",
+            url,
+            base=base,
+            cfg=cfg,
+            log=log,
+            json=body,
+            verify=TLS_VERIFY,
+        )
         r.raise_for_status()
         data = r.json()
         groups = data.get("group_results") or []
@@ -173,21 +238,28 @@ def list_all_vm_uuids(
 
 def take_snapshot(
     session: requests.Session,
+    base: str,
+    cfg: SnapshotConfig,
     vms_snap_prefix: str,
     vm_uuid: str,
     snap_name: str,
     expiration_iso: str,
     recovery_point_type: str,
+    log: Optional[logging.Logger] = None,
 ) -> str:
-    r = session.post(
+    r = _request_with_cookie_retry(
+        session,
+        "POST",
         f"{vms_snap_prefix}{vm_uuid}/snapshot",
+        base=base,
+        cfg=cfg,
+        log=log,
         json={
             "name": snap_name,
             "recovery_point_type": recovery_point_type,
             "expiration_time": expiration_iso,
         },
         verify=TLS_VERIFY,
-        timeout=120,
     )
     if not r.ok:
         raise RuntimeError(f"{r.status_code} {r.text[:500]}")
@@ -227,8 +299,13 @@ def wait_batch(
         filt = "(" + " or ".join(
             "extId eq '" + e.replace("'", "''") + "'" for e in pending
         ) + ")"
-        r = session.get(
+        r = _request_with_cookie_retry(
+            session,
+            "GET",
             tasks_url,
+            base=base,
+            cfg=cfg,
+            log=log,
             params={
                 "$page": 0,
                 "$limit": max(100, len(pending)),
@@ -236,7 +313,6 @@ def wait_batch(
                 "$filter": filt,
             },
             verify=TLS_VERIFY,
-            timeout=120,
         )
         r.raise_for_status()
         for row in r.json().get("data") or []:
@@ -297,8 +373,10 @@ def run_snapshots(
     vms_snap_prefix = f"{base}/api/nutanix/v3/vms/"
 
     session = requests.Session()
-    session.auth = (cfg.pc_user, cfg.pc_password)
     session.headers["Content-Type"] = "application/json"
+    setattr(session, "_pc_user", cfg.pc_user)
+    setattr(session, "_pc_password", cfg.pc_password)
+    _ensure_fresh_pc_cookie(session, base, cfg, force=True)
 
     def _abort_if_needed() -> None:
         if cancel_event is not None and cancel_event.is_set():
@@ -307,7 +385,7 @@ def run_snapshots(
 
     _abort_if_needed()
     log.info("Listing VMs…")
-    vms, ignored_name = list_all_vm_uuids(session, base, cfg)
+    vms, ignored_name = list_all_vm_uuids(session, base, cfg, log=log)
     _abort_if_needed()
     tally: Dict[str, int] = {
         "ignored": ignored_name,
@@ -384,11 +462,13 @@ def run_snapshots(
                 rpt,
             )
             thread_sess = requests.Session()
-            thread_sess.auth = (cfg.pc_user, cfg.pc_password)
             thread_sess.headers["Content-Type"] = "application/json"
+            setattr(thread_sess, "_pc_user", cfg.pc_user)
+            setattr(thread_sess, "_pc_password", cfg.pc_password)
+            _ensure_fresh_pc_cookie(thread_sess, base, cfg, force=True)
             try:
                 task_uuid = take_snapshot(
-                    thread_sess, vms_snap_prefix, vm_uuid, snap, exp, rpt
+                    thread_sess, base, cfg, vms_snap_prefix, vm_uuid, snap, exp, rpt, log=log
                 )
                 return (
                     True,
@@ -447,7 +527,7 @@ def run_snapshots(
             )
             try:
                 task_uuid = take_snapshot(
-                    session, vms_snap_prefix, vm_uuid, snap, exp, rpt
+                    session, base, cfg, vms_snap_prefix, vm_uuid, snap, exp, rpt, log=log
                 )
             except Exception as e:
                 tally["failed"] += 1
@@ -510,6 +590,7 @@ def run_snapshots(
     result: Dict[str, Any] = dict(tally)
     result["duration_sec"] = duration_sec
     result["n_vms"] = n_vms
+    result["batch_size"] = cfg.batch_size
     result["snapshot_trigger_mode"] = mode
     if cfg.recovery_point_type == RANDOM_CRASH_OR_APP:
         result["rp_random_crash"] = random_rp.get("crash", 0)

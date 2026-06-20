@@ -3596,7 +3596,7 @@
         <button type="button" class="action-center-btn-secondary" onclick="handleVMPowerOps()">
           VM Power On/Off
         </button>
-        <button type="submit" class="action-center-btn-secondary" id="btn-start-snapshot-run-top">
+        <button type="submit" form="main-form" class="action-center-btn-secondary" id="btn-start-snapshot-run-top">
           Start Snapshot Run
         </button>
         <button type="button" class="action-center-btn-secondary" onclick="window.location.href='/recovery_points'">
@@ -4087,7 +4087,7 @@
       <span class="toolbar-hint">Actions</span>
       <button type="button" class="btn-impact-cta" onclick="handleStartDiskJob()" title="Start disk job on eligible VMs">Start Disk Job</button>
       <button type="button" class="btn-impact-cta" onclick="handleRunFullPipeline()" title="Run full pipeline (disk + snapshots)">Run Full Pipeline</button>
-      <button type="submit" id="btn-start-snapshot-run" title="Start snapshot run">Start Snapshot Run</button>
+      <button type="submit" form="main-form" id="btn-start-snapshot-run" title="Start snapshot run">Start Snapshot Run</button>
     </div>
     <div id="pipeline-progress-dock" class="pipeline-progress-dock" aria-live="polite">
       <p id="active-disk-job-hint" class="active-disk-job-hint" style="display:none; margin:0 0 0.35rem 0;"></p>
@@ -7826,6 +7826,7 @@
       }
     });
     let scheduleConfirmBypass = false;
+    let snapshotConfirmBypass = false;
     function fieldValue(id, fallback = "—") {
       const el = $(id);
       if (!el) return fallback;
@@ -7963,6 +7964,17 @@
         )
         + scheduleJobDetailsHtml(jobType);
     }
+    function formatStartSnapshotConfirmHtml() {
+      const pcIp = fieldValue("pc_ip");
+      const headerRows = kvList([
+        ["Prism Central", pcIp],
+        ["Job type", "snapshot"],
+        ["Affected VMs", affectedVmText("snapshot")],
+      ]);
+      return "<p><strong>Start snapshot run now?</strong></p>"
+        + headerRows
+        + scheduleJobDetailsHtml("snapshot");
+    }
     const mainFormEl = $("main-form");
     if (mainFormEl) {
       function syncDetachedControlsIntoMainForm() {
@@ -8017,20 +8029,41 @@
       mainFormEl.addEventListener("submit", (ev) => {
         syncDetachedControlsIntoMainForm();
         const se = $("schedule_enabled");
-        if (scheduleConfirmBypass || !se || !se.checked) return;
+        if (se && se.checked) {
+          if (scheduleConfirmBypass) return;
+          ev.preventDefault();
+          openDiskConfirmModal(
+            "Save schedule?",
+            formatScheduleSaveConfirmHtml(),
+            "Save schedule",
+            false,
+            () => {
+              scheduleConfirmBypass = true;
+              try {
+                mainFormEl.requestSubmit();
+              } finally {
+                setTimeout(() => {
+                  scheduleConfirmBypass = false;
+                }, 0);
+              }
+            }
+          );
+          return;
+        }
+        if (snapshotConfirmBypass) return;
         ev.preventDefault();
         openDiskConfirmModal(
-          "Save schedule?",
-          formatScheduleSaveConfirmHtml(),
-          "Save schedule",
-          false,
+          "Start snapshot run?",
+          formatStartSnapshotConfirmHtml(),
+          "Start snapshot run",
+          true,
           () => {
-            scheduleConfirmBypass = true;
+            snapshotConfirmBypass = true;
             try {
               mainFormEl.requestSubmit();
             } finally {
               setTimeout(() => {
-                scheduleConfirmBypass = false;
+                snapshotConfirmBypass = false;
               }, 0);
             }
           }

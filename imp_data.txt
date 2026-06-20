@@ -1,0 +1,26 @@
+bash-5.1$ kubectl --kubeconfig=nc_kubecconfig exec -n ntnx-ncm-common ncm-epsilon-0 -- bash -lc 'source /home/epsilon/venv/bin/activate;supervisorctl -c /home/epsilon/conf/supervisor/supervisord.conf status'| head -n30 | awk '{print}'
+Defaulted container "ncm-epsilon" out of: ncm-epsilon, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+db:postgresql                         RUNNING   pid 942, uptime 18 days, 12:53:15
+db:redis                              RUNNING   pid 435, uptime 18 days, 12:57:17
+epsilon-app:gozaffi_0                 RUNNING   pid 137389, uptime 1 day, 10:24:52
+epsilon-app:proxy_service             RUNNING   pid 879, uptime 18 days, 12:55:43
+epsilon-engine:arjun_0                RUNNING   pid 137285, uptime 1 day, 10:48:54
+epsilon-engine:durga_0                RUNNING   pid 137283, uptime 1 day, 10:48:54
+epsilon-engine:indra_0                RUNNING   pid 137288, uptime 1 day, 10:48:54
+epsilon-engine:jove                   RUNNING   pid 137284, uptime 1 day, 10:48:54
+epsilon-engine:karan_0                RUNNING   pid 137287, uptime 1 day, 10:48:54
+epsilon-engine:narad                  RUNNING   pid 137357, uptime 1 day, 10:48:52
+epsilon-engine:opensearch             RUNNING   pid 501, uptime 18 days, 12:56:23
+epsilon-engine:spy_0                  RUNNING   pid 135158, uptime 5 days, 2:52:41
+epsilon-engine:spy_epsilon_worker_0   RUNNING   pid 135097, uptime 5 days, 2:52:42
+epsilon-engine:vajra_0                RUNNING   pid 500, uptime 18 days, 12:56:23
+superevents                           RUNNING   pid 433, uptime 18 days, 12:57:17

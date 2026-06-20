@@ -7,8 +7,13 @@ import requests
 import json
 import urllib3
 import base64
+import random
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
+import threading
+import time
+
+from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,6 +21,95 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Pagination settings
 GROUPS_PAGE_SIZE = 60
 RECOVERY_POINTS_PAGE_SIZE = 100
+RECOVERY_POINTS_429_RETRIES = 3
+RECOVERY_POINTS_429_BACKOFF_BASE_SEC = 0.8
+
+_HEALTH_LOCK = threading.Lock()
+_RECOVERY_HEALTH: Dict[str, object] = {
+    "last_pc_ip": "",
+    "last_update_iso": "",
+    "network_status": "idle",
+    "last_http_status": None,
+    "last_latency_ms": None,
+    "throttle_429_count": 0,
+    "cookie_status": "unknown",
+    "cookie_last_refresh_iso": "",
+    "cookie_last_error": "",
+    "cookie_fingerprint": "",
+    "cookie_source": "",
+    "cookie_changed": False,
+    "last_error": "",
+}
+
+
+def _iso_now() -> str:
+    return datetime.now().isoformat()
+
+
+def _update_health(**fields: object) -> None:
+    with _HEALTH_LOCK:
+        _RECOVERY_HEALTH.update(fields)
+        _RECOVERY_HEALTH["last_update_iso"] = _iso_now()
+
+
+def get_recovery_health() -> Dict[str, object]:
+    with _HEALTH_LOCK:
+        return dict(_RECOVERY_HEALTH)
+
+
+def _request_with_cookie_retry(
+    session: requests.Session,
+    method: str,
+    url: str,
+    *,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
+    max_retries: int = 1,
+    **kwargs,
+) -> requests.Response:
+    """
+    Execute API call with cookie bootstrap and one forced refresh retry on 401/429.
+
+    This handles cookie expiry race conditions where a previously valid session
+    cookie expires between calls.
+    """
+    get_cookie(
+        session,
+        base_url,
+        pc_user,
+        pc_password,
+        refresh_sec=COOKIE_REFRESH_SEC,
+    )
+    _update_health(
+        cookie_fingerprint=str(getattr(session, "_pc_cookie_fingerprint", "") or ""),
+        cookie_source=str(getattr(session, "_pc_cookie_source", "") or ""),
+    )
+    response = session.request(method, url, **kwargs)
+    if response.status_code not in (401, 429) or max_retries <= 0:
+        return response
+
+    # Backoff slightly on 429 before forced cookie refresh + one retry.
+    if response.status_code == 429:
+        sleep_s = 0.35 + random.uniform(0.05, 0.4)
+        time.sleep(sleep_s)
+
+    before_fp = str(getattr(session, "_pc_cookie_fingerprint", "") or "")
+    get_cookie(
+        session,
+        base_url,
+        pc_user,
+        pc_password,
+        force=True,
+        refresh_sec=COOKIE_REFRESH_SEC,
+    )
+    after_fp = str(getattr(session, "_pc_cookie_fingerprint", "") or "")
+    _update_health(
+        cookie_fingerprint=after_fp,
+        cookie_source=str(getattr(session, "_pc_cookie_source", "") or ""),
+        cookie_changed=bool(before_fp and after_fp and before_fp != after_fp),
+    )
+    return session.request(method, url, **kwargs)
 
 
 def format_bytes(bytes_value):
@@ -41,13 +135,14 @@ def make_auth_header(username: str, password: str) -> str:
     return f"Basic {b64_credentials}"
 
 
-def get_all_vms_with_recovery_points(base_url: str, auth_header: str, 
+def get_all_vms_with_recovery_points(
+    session: requests.Session,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
                                      progress_callback: Optional[Callable[[str], None]] = None) -> List[Dict]:
     """Get all VMs with recovery points using v3 groups API."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': auth_header
-    }
+    headers = {'Content-Type': 'application/json'}
     
     all_vms = []
     offset = 0
@@ -67,13 +162,37 @@ def get_all_vms_with_recovery_points(base_url: str, auth_header: str,
         }
         
         try:
-            response = requests.post(
+            cookie_t0 = time.perf_counter()
+            _update_health(
+                cookie_status="ok",
+                cookie_last_refresh_iso=_iso_now(),
+                cookie_last_error="",
+                network_status="requesting",
+                last_pc_ip=base_url.replace("https://", "").replace(":9440", ""),
+                last_latency_ms=round((time.perf_counter() - cookie_t0) * 1000, 2),
+            )
+            req_t0 = time.perf_counter()
+            response = _request_with_cookie_retry(
+                session,
+                "POST",
                 v3_groups_url,
+                base_url=base_url,
+                pc_user=pc_user,
+                pc_password=pc_password,
                 headers=headers,
                 data=json.dumps(payload),
                 verify=False,
-                timeout=60
+                timeout=60,
             )
+            req_latency_ms = round((time.perf_counter() - req_t0) * 1000, 2)
+            _update_health(
+                network_status="ok",
+                last_http_status=response.status_code,
+                last_latency_ms=req_latency_ms,
+            )
+            if response.status_code == 429:
+                with _HEALTH_LOCK:
+                    _RECOVERY_HEALTH["throttle_429_count"] = int(_RECOVERY_HEALTH.get("throttle_429_count", 0) or 0) + 1
             response.raise_for_status()
             data = response.json()
             
@@ -103,6 +222,21 @@ def get_all_vms_with_recovery_points(base_url: str, auth_header: str,
                 break
                 
         except requests.exceptions.RequestException as e:
+            status_code = None
+            if getattr(e, "response", None) is not None:
+                status_code = e.response.status_code
+                if status_code == 429:
+                    with _HEALTH_LOCK:
+                        _RECOVERY_HEALTH["throttle_429_count"] = int(_RECOVERY_HEALTH.get("throttle_429_count", 0) or 0) + 1
+            _update_health(
+                network_status="error",
+                last_http_status=status_code,
+                last_error=str(e),
+                cookie_status="error" if status_code == 401 else str(_RECOVERY_HEALTH.get("cookie_status", "unknown")),
+                cookie_last_error=str(e) if status_code == 401 else str(_RECOVERY_HEALTH.get("cookie_last_error", "")),
+            )
+            if progress_callback:
+                progress_callback(f"  ❌ Failed while fetching VM groups at offset={offset}: {str(e)}")
             raise Exception(f"Error fetching VMs: {str(e)}")
     
     if progress_callback:
@@ -111,11 +245,18 @@ def get_all_vms_with_recovery_points(base_url: str, auth_header: str,
     return all_vms
 
 
-def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str, max_pages: int = 50) -> List[Dict]:
+def get_vm_recovery_points_details(
+    session: requests.Session,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
+    vm_uuid: str,
+    max_pages: int = 50,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> List[Dict]:
     """Fetch detailed recovery points for a specific VM using v4 API with improved timeout handling."""
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': auth_header,
         'NTNX-Request-Id': f'recovery-points-{vm_uuid}'
     }
     
@@ -133,15 +274,49 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
         }
         
         try:
-            response = requests.get(
-                v4_recovery_points_url,
-                headers=headers,
-                params=params,
-                verify=False,
-                timeout=15  # Reduced from 30s to 15s per page
-            )
-            response.raise_for_status()
-            data = response.json()
+            last_req_exc: requests.exceptions.RequestException | None = None
+            data: dict = {}
+            response: requests.Response | None = None
+            request_ok = False
+
+            for attempt in range(1, RECOVERY_POINTS_429_RETRIES + 1):
+                try:
+                    response = _request_with_cookie_retry(
+                        session,
+                        "GET",
+                        v4_recovery_points_url,
+                        base_url=base_url,
+                        pc_user=pc_user,
+                        pc_password=pc_password,
+                        headers=headers,
+                        params=params,
+                        verify=False,
+                        timeout=15,  # Reduced from 30s to 15s per page
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    request_ok = True
+                    break
+                except requests.exceptions.RequestException as e:
+                    last_req_exc = e
+                    status_code = getattr(getattr(e, "response", None), "status_code", None)
+                    if status_code != 429 or attempt >= RECOVERY_POINTS_429_RETRIES:
+                        break
+
+                    sleep_s = RECOVERY_POINTS_429_BACKOFF_BASE_SEC * (2 ** (attempt - 1)) + random.uniform(0.05, 0.35)
+                    if progress_callback:
+                        progress_callback(
+                            "  🔁 VM "
+                            f"{vm_uuid[:8]} page={page}: 429 retry {attempt}/{RECOVERY_POINTS_429_RETRIES} "
+                            f"in {sleep_s:.2f}s | cookie={getattr(session, '_pc_cookie_fingerprint', '') or 'na'} "
+                            f"source={getattr(session, '_pc_cookie_source', '') or 'na'}"
+                        )
+                    time.sleep(sleep_s)
+
+            if not request_ok:
+                if last_req_exc is not None:
+                    raise last_req_exc
+                raise Exception(f"Unknown request failure for VM {vm_uuid} page {page}")
             
             recovery_points = data.get('data', [])
             
@@ -173,21 +348,29 @@ def get_vm_recovery_points_details(base_url: str, auth_header: str, vm_uuid: str
     return all_recovery_points
 
 
-def get_vm_metadata(base_url: str, auth_header: str, vm_uuid: str) -> Dict[str, str]:
+def get_vm_metadata(
+    session: requests.Session,
+    base_url: str,
+    pc_user: str,
+    pc_password: str,
+    vm_uuid: str,
+) -> Dict[str, str]:
     """Get VM metadata (name + cluster hints) from UUID using v3 API."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': auth_header
-    }
+    headers = {'Content-Type': 'application/json'}
     
     v3_vm_url = f"{base_url}/api/nutanix/v3/vms/{vm_uuid}"
     
     try:
-        response = requests.get(
+        response = _request_with_cookie_retry(
+            session,
+            "GET",
             v3_vm_url,
+            base_url=base_url,
+            pc_user=pc_user,
+            pc_password=pc_password,
             headers=headers,
             verify=False,
-            timeout=5  # Reduced from 10s to 5s
+            timeout=5,  # Reduced from 10s to 5s
         )
         response.raise_for_status()
         data = response.json()
@@ -240,7 +423,12 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
     from queue import Queue, Empty
     
     base_url = f"https://{pc_ip}:9440"
-    auth_header = make_auth_header(pc_user, pc_password)
+    session = requests.Session()
+    _update_health(
+        last_pc_ip=pc_ip,
+        network_status="running",
+        last_error="",
+    )
     
     start_time = datetime.now()
     
@@ -254,7 +442,13 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
         progress_callback("🔍 Fetching VMs with recovery points using v3 groups API...")
     
     # Get all VMs with recovery points
-    vms = get_all_vms_with_recovery_points(base_url, auth_header, progress_callback)
+    vms = get_all_vms_with_recovery_points(
+        session,
+        base_url,
+        pc_user,
+        pc_password,
+        progress_callback,
+    )
     
     if progress_callback:
         progress_callback(f"✅ Found {len(vms)} VMs with recovery points")
@@ -270,7 +464,7 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
     lock = threading.Lock()
     processed_count = [0]  # Use list for mutable counter
     
-    def process_vm(vm, idx):
+    def process_vm(vm, idx, thread_session: requests.Session):
         """Process a single VM with timeout protection"""
         nonlocal total_reclaimable_bytes, total_recovery_points
         
@@ -283,7 +477,7 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             
             # Get VM metadata (with shorter timeout)
             try:
-                vm_meta = get_vm_metadata(base_url, auth_header, vm_uuid)
+                vm_meta = get_vm_metadata(thread_session, base_url, pc_user, pc_password, vm_uuid)
             except:
                 vm_meta = {
                     'vm_name': f"VM-{vm_uuid[:8]}",
@@ -293,7 +487,14 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                 }
             
             # Get recovery point details (with timeout handling in the function)
-            recovery_points = get_vm_recovery_points_details(base_url, auth_header, vm_uuid)
+            recovery_points = get_vm_recovery_points_details(
+                thread_session,
+                base_url,
+                pc_user,
+                pc_password,
+                vm_uuid,
+                progress_callback=progress_callback,
+            )
             
             # Calculate reclaimable space
             vm_reclaimable = 0
@@ -347,7 +548,7 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             with lock:
                 processed_count[0] += 1  # Count as processed even if failed
             if progress_callback:
-                progress_callback(f"  ⚠️ Skipped VM {vm_uuid[:8]}: {str(e)[:100]}")
+                progress_callback(f"  ⚠️ Skipped VM {vm_uuid[:8]}: {str(e)}")
     
     # Create work queue
     work_queue = Queue()
@@ -356,6 +557,30 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
     
     # Worker thread function
     def worker():
+        thread_session = requests.Session()
+        # Seed worker session from primary session to avoid concurrent forced
+        # cookie bootstraps that can invalidate each other on some PC setups.
+        thread_session.cookies.update(session.cookies)
+        setattr(
+            thread_session,
+            "_pc_cookie_refreshed_at",
+            getattr(session, "_pc_cookie_refreshed_at", 0.0),
+        )
+        setattr(
+            thread_session,
+            "_pc_cookie_base_url",
+            getattr(session, "_pc_cookie_base_url", base_url),
+        )
+        setattr(
+            thread_session,
+            "_pc_cookie_username",
+            getattr(session, "_pc_cookie_username", pc_user),
+        )
+        setattr(
+            thread_session,
+            "_pc_cookie_password",
+            getattr(session, "_pc_cookie_password", pc_password),
+        )
         while True:
             try:
                 vm, idx = work_queue.get(timeout=1)
@@ -364,7 +589,7 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
                 break
             
             try:
-                process_vm(vm, idx)
+                process_vm(vm, idx, thread_session)
             except Exception as e:
                 if progress_callback:
                     progress_callback(f"❌ Worker thread error: {str(e)}")
@@ -421,4 +646,5 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
         progress_callback(f"Concurrent Workers Used: {min(concurrency, len(vms))}")
         progress_callback("=" * 80)
     
+    _update_health(network_status="complete")
     return summary

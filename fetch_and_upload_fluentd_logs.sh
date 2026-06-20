@@ -307,9 +307,13 @@ copy_pod_logs_selective() {
             local current_chunk_size=0
             local chunk_dirs=""
             local chunk_dir_count=0
+            local current_line_num=0
+            local total_lines
+            total_lines=$(echo "$dirs_with_sizes" | grep -c '.')
             
             while IFS= read -r line; do
                 [ -z "$line" ] && continue
+                current_line_num=$((current_line_num + 1))
                 
                 local size_kb=$(echo "$line" | awk '{print $1}')
                 local dir_path=$(echo "$line" | awk '{print $2}')
@@ -326,10 +330,8 @@ copy_pod_logs_selective() {
                     should_create_chunk=1
                 fi
                 
-                # Count remaining lines
-                local remaining_dirs=$(echo "$dirs_with_sizes" | grep -n "^${line}$" | cut -d: -f1)
-                local total_lines=$(echo "$dirs_with_sizes" | wc -l)
-                if [ "$remaining_dirs" = "$total_lines" ]; then
+                # Last directory
+                if [ "$current_line_num" -ge "$total_lines" ]; then
                     should_create_chunk=1  # Last directory
                 fi
                 
@@ -385,11 +387,6 @@ copy_pod_logs_selective() {
                     chunk_dir_count=0
                     current_chunk_size=0
                     
-                    # Reset for next chunk
-                    chunk_num=$((chunk_num + 1))
-                    current_chunk_size=0
-                    chunk_dirs=""
-                    chunk_dir_count=0
                 fi
             done <<< "$dirs_with_sizes"
             
@@ -1145,9 +1142,9 @@ print_success "Filer ready: ${FILER_HOST}:${FILER_TARGET_PATH}/"
 echo ""
 
 print_header "Step 5/7: Compress and Upload"
-if [ ${#UPLOADED_FILES[@]} -gt 0 ]; then
+if [ "${uploaded_count:-0}" -gt 0 ]; then
     print_info "Files were already uploaded during Step 3 (new workflow)"
-    print_success "${#UPLOADED_FILES[@]} file(s) uploaded and verified"
+    print_success "${uploaded_count} files uploaded and verified"
     echo ""
 else
     if [ "${FLUENTD_NAMESPACES:-}" = "NONE" ]; then

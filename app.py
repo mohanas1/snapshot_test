@@ -3859,7 +3859,7 @@ def api_list_filer_folders():
             return jsonify({"success": False, "error": "Failed to list folders", "folders": []})
     
     except Exception as e:
-        app_logger.exception("Error listing filer folders")
+        APP_LOGGER.exception("Error listing filer folders")
         return jsonify({"success": False, "error": str(e), "folders": []})
 
 
@@ -4169,6 +4169,11 @@ def api_analyze_recovery_points():
                 
             except Exception as e:
                 error[0] = str(e)
+                RECOVERY_LOGGER.error(
+                    "[analyze_recovery_points|%s] Analysis failed: %s",
+                    pc_ip,
+                    str(e),
+                )
             finally:
                 log_queue.put(None)  # Signal completion
         
@@ -4195,6 +4200,15 @@ def api_analyze_recovery_points():
     return Response(generate(), mimetype='text/event-stream')
 
 
+@app.route("/api/recovery_health", methods=["GET"])
+def api_recovery_health():
+    """Lightweight health snapshot for recovery analysis UI widget."""
+    try:
+        return jsonify({"ok": True, "health": recovery_points_analyzer.get_recovery_health()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/delete_recovery_point", methods=["POST"])
 def api_delete_recovery_point():
     """Delete a single recovery point."""
@@ -4211,9 +4225,14 @@ def api_delete_recovery_point():
         return jsonify({'ok': False, 'error': 'Missing required fields'}), 400
     
     base_url = f"https://{pc_ip}:9440"
-    auth_header = recovery_points_deleter.make_auth_header(pc_user, pc_password)
-    
-    result = recovery_points_deleter.delete_recovery_point(base_url, auth_header, rp_ext_id)
+    session = requests.Session()
+    result = recovery_points_deleter.delete_recovery_point(
+        session,
+        base_url,
+        pc_user,
+        pc_password,
+        rp_ext_id,
+    )
     
     if result['ok']:
         RECOVERY_LOGGER.info(f"[delete_recovery_point|{pc_ip}] Successfully deleted recovery point: {rp_name} (ID: {rp_ext_id})")
@@ -4502,8 +4521,15 @@ def api_fetch_fluentd_logs():
     
     # Get filter selections
     fluentd_namespaces = data.get("fluentd_namespaces", [])
+    microservice_services = data.get("microservice_services", [])
     logbay_services = data.get("logbay_services", [])
     logbay_duration = data.get("logbay_duration", {})
+    microservice_live_only = bool(data.get("microservice_live_only", False))
+    try:
+        microservice_live_duration_minutes = int(data.get("microservice_live_duration_minutes", 30) or 30)
+    except (TypeError, ValueError):
+        microservice_live_duration_minutes = 30
+    microservice_live_duration_minutes = max(1, min(240, microservice_live_duration_minutes))
     
     if not pc_ip:
         return jsonify({"success": False, "error": "PC IP is required"}), 400
@@ -4516,11 +4542,22 @@ def api_fetch_fluentd_logs():
     # Generate unique job ID
     log_job_id = f"log_fetch_{pc_ip}_{int(time.time())}"
     abort_event = threading.Event()
+    job_log_path = LOG_DIR / f"{log_job_id}.log"
+    try:
+        job_log_path.parent.mkdir(parents=True, exist_ok=True)
+        job_log_path.touch(exist_ok=True)
+    except Exception:
+        app.logger.exception("Failed to initialize per-job log file for %s", log_job_id)
     
     def send_log(message, level="INFO"):
-        """Helper to send log messages to the queue and logs_fetch log file."""
+        """Helper to send log messages to SSE queue, logs_fetch.log, and per-job log file."""
         timestamp = dt.datetime.now().strftime("%H:%M:%S")
         log_queue.put({"timestamp": timestamp, "level": level, "message": message})
+        try:
+            with job_log_path.open("a", encoding="utf-8") as jf:
+                jf.write(f"[{timestamp}] {level} {message}\n")
+        except Exception:
+            app.logger.exception("Failed writing per-job fetch log: %s", job_log_path)
         
         # Write to logs_fetch.log
         log_prefix = f"[fetch_fluentd_logs|{pc_ip}]"
@@ -4530,10 +4567,121 @@ def api_fetch_fluentd_logs():
             LOGS_FETCH_LOGGER.warning(f"{log_prefix} {message}")
         else:
             LOGS_FETCH_LOGGER.info(f"{log_prefix} {message}")
+
+    def run_microservice_live_collection() -> bool:
+        """Run live microservice log streaming script for selected services."""
+        selected = [s for s in microservice_services if s in {"epsilon", "calm", "policy", "scheduler"}]
+        if not selected:
+            send_log("No valid microservice services selected for live-only collection", "ERROR")
+            return False
+
+        script_candidates = [
+            PROJECT_DIR / "collect_microservice_live_logs.sh",
+            PROJECT_DIR.parent / "collect_microservice_live_logs.sh",
+        ]
+        script_path = next((p for p in script_candidates if p.exists()), None)
+        if script_path is None:
+            send_log("collect_microservice_live_logs.sh not found", "ERROR")
+            return False
+
+        kubeconfig_candidates = [
+            Path.home() / "kube" / "ss_kube",
+            Path.home() / "kube" / "si_kube",
+        ]
+        kubeconfig_path = next((p for p in kubeconfig_candidates if p.exists()), None)
+        if kubeconfig_path is None:
+            send_log(
+                "No valid kubeconfig found for live collection (checked ~/kube/ss_kube and ~/kube/si_kube)",
+                "ERROR",
+            )
+            return False
+
+        duration_seconds = int(microservice_live_duration_minutes) * 60
+        live_cmd = [
+            "bash",
+            str(script_path),
+            "-k",
+            str(kubeconfig_path),
+            "-s",
+            ",".join(selected),
+            "-d",
+            str(duration_seconds),
+        ]
+
+        send_log("=" * 80, "INFO")
+        send_log("Live-only mode enabled: skipping Fluentd, archived microservice copy, and Logbay", "WARNING")
+        send_log(
+            f"Starting live microservice streaming for {microservice_live_duration_minutes} minute(s): {', '.join(selected)}",
+            "INFO",
+        )
+        send_log(f"Using kubeconfig: {kubeconfig_path}", "INFO")
+        send_log("Caution: live collection may increase CPU usage; keep selected services minimal", "WARNING")
+
+        process = subprocess.Popen(
+            live_cmd,
+            cwd=str(PROJECT_DIR.parent),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        with _log_jobs_lock:
+            if log_job_id in _log_jobs:
+                _log_jobs[log_job_id]["process"] = process
+
+        for line in iter(process.stdout.readline, ""):
+            if abort_event.is_set():
+                send_log("⚠️  Abort requested by user", "WARNING")
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                send_log("❌ Live microservice collection aborted", "ERROR")
+                return False
+
+            clean_line = line.rstrip()
+            if not clean_line:
+                continue
+            if "ERROR" in clean_line or clean_line.startswith("[ERROR]"):
+                level = "ERROR"
+            elif "WARN" in clean_line or clean_line.startswith("[WARN]"):
+                level = "WARNING"
+            elif "SUCCESS" in clean_line or clean_line.startswith("✓"):
+                level = "SUCCESS"
+            else:
+                level = "INFO"
+            send_log(clean_line, level)
+
+            if "No live streams started." in clean_line:
+                send_log(
+                    "❌ Live microservice collection could not start any streams. Check kubeconfig and selected services.",
+                    "ERROR",
+                )
+                return False
+
+        process.wait()
+        if process.returncode == 0 and not abort_event.is_set():
+            send_log("✅ Live microservice collection completed successfully", "SUCCESS")
+            return True
+
+        if not abort_event.is_set():
+            send_log(f"❌ Live microservice collection exited with code {process.returncode}", "ERROR")
+        return False
     
     def run_fetch_script():
         """Run the fetch_and_upload_fluentd_logs.sh script."""
         try:
+            if microservice_live_only:
+                live_ok = run_microservice_live_collection()
+                with _log_jobs_lock:
+                    if log_job_id in _log_jobs:
+                        _log_jobs[log_job_id]["status"] = (
+                            "aborted" if abort_event.is_set() else ("completed" if live_ok else "failed")
+                        )
+                        _log_jobs[log_job_id]["end_time"] = dt.datetime.now().isoformat()
+                return
+
             script_path = PROJECT_DIR / "fetch_and_upload_fluentd_logs.sh"
             
             if not script_path.exists():
@@ -4625,6 +4773,12 @@ def api_fetch_fluentd_logs():
             elif process.returncode == 0:
                 send_log("=" * 80, "INFO")
                 send_log("✅ Fluentd log fetch completed successfully!", "SUCCESS")
+
+                # Run microservice-level collection if services are selected
+                if microservice_services and not abort_event.is_set():
+                    send_log("=" * 80, "INFO")
+                    send_log("Starting microservice-level log collection...", "INFO")
+                    run_microservice_collection()
                 
                 # Run logbay collection if services are selected
                 if logbay_services and not abort_event.is_set():
@@ -4649,7 +4803,7 @@ def api_fetch_fluentd_logs():
             
         except Exception as e:
             send_log(f"Exception during log fetch: {str(e)}", "ERROR")
-            app_logger.exception("Error in fetch_fluentd_logs")
+            APP_LOGGER.exception("Error in fetch_fluentd_logs")
             # Mark job as failed
             with _log_jobs_lock:
                 if log_job_id in _log_jobs:
@@ -4683,6 +4837,272 @@ def api_fetch_fluentd_logs():
             
             send_log("END", "INFO")
     
+    def run_microservice_collection():
+        """Collect selected microservice logs (*.log*) by dynamic pod discovery."""
+        service_specs = {
+            "epsilon": {
+                "namespace": "ntnx-ncm-common",
+                "pod_prefix": "ncm-epsilon",
+                "log_dir": "/home/epsilon/log",
+            },
+            "calm": {
+                "namespace": "ntnx-ncm-self-service",
+                "pod_prefix": "ncm-calm",
+                "log_dir": "/home/calm/log",
+            },
+            "policy": {
+                "namespace": "ntnx-ncm-self-service",
+                "pod_prefix": "ncm-policy",
+                "log_dir": "/home/policy/log",
+            },
+            "scheduler": {
+                "namespace": "ntnx-ncm-self-service",
+                "pod_prefix": "ncm-scheduler",
+                "log_dir": "/home/epsilon/log",
+            },
+        }
+
+        selected = [s for s in microservice_services if s in service_specs]
+        if not selected:
+            send_log("No valid microservice services selected - skipping", "INFO")
+            return
+
+        ok_count = 0
+        fail_count = 0
+        send_log(
+            f"Microservice collection: {len(selected)} service(s), only *.log* files will be copied",
+            "INFO",
+        )
+
+        for idx, service in enumerate(selected, 1):
+            if abort_event.is_set():
+                send_log("⚠️  Microservice collection aborted", "WARNING")
+                break
+
+            spec = service_specs[service]
+            namespace = spec["namespace"]
+            pod_prefix = spec["pod_prefix"]
+            log_dir = spec["log_dir"]
+            ts = int(time.time())
+            pod_archive_name = f"{service}_logs_{ts}.tar.gz"
+            pod_archive_path = f"/tmp/{pod_archive_name}"
+            pc_archive_path = f"/tmp/{pc_ip}_{pod_archive_name}"
+            server_temp_dir = PROJECT_DIR / "temp_microservice" / f"{service}_{ts}"
+            server_temp_dir.mkdir(parents=True, exist_ok=True)
+            server_archive_path = server_temp_dir / pod_archive_name
+            micro_substep_id = f"step8_microservice_{idx}"
+
+            send_log("", "INFO")
+            send_log(f"Microservice {idx}/{len(selected)}: {service}", "INFO")
+            send_log(f"SUBSTEP_START: {micro_substep_id} Microservice: {service}", "INFO")
+            send_log(
+                f"Discovering pod in namespace={namespace} with prefix={pod_prefix}",
+                "INFO",
+            )
+            send_log(f"SUBSTEP_UPDATE: {micro_substep_id} Discovering pod", "INFO")
+
+            discover_cmd = (
+                f"kubectl --kubeconfig=nc_kubecconfig get pods -n {namespace} "
+                "-o jsonpath='{range .items[*]}{.metadata.name}{\"\\n\"}{end}' "
+                f"| grep '^{pod_prefix}' | head -n 1"
+            )
+            discover_ssh = [
+                "sshpass", "-p", pc_password,
+                "ssh", "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                f"nutanix@{pc_ip}",
+                discover_cmd,
+            ]
+            pod_result = subprocess.run(discover_ssh, capture_output=True, text=True, timeout=40)
+            pod_name = (pod_result.stdout or "").strip().splitlines()
+            pod_name = pod_name[0].strip() if pod_name else ""
+            if pod_result.returncode != 0 or not pod_name:
+                send_log(
+                    f"❌ Could not discover pod for {service}. stderr: {(pod_result.stderr or '').strip()[:240]}",
+                    "ERROR",
+                )
+                send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+                fail_count += 1
+                shutil.rmtree(server_temp_dir, ignore_errors=True)
+                continue
+
+            send_log(f"Using pod: {pod_name}", "INFO")
+
+            # 1) Build tar.gz in pod with only *.log* files.
+            make_tar_cmd = (
+                f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc "
+                f"'set -e; "
+                f"if ! find {log_dir} -maxdepth 1 -type f -name \"*.log*\" -print -quit | grep -q .; then "
+                f"echo \"NO_LOG_FILES\"; exit 44; fi; "
+                f"find {log_dir} -maxdepth 1 -type f -name \"*.log*\" -print0 | "
+                f"tar --null -T - -czf {pod_archive_path}'"
+            )
+            make_tar_ssh = [
+                "sshpass", "-p", pc_password,
+                "ssh", "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                f"nutanix@{pc_ip}",
+                make_tar_cmd,
+            ]
+            make_tar_result = subprocess.run(make_tar_ssh, capture_output=True, text=True, timeout=120)
+            if make_tar_result.returncode != 0:
+                out = (make_tar_result.stdout or "") + " " + (make_tar_result.stderr or "")
+                if "NO_LOG_FILES" in out:
+                    send_log(f"⚠️  No *.log* files found for {service} in {log_dir}", "WARNING")
+                else:
+                    send_log(
+                        f"❌ Failed to create archive in pod for {service}: {out.strip()[:300]}",
+                        "ERROR",
+                    )
+                send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+                fail_count += 1
+                shutil.rmtree(server_temp_dir, ignore_errors=True)
+                continue
+
+            # 2) Copy archive from pod to PC.
+            pod_to_pc_cmd = (
+                f"kubectl --kubeconfig=nc_kubecconfig cp -n {namespace} "
+                f"{pod_name}:{pod_archive_path} {pc_archive_path}"
+            )
+            pod_to_pc_ssh = [
+                "sshpass", "-p", pc_password,
+                "ssh", "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                f"nutanix@{pc_ip}",
+                pod_to_pc_cmd,
+            ]
+            pod_to_pc_result = subprocess.run(pod_to_pc_ssh, capture_output=True, text=True, timeout=120)
+            if pod_to_pc_result.returncode != 0:
+                send_log(
+                    f"❌ Failed to copy archive from pod for {service}: "
+                    f"{((pod_to_pc_result.stderr or pod_to_pc_result.stdout) or '').strip()[:300]}",
+                    "ERROR",
+                )
+                # Best-effort cleanup in pod
+                subprocess.run(
+                    [
+                        "sshpass", "-p", pc_password,
+                        "ssh", "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null",
+                        f"nutanix@{pc_ip}",
+                        f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc 'rm -f {pod_archive_path}'",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+                fail_count += 1
+                shutil.rmtree(server_temp_dir, ignore_errors=True)
+                continue
+
+            # 3) Remove pod archive (best effort).
+            subprocess.run(
+                [
+                    "sshpass", "-p", pc_password,
+                    "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
+                    f"nutanix@{pc_ip}",
+                    f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc 'rm -f {pod_archive_path}'",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            # 4) Copy archive from PC to local server.
+            scp_cmd = [
+                "sshpass", "-p", pc_password,
+                "scp", "-o", "StrictHostKeyChecking=no",
+                f"nutanix@{pc_ip}:{pc_archive_path}",
+                str(server_archive_path),
+            ]
+            scp_result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=120)
+            if scp_result.returncode != 0:
+                send_log(
+                    f"❌ Failed to copy archive from PC for {service}: "
+                    f"{((scp_result.stderr or scp_result.stdout) or '').strip()[:300]}",
+                    "ERROR",
+                )
+                # Best-effort cleanup on PC
+                subprocess.run(
+                    [
+                        "sshpass", "-p", pc_password,
+                        "ssh", "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null",
+                        f"nutanix@{pc_ip}",
+                        f"rm -f {pc_archive_path}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+                fail_count += 1
+                shutil.rmtree(server_temp_dir, ignore_errors=True)
+                continue
+
+            # 5) Remove temporary archive on PC.
+            subprocess.run(
+                [
+                    "sshpass", "-p", pc_password,
+                    "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
+                    f"nutanix@{pc_ip}",
+                    f"rm -f {pc_archive_path}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            # 6) Upload to filer.
+            filer_target = f"{filer_base_path}/{bug_folder}/microservice_logs"
+            mkdir_cmd = [
+                "sshpass", "-p", filer_password,
+                "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "LogLevel=ERROR",
+                f"{filer_user}@{filer_ip}",
+                f"mkdir -p {filer_target}",
+            ]
+            subprocess.run(mkdir_cmd, capture_output=True, text=True, timeout=30)
+
+            upload_cmd = [
+                "sshpass", "-p", filer_password,
+                "rsync", "-avz", "--progress", "--timeout=300",
+                "-e", "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
+                str(server_archive_path),
+                f"{filer_user}@{filer_ip}:{filer_target}/",
+            ]
+            upload_result = subprocess.run(upload_cmd, capture_output=True, text=True, timeout=300)
+            if upload_result.returncode != 0:
+                send_log(
+                    f"❌ Upload failed for {service}: "
+                    f"{((upload_result.stderr or upload_result.stdout) or '').strip()[:300]}",
+                    "ERROR",
+                )
+                send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+                fail_count += 1
+                shutil.rmtree(server_temp_dir, ignore_errors=True)
+                continue
+
+            size_mb = (server_archive_path.stat().st_size / (1024 * 1024)) if server_archive_path.exists() else 0.0
+            send_log(f"SUBSTEP_UPDATE: {micro_substep_id} Upload complete", "INFO")
+            send_log(
+                f"✅ Microservice logs uploaded: {server_archive_path.name} ({size_mb:.2f} MB)",
+                "SUCCESS",
+            )
+            ok_count += 1
+            shutil.rmtree(server_temp_dir, ignore_errors=True)
+            send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
+
+        send_log(
+            f"Microservice collection summary: success={ok_count}, failed={fail_count}",
+            "INFO" if fail_count == 0 else "WARNING",
+        )
+
     def run_logbay_collection():
         """Run logbay collection on PC for selected services."""
         total_services = len(logbay_services)
@@ -4703,20 +5123,55 @@ def api_fetch_fluentd_logs():
             encoded_password = quote(filer_password, safe='')
             filer_dest = f"ftp://{filer_user}:{encoded_password}@{filer_ip}/{filer_base_path}/{bug_folder}"
             
-            # Build duration parameter
+            # Build day-based duration chunks for logbay using --from windows.
+            # Examples:
+            # - 240h => 10 chunks (24h each)
+            # - 36h  => 2 chunks (24h + 12h)
+            # Product max is 96h per command, and day-chunking stays well within it.
+            max_chunk_hours = 24
+
+            def _fmt_logbay_from(dt_obj):
+                # Logbay format: 2025/12/16-09:00:00
+                return dt_obj.strftime("%Y/%m/%d-%H:%M:%S")
+
             if logbay_duration.get('type') == 'recent':
-                hours = logbay_duration.get('hours', 24)
-                duration_param = f"--duration=-{hours}h"
-                send_log(f"Duration: Last {hours} hours", "INFO")
+                total_hours = int(logbay_duration.get('hours', 24) or 24)
+                end_dt = dt.datetime.now()
+                start_dt = end_dt - dt.timedelta(hours=total_hours)
+                send_log(
+                    f"Duration: Last {total_hours} hours (chunked in <= {max_chunk_hours}h windows)",
+                    "INFO",
+                )
             else:
                 # Custom duration
                 from_date = logbay_duration.get('from_date')
                 from_time = logbay_duration.get('from_time', '09:00')
-                duration_hours = logbay_duration.get('duration_hours', 2)
-                # Format: 2025/12/16-09:00:00
-                from_datetime = f"{from_date.replace('-', '/')}-{from_time}:00"
-                duration_param = f"--from={from_datetime} --duration=+{duration_hours}h"
-                send_log(f"Duration: From {from_datetime}, +{duration_hours} hours", "INFO")
+                total_hours = int(logbay_duration.get('duration_hours', 2) or 2)
+                start_dt = dt.datetime.strptime(f"{from_date} {from_time}:00", "%Y-%m-%d %H:%M:%S")
+                end_dt = start_dt + dt.timedelta(hours=total_hours)
+                send_log(
+                    f"Duration: From {_fmt_logbay_from(start_dt)}, +{total_hours} hours "
+                    f"(chunked in <= {max_chunk_hours}h windows)",
+                    "INFO",
+                )
+
+            duration_chunks = []
+            cursor_dt = start_dt
+            chunk_idx = 1
+            while cursor_dt < end_dt:
+                next_dt = min(cursor_dt + dt.timedelta(hours=max_chunk_hours), end_dt)
+                chunk_hours = max(1, int((next_dt - cursor_dt).total_seconds() // 3600))
+                from_datetime = _fmt_logbay_from(cursor_dt)
+                duration_chunks.append(
+                    {
+                        "index": chunk_idx,
+                        "hours": chunk_hours,
+                        "from_datetime": from_datetime,
+                        "duration_param": f"--from={from_datetime} --duration=+{chunk_hours}h",
+                    }
+                )
+                chunk_idx += 1
+                cursor_dt = next_dt
             
             # Run logbay for each selected service
             for idx, service in enumerate(logbay_services, 1):
@@ -4727,7 +5182,7 @@ def api_fetch_fluentd_logs():
                 
                 send_log("", "INFO")
                 send_log(f"Substep {idx}/{total_services}: Collecting {service} logs", "INFO")
-                send_log(f"SUBSTEP_START: step8_service_{idx} Service: {service}", "INFO")
+                send_log(f"SUBSTEP_START: step8_logbay_{idx} Logbay: {service}", "INFO")
                 send_log("-" * 80, "INFO")
                 
                 # Generate timestamp for custom filename
@@ -4754,7 +5209,7 @@ def api_fetch_fluentd_logs():
                 import getpass
                 server_user = getpass.getuser()
                 
-                send_log(f"SUBSTEP_UPDATE: step8_service_{idx} Collecting logs via SFTP", "INFO")
+                send_log(f"SUBSTEP_UPDATE: step8_logbay_{idx} Collecting logs via SFTP", "INFO")
                 send_log(f"Collecting directly to server: {server_user}@{server_hostname}", "INFO")
                 send_log(f"Note: Using SFTP to avoid PC disk space issues", "INFO")
                 
@@ -4769,7 +5224,7 @@ def api_fetch_fluentd_logs():
                 server_hostname = "mohan-as1.r8.ubvm.nutanix.com"
                 
                 send_log(f"Collecting logbay on PC: {service}", "INFO")
-                send_log(f"Service: {service}, Duration: {duration_param}", "INFO")
+                send_log(f"Service: {service}, Chunks: {len(duration_chunks)}", "INFO")
                 
                 # Step 1: Generate SSH key on PC (via SSH)
                 send_log("Step 1: Generating SSH key on PC...", "INFO")
@@ -4879,12 +5334,35 @@ rm -f {pubkey_local_path}
                 except Exception as e:
                     send_log(f"⚠️  Key installation error: {e}", "WARNING")
                 
-                # Step 5: Run logbay collection
-                send_log("Step 5: Running logbay collection...", "INFO")
-                send_log(f"Note: Verbose output suppressed, errors will be shown. Monitoring progress...", "INFO")
-                
-                # Logbay collection command (runs on PC)
-                logbay_collection_cmd = f"""
+                service_failed = False
+                chunk_successes = 0
+                chunk_failures = 0
+
+                for chunk in duration_chunks:
+                    chunk_num = chunk["index"]
+                    chunk_hours = chunk["hours"]
+                    chunk_from = chunk["from_datetime"]
+                    duration_param = chunk["duration_param"]
+                    chunk_label = f"chunk {chunk_num}/{len(duration_chunks)}"
+                    custom_filename_chunk = (
+                        f"{custom_filename}_part{chunk_num:02d}" if len(duration_chunks) > 1 else custom_filename
+                    )
+
+                    # Step 5: Run logbay collection
+                    send_log(
+                        f"Step 5: Running logbay collection ({chunk_label}, from={chunk_from}, +{chunk_hours}h)...",
+                        "INFO",
+                    )
+                    send_log(
+                        "Note: Verbose output suppressed, errors will be shown. Monitoring progress...",
+                        "INFO",
+                    )
+
+                    # Keep snapshot of already existing archives so we can pick the newly generated one.
+                    existing_archives = {p.name for p in server_temp_dir.glob("NTNX-Log-*.zip")}
+
+                    # Logbay collection command (runs on PC)
+                    logbay_collection_cmd = f"""
 echo ""
 echo "Starting logbay collection for {service} via SFTP..."
 echo "Target: {sftp_target}"
@@ -4905,250 +5383,247 @@ if [ $LOGBAY_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
-echo "LOGBAY_SUCCESS:{custom_filename}.zip"
+echo "LOGBAY_SUCCESS:{custom_filename_chunk}.zip"
 """
-                
-                # Execute logbay via SSH
-                ssh_cmd = [
-                    "sshpass", "-p", pc_password,
-                    "ssh", "-o", "StrictHostKeyChecking=no",
-                    "-o", "UserKnownHostsFile=/dev/null",
-                    f"nutanix@{pc_ip}",
-                    logbay_collection_cmd
-                ]
-                
-                process = subprocess.Popen(
-                    ssh_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1
-                )
-                
-                # Store process for abort
-                with _log_jobs_lock:
-                    if log_job_id in _log_jobs:
-                        _log_jobs[log_job_id]["process"] = process
-                
-                # Monitor file size in background while logbay runs
-                logbay_file_path = None
-                collection_success = False
-                
-                # Start a thread to monitor file size
-                import threading
-                stop_monitoring = threading.Event()
-                
-                def monitor_file_size():
-                    """Poll the logbay file size and report progress."""
-                    last_size = 0
-                    no_change_count = 0
                     
-                    while not stop_monitoring.is_set() and process.poll() is None:
-                        try:
-                            # Check for any zip file in temp directory
-                            check_cmd = [
-                                "sshpass", "-p", pc_password,
-                                "ssh", "-o", "StrictHostKeyChecking=no",
-                                "-o", "UserKnownHostsFile=/dev/null",
-                                f"nutanix@{pc_ip}",
-                                f"du -sb {temp_dir_pc}/*.zip 2>/dev/null | tail -1 | cut -f1"
-                            ]
-                            
-                            result = subprocess.run(check_cmd, capture_output=True, text=True, timeout=5)
-                            
-                            if result.returncode == 0 and result.stdout.strip().isdigit():
-                                current_size = int(result.stdout.strip())
-                                
-                                if current_size > 0:
-                                    size_mb = current_size / (1024 * 1024)
-                                    
-                                    # Only report if size changed significantly (at least 1MB change or first report)
-                                    if abs(current_size - last_size) > 1024 * 1024 or last_size == 0:
-                                        send_log(f"📊 File size: {size_mb:.2f} MB", "INFO")
-                                        last_size = current_size
-                                        no_change_count = 0
-                                    else:
-                                        no_change_count += 1
-                                        
-                                        # If size hasn't changed for 30 seconds, show status
-                                        if no_change_count >= 10:  # 10 checks * 3 sec = 30 sec
-                                            send_log(f"📊 File size: {size_mb:.2f} MB (stable)", "INFO")
+                    # Execute logbay via SSH
+                    ssh_cmd = [
+                        "sshpass", "-p", pc_password,
+                        "ssh", "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null",
+                        f"nutanix@{pc_ip}",
+                        logbay_collection_cmd
+                    ]
+                    
+                    process = subprocess.Popen(
+                        ssh_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1
+                    )
+                    
+                    # Store process for abort
+                    with _log_jobs_lock:
+                        if log_job_id in _log_jobs:
+                            _log_jobs[log_job_id]["process"] = process
+                    
+                    collection_success = False
+                    
+                    # Start a thread to monitor file size
+                    import threading
+                    stop_monitoring = threading.Event()
+                    
+                    def monitor_file_size():
+                        """Poll the logbay file size and report progress."""
+                        last_size = 0
+                        no_change_count = 0
+
+                        while not stop_monitoring.is_set() and process.poll() is None:
+                            try:
+                                zip_files = list(server_temp_dir.glob("NTNX-Log-*.zip"))
+                                if zip_files:
+                                    current_size = max(z.stat().st_size for z in zip_files)
+                                    if current_size > 0:
+                                        size_mb = current_size / (1024 * 1024)
+
+                                        # Only report if size changed significantly (at least 1MB change or first report)
+                                        if abs(current_size - last_size) > 1024 * 1024 or last_size == 0:
+                                            send_log(f"📊 File size: {size_mb:.2f} MB", "INFO")
+                                            last_size = current_size
                                             no_change_count = 0
-                        except Exception as e:
-                            # Silently ignore monitoring errors
-                            pass
-                        
-                        # Wait 3 seconds between checks
-                        stop_monitoring.wait(3)
+                                        else:
+                                            no_change_count += 1
+
+                                            # If size hasn't changed for 30 seconds, show status
+                                            if no_change_count >= 10:  # 10 checks * 3 sec = 30 sec
+                                                send_log(f"📊 File size: {size_mb:.2f} MB (stable)", "INFO")
+                                                no_change_count = 0
+                            except Exception:
+                                # Silently ignore monitoring errors
+                                pass
+
+                            # Wait 3 seconds between checks
+                            stop_monitoring.wait(3)
                 
-                # Start monitoring thread
-                monitor_thread = threading.Thread(target=monitor_file_size, daemon=True)
-                monitor_thread.start()
-                
-                # Read output including errors and status
-                for line in iter(process.stdout.readline, ''):
-                    # Check for abort
-                    if abort_event.is_set():
-                        stop_monitoring.set()
-                        process.terminate()
-                        try:
-                            process.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                        break
-                    
-                    if line:
-                        clean_line = line.rstrip()
-                        
-                        # Capture success markers and errors
-                        if "LOGBAY_SUCCESS:" in clean_line:
-                            collection_success = True
-                            send_log(f"✅ Logbay collected: {clean_line.split('LOGBAY_SUCCESS:')[1]}", "SUCCESS")
-                            send_log(f"SUBSTEP_UPDATE: step8_service_{idx} Collection successful", "INFO")
-                        elif "Archive Location:" in clean_line:
-                            # Extract archive location from logbay output
-                            send_log(clean_line, "INFO")
-                        elif "Total Collected Items:" in clean_line or "Total Unarchived Data Collected:" in clean_line:
-                            send_log(clean_line, "INFO")
-                        elif "Error:" in clean_line or "error" in clean_line.lower() or "failed" in clean_line.lower():
-                            send_log(clean_line, "ERROR")
-                        elif "Starting logbay" in clean_line or "Target:" in clean_line or "FULL LOGBAY COMMAND" in clean_line:
-                            send_log(clean_line, "INFO")
-                        elif "exit code" in clean_line.lower():
-                            send_log(clean_line, "ERROR")
-                        elif "Time period" in clean_line or "Creating a task" in clean_line or "task created" in clean_line:
-                            send_log(clean_line, "INFO")
-                        elif "Dispatched" in clean_line:
-                            send_log(clean_line, "INFO")
-                        # Skip verbose logbay progress messages and ANSI codes
-                        elif any(skip_msg in clean_line.lower() for skip_msg in [
-                            "collecting logs on individual",
-                            "collecting logs from",
-                            "nodes.",
-                            "individual",
-                            "collecting"
-                        ]) or "[2K" in clean_line or "[1A" in clean_line or "[0m" in clean_line:
-                            # Suppress verbose progress messages and ANSI escape codes
-                            pass
-                        elif clean_line.strip() and "=====" not in clean_line and not clean_line.startswith("["):
-                            # Show other relevant output
-                            # Skip single words and very short lines
-                            if len(clean_line.strip()) > 15 and " " in clean_line.strip():
+                    # Start monitoring thread
+                    monitor_thread = threading.Thread(target=monitor_file_size, daemon=True)
+                    monitor_thread.start()
+
+                    # Read output including errors and status
+                    for line in iter(process.stdout.readline, ''):
+                        # Check for abort
+                        if abort_event.is_set():
+                            stop_monitoring.set()
+                            process.terminate()
+                            try:
+                                process.wait(timeout=5)
+                            except subprocess.TimeoutExpired:
+                                process.kill()
+                            break
+
+                        if line:
+                            clean_line = line.rstrip()
+
+                            # Capture success markers and errors
+                            if "LOGBAY_SUCCESS:" in clean_line:
+                                collection_success = True
+                                send_log(f"✅ Logbay collected: {clean_line.split('LOGBAY_SUCCESS:')[1]}", "SUCCESS")
+                                send_log(f"SUBSTEP_UPDATE: step8_logbay_{idx} Collection successful", "INFO")
+                            elif "Archive Location:" in clean_line:
                                 send_log(clean_line, "INFO")
-                
-                # Stop monitoring and wait for thread
-                stop_monitoring.set()
-                monitor_thread.join(timeout=2)
-                
-                process.wait()
-                
-                # Step 2: Find the collected file on server and upload to Filer
-                if collection_success and process.returncode == 0:
-                    try:
-                        # File should already be on server via SFTP
-                        # Find the NTNX-Log-*.zip file in the server temp directory
-                        send_log(f"SUBSTEP_UPDATE: step8_service_{idx} Locating collected file", "INFO")
-                        
-                        import glob
-                        zip_files = list(server_temp_dir.glob("NTNX-Log-*.zip"))
-                        
-                        if not zip_files:
-                            send_log(f"❌ No logbay zip file found in {server_temp_dir}", "ERROR")
-                            send_log(f"Directory contents: {list(server_temp_dir.iterdir())}", "ERROR")
-                            failed_collections += 1
-                            continue
-                        
-                        # Get the most recent zip file
-                        logbay_file = max(zip_files, key=lambda p: p.stat().st_mtime)
-                        
-                        # Rename to custom filename
-                        server_file_path = server_temp_dir / f"{custom_filename}.zip"
-                        logbay_file.rename(server_file_path)
-                        
-                        # Verify file size
-                        file_size = server_file_path.stat().st_size
-                        file_size_mb = file_size / (1024 * 1024)
-                        
-                        if file_size < 1024:  # Less than 1KB
-                            send_log(f"❌ Collected file is too small ({file_size} bytes) - logbay likely failed", "ERROR")
-                            send_log(f"Skipping upload for {service}", "WARNING")
-                            failed_collections += 1
-                            # Clean up empty file
-                            server_file_path.unlink(missing_ok=True)
-                            continue
-                        
-                        send_log(f"✅ File collected on server: {server_file_path.name} ({file_size_mb:.2f} MB)", "SUCCESS")
-                        
-                        # Step 3: Upload from Server to Filer
-                        send_log(f"SUBSTEP_UPDATE: step8_service_{idx} Uploading to filer", "INFO")
-                        send_log(f"Uploading to filer...", "INFO")
-                        
-                        filer_target = f"{filer_base_path}/{bug_folder}/logbay"
-                        
-                        # Create logbay subfolder on filer first
-                        mkdir_cmd = [
-                            "sshpass", "-p", filer_password,
-                            "ssh",
-                            "-o", "StrictHostKeyChecking=no",
-                            "-o", "UserKnownHostsFile=/dev/null",
-                            "-o", "LogLevel=ERROR",
-                            f"{filer_user}@{filer_ip}",
-                            f"mkdir -p {filer_target}"
-                        ]
-                        subprocess.run(mkdir_cmd, capture_output=True)
-                        
-                        # Upload using rsync (same as fluentd script)
-                        upload_cmd = [
-                            "sshpass", "-p", filer_password,
-                            "rsync", "-avz", "--progress", "--timeout=300",
-                            "-e", "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                            str(server_file_path),
-                            f"{filer_user}@{filer_ip}:{filer_target}/"
-                        ]
-                        
-                        upload_result = subprocess.run(
-                            upload_cmd,
-                            capture_output=True,
-                            text=True
-                        )
-                        
-                        # Delete from server immediately
-                        if server_file_path.exists():
-                            server_file_path.unlink()
-                            send_log(f"Deleted from server (saved disk space)", "INFO")
-                        
-                        if upload_result.returncode == 0:
-                            send_log(f"✅ Logbay uploaded to filer successfully", "SUCCESS")
-                            send_log(f"SUBSTEP_UPDATE: step8_service_{idx} Cleaning up", "INFO")
-                            
-                            # No PC cleanup needed (SFTP collected directly to server)
-                            send_log(f"SUBSTEP_COMPLETE: step8_service_{idx}", "INFO")
-                            
-                            successful_collections += 1
-                        else:
-                            error_msg = upload_result.stderr or upload_result.stdout or "Unknown error"
-                            send_log(f"❌ Upload to filer failed (exit {upload_result.returncode})", "ERROR")
-                            if error_msg.strip():
-                                send_log(f"Error details: {error_msg[:300]}", "ERROR")
-                            send_log(f"SUBSTEP_COMPLETE: step8_service_{idx}", "INFO")
-                            failed_collections += 1
-                    except Exception as e:
-                        send_log(f"❌ Error during download/upload: {str(e)}", "ERROR")
-                        app.logger.exception(f"Logbay upload exception for {service}")
-                        send_log(f"SUBSTEP_COMPLETE: step8_service_{idx}", "INFO")
-                        failed_collections += 1
-                        # Cleanup on error
+                            elif "Total Collected Items:" in clean_line or "Total Unarchived Data Collected:" in clean_line:
+                                send_log(clean_line, "INFO")
+                            elif "Error:" in clean_line or "error" in clean_line.lower() or "failed" in clean_line.lower():
+                                send_log(clean_line, "ERROR")
+                            elif "Starting logbay" in clean_line or "Target:" in clean_line or "FULL LOGBAY COMMAND" in clean_line:
+                                send_log(clean_line, "INFO")
+                            elif "exit code" in clean_line.lower():
+                                send_log(clean_line, "ERROR")
+                            elif "Time period" in clean_line or "Creating a task" in clean_line or "task created" in clean_line:
+                                send_log(clean_line, "INFO")
+                            elif "Dispatched" in clean_line:
+                                send_log(clean_line, "INFO")
+                            # Skip verbose logbay progress messages and ANSI codes
+                            elif any(skip_msg in clean_line.lower() for skip_msg in [
+                                "collecting logs on individual",
+                                "collecting logs from",
+                                "nodes.",
+                                "individual",
+                                "collecting"
+                            ]) or "[2K" in clean_line or "[1A" in clean_line or "[0m" in clean_line:
+                                pass
+                            elif clean_line.strip() and "=====" not in clean_line and not clean_line.startswith("["):
+                                if len(clean_line.strip()) > 15 and " " in clean_line.strip():
+                                    send_log(clean_line, "INFO")
+
+                    # Stop monitoring and wait for thread
+                    stop_monitoring.set()
+                    monitor_thread.join(timeout=2)
+
+                    process.wait()
+
+                    # Step 2: Find the collected file on server and upload to Filer
+                    if collection_success and process.returncode == 0:
                         try:
-                            if server_file_path and server_file_path.exists():
+                            send_log(f"SUBSTEP_UPDATE: step8_logbay_{idx} Locating collected file", "INFO")
+                            zip_files = list(server_temp_dir.glob("NTNX-Log-*.zip"))
+                            new_zip_files = [z for z in zip_files if z.name not in existing_archives]
+
+                            if not zip_files:
+                                send_log(f"❌ No logbay zip file found in {server_temp_dir}", "ERROR")
+                                send_log(f"Directory contents: {list(server_temp_dir.iterdir())}", "ERROR")
+                                service_failed = True
+                                chunk_failures += 1
+                                continue
+
+                            # Get the newest zip created by this chunk (fallback to overall newest).
+                            logbay_file = (
+                                max(new_zip_files, key=lambda p: p.stat().st_mtime)
+                                if new_zip_files
+                                else max(zip_files, key=lambda p: p.stat().st_mtime)
+                            )
+
+                            # Rename to chunked custom filename
+                            server_file_path = server_temp_dir / f"{custom_filename_chunk}.zip"
+                            logbay_file.rename(server_file_path)
+
+                            # Verify file size
+                            file_size = server_file_path.stat().st_size
+                            file_size_mb = file_size / (1024 * 1024)
+
+                            if file_size < 1024:  # Less than 1KB
+                                send_log(f"❌ Collected file is too small ({file_size} bytes) - logbay likely failed", "ERROR")
+                                send_log(f"Skipping upload for {service} ({chunk_label})", "WARNING")
+                                service_failed = True
+                                chunk_failures += 1
+                                server_file_path.unlink(missing_ok=True)
+                                continue
+
+                            send_log(f"✅ File collected on server: {server_file_path.name} ({file_size_mb:.2f} MB)", "SUCCESS")
+
+                            # Step 3: Upload from Server to Filer
+                            send_log(f"SUBSTEP_UPDATE: step8_logbay_{idx} Uploading to filer", "INFO")
+                            send_log(f"Uploading to filer ({chunk_label})...", "INFO")
+
+                            filer_target = f"{filer_base_path}/{bug_folder}/logbay"
+
+                            # Create logbay subfolder on filer first
+                            mkdir_cmd = [
+                                "sshpass", "-p", filer_password,
+                                "ssh",
+                                "-o", "StrictHostKeyChecking=no",
+                                "-o", "UserKnownHostsFile=/dev/null",
+                                "-o", "LogLevel=ERROR",
+                                f"{filer_user}@{filer_ip}",
+                                f"mkdir -p {filer_target}"
+                            ]
+                            subprocess.run(mkdir_cmd, capture_output=True)
+
+                            # Upload using rsync (same as fluentd script)
+                            upload_cmd = [
+                                "sshpass", "-p", filer_password,
+                                "rsync", "-avz", "--progress", "--timeout=300",
+                                "-e", "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
+                                str(server_file_path),
+                                f"{filer_user}@{filer_ip}:{filer_target}/"
+                            ]
+
+                            upload_result = subprocess.run(
+                                upload_cmd,
+                                capture_output=True,
+                                text=True
+                            )
+
+                            # Delete uploaded archive from server immediately
+                            if server_file_path.exists():
                                 server_file_path.unlink()
-                            if server_temp_dir and server_temp_dir.exists() and not any(server_temp_dir.iterdir()):
-                                server_temp_dir.rmdir()
-                        except Exception:
-                            pass
-                else:
-                    send_log(f"❌ Logbay collection for {service} failed", "ERROR")
-                    send_log(f"SUBSTEP_COMPLETE: step8_service_{idx}", "INFO")
+                                send_log("Deleted from server (saved disk space)", "INFO")
+
+                            if upload_result.returncode == 0:
+                                send_log(f"✅ Logbay uploaded to filer successfully ({chunk_label})", "SUCCESS")
+                                chunk_successes += 1
+                            else:
+                                error_msg = upload_result.stderr or upload_result.stdout or "Unknown error"
+                                send_log(f"❌ Upload to filer failed (exit {upload_result.returncode})", "ERROR")
+                                if error_msg.strip():
+                                    send_log(f"Error details: {error_msg[:300]}", "ERROR")
+                                service_failed = True
+                                chunk_failures += 1
+                        except Exception as e:
+                            send_log(f"❌ Error during download/upload: {str(e)}", "ERROR")
+                            app.logger.exception(f"Logbay upload exception for {service}")
+                            service_failed = True
+                            chunk_failures += 1
+                            # Cleanup on error
+                            try:
+                                if server_file_path and server_file_path.exists():
+                                    server_file_path.unlink()
+                            except Exception:
+                                pass
+                    else:
+                        send_log(f"❌ Logbay collection for {service} failed ({chunk_label})", "ERROR")
+                        service_failed = True
+                        chunk_failures += 1
+
+                    if abort_event.is_set():
+                        service_failed = True
+                        break
+
+                send_log(
+                    f"Service {service} chunks summary: success={chunk_successes}, failed={chunk_failures}",
+                    "INFO",
+                )
+                send_log(f"SUBSTEP_UPDATE: step8_logbay_{idx} Cleaning up", "INFO")
+                if server_temp_dir.exists():
+                    shutil.rmtree(server_temp_dir, ignore_errors=True)
+                    send_log("Deleted temporary server folder", "INFO")
+                send_log(f"SUBSTEP_COMPLETE: step8_logbay_{idx}", "INFO")
+
+                if service_failed or chunk_successes == 0:
                     failed_collections += 1
+                else:
+                    successful_collections += 1
             
             # Summary
             send_log("=" * 80, "INFO")
@@ -5181,9 +5656,6 @@ echo "LOGBAY_SUCCESS:{custom_filename}.zip"
     # Start the fetch in background thread
     thread = threading.Thread(target=run_fetch_script, daemon=True)
     
-    # Create log file for this job
-    job_log_path = LOG_DIR / f"{log_job_id}.log"
-    
     # Register job for abort functionality and tracking
     with _log_jobs_lock:
         _log_jobs[log_job_id] = {
@@ -5198,6 +5670,9 @@ echo "LOGBAY_SUCCESS:{custom_filename}.zip"
             "end_time": None,
             "log_path": str(job_log_path),
             "fluentd_namespaces": fluentd_namespaces,
+            "microservice_services": microservice_services,
+            "microservice_live_only": microservice_live_only,
+            "microservice_live_duration_minutes": microservice_live_duration_minutes,
             "logbay_services": logbay_services,
             "total_size_bytes": 0,
             "files_collected": [],

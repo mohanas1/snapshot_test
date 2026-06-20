@@ -36,7 +36,7 @@
     "pc_ip": "10.114.55.128",
     "kind": "for_loop",
     "job_type": "full_pipeline",
-    "status": "active",
+    "status": "cancelled",
     "created_at": "2026-06-17T03:22:49.950693+00:00",
     "next_run_utc": "2026-06-17T03:22:45.398201+00:00",
     "requested_runs": 2,
@@ -60,6 +60,1991 @@
         "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260617T032300_601033.",
         "run_id": "10-114-55-128-pipeline_20260617T032300_601033",
         "job_url": "/job/10-114-55-128-pipeline_20260617T032300_601033"
+      },
+      {
+        "ts": "2026-06-17T04:23:00.632274+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:23:20.633090+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:23:40.634011+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:24:00.634905+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:24:20.635744+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:24:40.636629+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:25:00.637510+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:25:20.638413+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:25:40.639391+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:26:00.640340+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:26:20.641287+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:26:40.642234+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:27:00.643173+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:27:20.644115+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:27:40.645052+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:28:00.645976+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:28:20.646855+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:28:40.647840+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:29:00.648812+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:29:20.649712+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:29:40.650659+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:30:00.651642+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:30:20.652561+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:30:40.653554+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:31:00.654714+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:31:20.656008+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:31:40.657181+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:32:00.658280+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:32:20.659334+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:32:40.660517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:33:00.661658+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:33:20.662597+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:33:40.663725+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:34:00.664860+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:34:20.665891+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:34:40.667055+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:35:00.668139+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:35:20.669103+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:35:40.670142+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:36:00.671169+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:36:20.672177+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:36:40.673355+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:37:00.674790+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:37:20.675764+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:37:40.676822+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:38:00.677936+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:38:20.678937+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:38:40.679975+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:39:00.681207+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:39:20.682269+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:39:40.683316+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:40:00.684600+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:40:20.685657+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:40:40.686709+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:41:00.687955+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:41:20.689015+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:41:40.690095+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:42:00.691111+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:42:20.692215+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:42:40.693274+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:43:00.694390+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:43:20.695528+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:43:40.696477+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:44:00.697640+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:44:20.698825+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:44:40.699866+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:45:00.701006+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:45:20.702411+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:45:40.703583+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:46:00.704803+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:46:20.706252+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:46:40.707571+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:47:00.708808+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:47:20.710139+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:47:40.711664+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:48:00.712978+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:48:20.714297+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:48:40.715399+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:49:00.716740+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:49:20.718127+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:49:40.719270+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:50:00.720638+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:50:20.722157+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:50:40.723390+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:51:00.724615+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:51:20.725978+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:51:40.727765+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:52:00.728858+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:52:20.730206+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:52:40.731346+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:53:00.732475+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:53:20.733705+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:53:40.734983+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:54:00.736316+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:54:20.737757+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:54:40.739070+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:55:00.740364+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:55:20.741627+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:55:40.742882+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:56:00.744120+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:56:20.745355+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:56:40.746647+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:57:00.747894+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:57:20.749010+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:57:40.750291+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:58:00.751666+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:58:20.753151+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:58:40.754493+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:59:00.756131+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:59:20.757714+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T04:59:40.759065+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:00:00.760415+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:00:20.761656+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:00:40.762965+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:01:00.765016+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:01:20.766392+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:01:40.767700+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:02:00.769009+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:02:20.770167+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:02:40.771509+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:03:00.772850+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:03:20.774125+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:03:40.775470+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:04:00.776792+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:04:20.778088+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:04:40.779434+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:05:00.780796+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:05:20.782203+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-17T05:05:35.203152+00:00",
+        "type": "schedule_cancelled",
+        "message": "Schedule cancelled from UI."
+      }
+    ]
+  },
+  "schedule_1781672766_eb434a": {
+    "schedule_job_id": "schedule_1781672766_eb434a",
+    "pc_ip": "10.114.55.128",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "cancelled",
+    "created_at": "2026-06-17T05:06:06.078884+00:00",
+    "next_run_utc": "2026-06-17T05:06:01.428508+00:00",
+    "requested_runs": 2,
+    "remaining_runs": 1,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-114-55-128-pipeline_20260617T050620_784086",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T050620_784086"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-06-17T05:06:06.078896+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.114.55.128 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-06-17T05:06:20.784710+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260617T050620_784086.",
+        "run_id": "10-114-55-128-pipeline_20260617T050620_784086",
+        "job_url": "/job/10-114-55-128-pipeline_20260617T050620_784086"
+      },
+      {
+        "ts": "2026-06-17T05:07:37.815270+00:00",
+        "type": "schedule_cancelled",
+        "message": "Schedule cancelled from UI."
+      }
+    ]
+  },
+  "schedule_1781888497_cbff34": {
+    "schedule_job_id": "schedule_1781888497_cbff34",
+    "pc_ip": "10.114.55.128",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "completed",
+    "created_at": "2026-06-19T17:01:37.101347+00:00",
+    "next_run_utc": "2026-06-19T17:01:32.827487+00:00",
+    "requested_runs": 2,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-114-55-128-pipeline_20260619T170140_311480",
+        "job_url": "/job/10-114-55-128-pipeline_20260619T170140_311480"
+      },
+      {
+        "run_id": "10-114-55-128-pipeline_20260619T192520_872985",
+        "job_url": "/job/10-114-55-128-pipeline_20260619T192520_872985"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-06-19T17:01:37.101357+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.114.55.128 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-06-19T17:01:40.311914+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260619T170140_311480.",
+        "run_id": "10-114-55-128-pipeline_20260619T170140_311480",
+        "job_url": "/job/10-114-55-128-pipeline_20260619T170140_311480"
+      },
+      {
+        "ts": "2026-06-19T18:01:40.349589+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:02:00.351268+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:02:20.352713+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:02:40.354157+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:03:00.355498+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:03:20.356733+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:03:40.358160+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:04:00.359517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:04:20.360787+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:04:40.362517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:05:00.364466+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:05:20.365750+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:05:40.367075+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:06:00.368448+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:06:20.369796+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:06:40.371232+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:07:00.372912+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:07:20.374923+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:07:40.376390+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:08:00.377889+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:08:20.379321+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:08:40.380843+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:09:00.382541+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:09:20.383942+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:09:40.385355+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:10:00.386997+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:10:20.388504+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:10:40.389867+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:11:00.391283+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:11:20.392777+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:11:40.394258+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:12:00.396040+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:12:20.397479+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:12:40.398961+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:13:00.400454+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:13:20.401813+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:13:40.403202+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:14:00.404684+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:14:20.406272+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:14:40.407739+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:15:00.409157+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:15:20.427834+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:15:40.429693+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:16:00.431063+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:16:20.432579+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:16:40.434168+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:17:00.435776+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:17:20.437363+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:17:40.439036+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:18:00.440810+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:18:20.442529+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:18:40.444160+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:19:00.446375+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:19:20.448161+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:19:40.450129+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:20:00.451796+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:20:20.453507+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:20:40.455445+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:21:00.457131+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:21:20.458933+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:21:40.460719+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:22:00.462456+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:22:20.464142+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:22:40.465880+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:23:00.468135+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:23:20.470137+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:23:40.471902+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:24:00.473748+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:24:20.475672+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:24:40.477460+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:25:00.479198+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:25:20.480921+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:25:40.482674+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:26:00.484721+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:26:20.486615+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:26:40.488799+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:27:00.490925+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:27:20.492849+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:27:40.494745+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:28:00.496517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:28:20.498227+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:28:40.500191+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:29:00.501936+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:29:20.503660+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:29:40.505601+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:30:00.507498+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:30:20.510164+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:30:40.511876+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:31:00.513526+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:31:20.515287+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:31:40.516932+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:32:00.518757+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:32:20.520792+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:32:40.522504+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:33:00.524137+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:33:20.525821+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:33:40.527503+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:34:00.529362+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:34:20.531081+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:34:40.532810+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:35:00.534760+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:35:20.536487+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:35:40.538215+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:36:00.540140+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:36:20.542089+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:36:40.544051+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:37:00.545923+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:37:20.548018+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:37:40.550163+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:38:00.552050+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:38:20.553927+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:38:40.555866+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:39:00.557878+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:39:20.559877+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:39:40.561963+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:40:00.563867+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:40:20.566096+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:40:40.567983+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:41:00.570259+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:41:20.572301+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:41:40.574504+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:42:00.576699+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:42:20.578876+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:42:40.581635+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:43:00.583764+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:43:20.585703+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:43:40.587725+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:44:00.589972+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:44:20.591927+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:44:40.594210+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:45:00.596198+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:45:20.598209+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:45:40.600440+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:46:00.602486+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:46:20.604493+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:46:40.606829+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:47:00.608865+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:47:20.610890+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:47:40.612916+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:48:00.615017+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:48:20.617045+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:48:40.618837+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:49:00.620556+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:49:20.622268+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:49:40.624106+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:50:00.625934+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:50:20.627731+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:50:40.629617+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:51:00.631358+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:51:20.633483+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:51:40.636524+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:52:00.638643+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:52:20.640590+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:52:40.642468+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:53:00.644380+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:53:20.646478+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:53:40.648348+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:54:00.650233+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:54:20.652211+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:54:40.654111+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:55:00.655935+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:55:20.657925+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:55:40.659865+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:56:00.662021+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:56:20.664011+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:56:40.666470+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:57:00.668539+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:57:20.670493+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:57:40.672469+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:58:00.674301+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:58:20.676195+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:58:40.678297+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:59:00.680301+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:59:20.682208+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T18:59:40.684647+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:00:00.686804+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:00:20.688738+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:00:40.691591+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:01:00.693523+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:01:20.695729+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:01:40.697818+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:02:00.699798+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:02:20.702089+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:02:40.704303+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:03:00.706318+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:03:20.708484+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:03:40.710491+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:04:00.712680+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:04:20.714788+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:04:40.716684+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:05:00.719011+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:05:20.721204+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:05:40.723130+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:06:00.725224+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:06:20.728011+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:06:40.730165+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:07:00.732557+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:07:20.734800+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:07:40.736990+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:08:00.739195+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:08:20.741196+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:08:40.743388+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:09:00.745306+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:09:20.747633+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:09:40.749975+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:10:00.752858+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:10:20.755081+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:10:40.757447+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:11:00.760345+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:11:20.762775+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:11:40.765112+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:12:00.767442+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:12:20.769470+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:12:40.771493+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:13:00.773694+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:13:20.782021+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:13:40.784093+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:14:00.786315+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:14:20.788602+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:14:40.791153+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:15:00.794593+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:15:20.796727+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:15:40.799191+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:16:00.802179+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:16:20.804350+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:16:40.806790+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:17:00.809090+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:17:20.811443+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:17:40.813695+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:18:00.815980+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:18:20.819151+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:18:40.821302+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:19:00.823468+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:19:20.826173+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:19:40.829756+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:20:00.831847+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:20:20.834284+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:20:40.837154+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:21:00.839482+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:21:20.841870+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:21:40.844117+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:22:00.846865+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:22:20.849324+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:22:40.851723+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:23:00.855046+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:23:20.858365+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:23:40.860703+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:24:00.862981+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:24:20.865241+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:24:40.867865+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:25:00.870854+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-06-19T19:25:20.873660+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-114-55-128-pipeline_20260619T192520_872985.",
+        "run_id": "10-114-55-128-pipeline_20260619T192520_872985",
+        "job_url": "/job/10-114-55-128-pipeline_20260619T192520_872985"
+      },
+      {
+        "ts": "2026-06-19T19:25:20.877682+00:00",
+        "type": "loop_finished",
+        "message": "All requested loops were queued."
       }
     ]
   }

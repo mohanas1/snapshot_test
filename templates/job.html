@@ -997,6 +997,37 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete') %}
+  <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>Snapshot Run Info</strong>
+    <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Target VMs</div>
+        <div class="disk-summary-card-value" id="snap-stat-total">—</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Succeeded</div>
+        <div class="disk-summary-card-value" id="snap-stat-ok">—</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Failed</div>
+        <div class="disk-summary-card-value" id="snap-stat-fail">—</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Other</div>
+        <div class="disk-summary-card-value" id="snap-stat-other">—</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Ignored</div>
+        <div class="disk-summary-card-value" id="snap-stat-ignored">—</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Mode / Batch</div>
+        <div class="disk-summary-card-value" id="snap-stat-mode" style="font-size: 1rem;">—</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if info.get('job_kind') == 'pipeline' %}
   <div id="pipeline-live-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
@@ -1255,6 +1286,7 @@
     const apiUrl = {{ api_url | tojson }};
     const cancelUrl = {{ cancel_api_url | tojson }};
     const isDiskJob = {{ (info.get('job_kind') == 'disk') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -1303,6 +1335,12 @@
     const diskVmTbodyDone = document.getElementById('disk-vm-tbody-done');
     const diskVmCountInprogress = document.getElementById('disk-vm-inprogress-count');
     const diskVmCountDone = document.getElementById('disk-vm-done-count');
+    const snapStatTotal = document.getElementById('snap-stat-total');
+    const snapStatOk = document.getElementById('snap-stat-ok');
+    const snapStatFail = document.getElementById('snap-stat-fail');
+    const snapStatOther = document.getElementById('snap-stat-other');
+    const snapStatIgnored = document.getElementById('snap-stat-ignored');
+    const snapStatMode = document.getElementById('snap-stat-mode');
     var diskVmCompletedCache = [];
     /** null = API order; 'desc' = slowest first; 'asc' = fastest first */
     var diskVmDoneSortMode = null;
@@ -2156,6 +2194,27 @@
       }
     }
 
+    function renderSnapshotInfo(j) {
+      if (!isSnapshotJob) return;
+      const s = (j && j.summary) || {};
+      if (snapStatTotal) {
+        const nVms = Number.isFinite(Number(s.n_vms)) ? Number(s.n_vms) : null;
+        const done = Number.isFinite(Number(s.succeeded)) ? Number(s.succeeded) : 0;
+        const fail = Number.isFinite(Number(s.failed)) ? Number(s.failed) : 0;
+        const other = Number.isFinite(Number(s.other)) ? Number(s.other) : 0;
+        snapStatTotal.textContent = nVms != null ? String(nVms) : String(done + fail + other);
+      }
+      if (snapStatOk) snapStatOk.textContent = Number.isFinite(Number(s.succeeded)) ? String(s.succeeded) : "0";
+      if (snapStatFail) snapStatFail.textContent = Number.isFinite(Number(s.failed)) ? String(s.failed) : "0";
+      if (snapStatOther) snapStatOther.textContent = Number.isFinite(Number(s.other)) ? String(s.other) : "0";
+      if (snapStatIgnored) snapStatIgnored.textContent = Number.isFinite(Number(s.ignored)) ? String(s.ignored) : "0";
+      if (snapStatMode) {
+        const mode = String(s.snapshot_trigger_mode || "series");
+        const batch = Number.isFinite(Number(s.batch_size)) ? String(s.batch_size) : "—";
+        snapStatMode.textContent = mode + " / " + batch;
+      }
+    }
+
     async function fetchRunStatusLite(runId) {
       if (!runId) return null;
       try {
@@ -2241,6 +2300,9 @@
         }
         if (j.job_kind === 'recovery_delete') {
           renderRecoveryDeleteSummary(j.summary || {});
+        }
+        if (isSnapshotJob || j.job_kind === 'snapshot') {
+          renderSnapshotInfo(j);
         }
         if (j.status === 'running' && (j.elapsed_running_sec != null)) {
           hint.textContent =
