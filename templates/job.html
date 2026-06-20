@@ -2197,20 +2197,36 @@
     function renderSnapshotInfo(j) {
       if (!isSnapshotJob) return;
       const s = (j && j.summary) || {};
+      const sp = (j && j.snapshot_progress) || {};
+      const liveDone = Number.isFinite(Number(sp.overall_done)) ? Number(sp.overall_done) : null;
+      const liveTotal = Number.isFinite(Number(sp.overall_total)) ? Number(sp.overall_total) : null;
       if (snapStatTotal) {
         const nVms = Number.isFinite(Number(s.n_vms)) ? Number(s.n_vms) : null;
-        const done = Number.isFinite(Number(s.succeeded)) ? Number(s.succeeded) : 0;
-        const fail = Number.isFinite(Number(s.failed)) ? Number(s.failed) : 0;
-        const other = Number.isFinite(Number(s.other)) ? Number(s.other) : 0;
-        snapStatTotal.textContent = nVms != null ? String(nVms) : String(done + fail + other);
+        snapStatTotal.textContent = String(
+          liveTotal != null ? liveTotal : (nVms != null ? nVms : 0)
+        );
       }
-      if (snapStatOk) snapStatOk.textContent = Number.isFinite(Number(s.succeeded)) ? String(s.succeeded) : "0";
-      if (snapStatFail) snapStatFail.textContent = Number.isFinite(Number(s.failed)) ? String(s.failed) : "0";
-      if (snapStatOther) snapStatOther.textContent = Number.isFinite(Number(s.other)) ? String(s.other) : "0";
-      if (snapStatIgnored) snapStatIgnored.textContent = Number.isFinite(Number(s.ignored)) ? String(s.ignored) : "0";
+      if (snapStatOk) {
+        const ok = Number.isFinite(Number(sp.succeeded)) ? Number(sp.succeeded) : (Number.isFinite(Number(s.succeeded)) ? Number(s.succeeded) : 0);
+        snapStatOk.textContent = String(ok);
+      }
+      if (snapStatFail) {
+        const fail = Number.isFinite(Number(sp.failed)) ? Number(sp.failed) : (Number.isFinite(Number(s.failed)) ? Number(s.failed) : 0);
+        snapStatFail.textContent = String(fail);
+      }
+      if (snapStatOther) {
+        const other = Number.isFinite(Number(sp.other)) ? Number(sp.other) : (Number.isFinite(Number(s.other)) ? Number(s.other) : 0);
+        snapStatOther.textContent = String(other);
+      }
+      if (snapStatIgnored) {
+        const ignored = Number.isFinite(Number(sp.ignored)) ? Number(sp.ignored) : (Number.isFinite(Number(s.ignored)) ? Number(s.ignored) : 0);
+        snapStatIgnored.textContent = String(ignored);
+      }
       if (snapStatMode) {
-        const mode = String(s.snapshot_trigger_mode || "series");
-        const batch = Number.isFinite(Number(s.batch_size)) ? String(s.batch_size) : "—";
+        const mode = String(sp.snapshot_trigger_mode || s.snapshot_trigger_mode || "series");
+        const batch = Number.isFinite(Number(sp.batch_size))
+          ? String(sp.batch_size)
+          : (Number.isFinite(Number(s.batch_size)) ? String(s.batch_size) : "—");
         snapStatMode.textContent = mode + " / " + batch;
       }
     }

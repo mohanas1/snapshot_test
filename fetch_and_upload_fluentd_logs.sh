@@ -119,7 +119,7 @@ ssh_exec() {
     shift 3
     local cmd="$@"
     
-    local ssh_cmd="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+    local ssh_cmd="ssh"
     
     if [ -n "$password" ] && command -v sshpass &> /dev/null; then
         ssh_cmd="sshpass -p '$password' $ssh_cmd"
@@ -135,7 +135,7 @@ scp_upload() {
     local password=$4
     local dest=$5
     
-    local scp_cmd="scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -r"
+    local scp_cmd="scp -r"
     
     if [ -n "$password" ] && command -v sshpass &> /dev/null; then
         scp_cmd="sshpass -p '$password' $scp_cmd"
@@ -765,7 +765,7 @@ upload_file_to_filer() {
             fi
             
             rsync_output=$(sshpass -p "$FILER_PASSWORD" rsync -avz --progress --timeout=300 \
-                -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR" \
+                -e "ssh" \
                 "$local_file" "${FILER_USER}@${FILER_HOST}:${filer_path}/" 2>&1 | \
                 grep -v "StrictHostKeyChecking" | grep -v "Warning" || true)
             
@@ -858,7 +858,7 @@ upload_to_filer() {
             fi
             
             if sshpass -p "$FILER_PASSWORD" rsync -avz --progress --timeout=300 \
-                -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR" \
+                -e "ssh" \
                 "$upload_source" "${FILER_USER}@${FILER_HOST}:${filer_path}/" 2>&1 | \
                 grep -v "StrictHostKeyChecking" | grep -v "Warning"; then
                 

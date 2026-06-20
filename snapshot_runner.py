@@ -412,7 +412,16 @@ def run_snapshots(
         done = max(0, min(done, n_vms))
         try:
             progress_callback(
-                {"overall_done": done, "overall_total": int(n_vms)}
+                {
+                    "overall_done": done,
+                    "overall_total": int(n_vms),
+                    "succeeded": int(tally["succeeded"]),
+                    "failed": int(tally["failed"]),
+                    "other": int(tally["other"]),
+                    "ignored": int(tally["ignored"]),
+                    "snapshot_trigger_mode": str(mode),
+                    "batch_size": int(cfg.batch_size),
+                }
             )
         except Exception:
             pass

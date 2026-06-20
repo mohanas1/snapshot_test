@@ -4515,6 +4515,8 @@ def api_fetch_fluentd_logs():
     bug_folder = data.get("bug_folder", "").strip()
     pc_password = data.get("pc_password", "nutanix/4u").strip()
     filer_password = data.get("filer_password", "nutanix/4u").strip()
+    if not filer_password:
+        filer_password = "nutanix/4u"
     filer_ip = data.get("filer_ip", "10.46.1.165").strip()
     filer_user = data.get("filer_user", "nutanix").strip()
     filer_base_path = data.get("filer_base_path", "/home/nutanix/data/Bugs").strip()
@@ -4525,6 +4527,12 @@ def api_fetch_fluentd_logs():
     logbay_services = data.get("logbay_services", [])
     logbay_duration = data.get("logbay_duration", {})
     microservice_live_only = bool(data.get("microservice_live_only", False))
+    logbay_collection_mode = str(data.get("logbay_collection_mode", "historical") or "historical").strip().lower()
+    try:
+        logbay_live_duration_minutes = int(data.get("logbay_live_duration_minutes", 30) or 30)
+    except (TypeError, ValueError):
+        logbay_live_duration_minutes = 30
+    logbay_live_duration_minutes = max(1, min(240, logbay_live_duration_minutes))
     try:
         microservice_live_duration_minutes = int(data.get("microservice_live_duration_minutes", 30) or 30)
     except (TypeError, ValueError):
@@ -4568,6 +4576,120 @@ def api_fetch_fluentd_logs():
         else:
             LOGS_FETCH_LOGGER.info(f"{log_prefix} {message}")
 
+    def upload_path_to_filer(
+        local_source,
+        filer_target: str,
+        *,
+        label: str,
+        is_directory: bool = False,
+        retries: int = 3,
+        mkdir_timeout: int = 30,
+        upload_timeout: int = 600,
+    ) -> bool:
+        """
+        Shared filer mkdir + rsync upload flow used by live/microservice/logbay.
+        """
+        send_log(
+            f"{label}: filer auth user={filer_user}, password_set={'yes' if bool(filer_password) else 'no'}",
+            "INFO",
+        )
+        send_log(f"{label}: ensuring filer directory exists: {filer_target}", "INFO")
+        # Use the same plain SSH invocation pattern validated manually by user.
+        ssh_opts = []
+        mkdir_cmd = [
+            "sshpass", "-p", filer_password,
+            "ssh", *ssh_opts,
+            f"{filer_user}@{filer_ip}",
+            f"mkdir \"{filer_target}\"",
+        ]
+        send_log(f"{label}: mkdir command => {' '.join(mkdir_cmd)}", "INFO")
+
+        mkdir_last_err = ""
+        for attempt in range(1, retries + 1):
+            try:
+                normalized_target = str(filer_target).strip()
+                mkdir_result = None
+                if normalized_target.startswith("/"):
+                    parts = [p for p in normalized_target.split("/") if p]
+                    progressive = ""
+                    for part in parts:
+                        progressive += f"/{part}"
+                        ensure_cmd = f"[ -d \"{progressive}\" ] || mkdir \"{progressive}\""
+                        progressive_cmd = [
+                            "sshpass", "-p", filer_password,
+                            "ssh", *ssh_opts,
+                            f"{filer_user}@{filer_ip}",
+                            ensure_cmd,
+                        ]
+                        send_log(f"{label}: progressive mkdir command => {' '.join(progressive_cmd)}", "INFO")
+                        mkdir_result = subprocess.run(progressive_cmd, capture_output=True, text=True, timeout=mkdir_timeout)
+                        if mkdir_result.returncode != 0:
+                            break
+                else:
+                    mkdir_result = subprocess.run(mkdir_cmd, capture_output=True, text=True, timeout=mkdir_timeout)
+
+                if mkdir_result is not None and mkdir_result.returncode == 0:
+                    send_log(f"{label}: filer directory ready: {filer_target}", "INFO")
+                    break
+                mkdir_last_err = ((mkdir_result.stderr if mkdir_result else "") or (mkdir_result.stdout if mkdir_result else "") or "").strip()
+                send_log(f"⚠️ {label}: filer mkdir attempt {attempt}/{retries} failed: {mkdir_last_err[:220]}", "WARNING")
+            except subprocess.TimeoutExpired:
+                mkdir_last_err = "ssh mkdir timed out"
+                send_log(f"⚠️ {label}: filer mkdir attempt {attempt}/{retries} timed out", "WARNING")
+            if attempt == retries:
+                send_log(f"❌ {label}: failed to create filer directory after retries: {mkdir_last_err[:300]}", "ERROR")
+                return False
+            time.sleep(2)
+
+        source_arg = f"{str(local_source)}/" if is_directory else str(local_source)
+        upload_cmd = [
+            "sshpass", "-p", filer_password,
+            "rsync", "-avz", "--progress", "--timeout=300",
+            "-e", "ssh",
+            source_arg,
+            f"{filer_user}@{filer_ip}:{filer_target}/",
+        ]
+        send_log(f"{label}: upload command => {' '.join(upload_cmd)}", "INFO")
+
+        upload_last_err = ""
+        for attempt in range(1, retries + 1):
+            try:
+                upload_result = subprocess.run(upload_cmd, capture_output=True, text=True, timeout=upload_timeout)
+                if upload_result.returncode == 0:
+                    return True
+                upload_last_err = (upload_result.stderr or upload_result.stdout or "").strip()
+                send_log(f"⚠️ {label}: upload attempt {attempt}/{retries} failed: {upload_last_err[:220]}", "WARNING")
+                if "rsync: command not found" in upload_last_err:
+                    send_log(f"{label}: rsync missing on remote; falling back to scp", "WARNING")
+                    scp_cmd = ["sshpass", "-p", filer_password, "scp"]
+                    if is_directory:
+                        scp_cmd.append("-r")
+                        # Copy directory contents (not top directory) to avoid nested duplicate folder.
+                        scp_source = f"{str(local_source).rstrip('/')}/."
+                    else:
+                        scp_source = source_arg
+                    scp_cmd.extend([scp_source, f"{filer_user}@{filer_ip}:{filer_target}/"])
+                    send_log(f"{label}: scp fallback command => {' '.join(scp_cmd)}", "INFO")
+                    try:
+                        scp_result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=upload_timeout)
+                        if scp_result.returncode == 0:
+                            send_log(f"{label}: scp fallback upload succeeded", "SUCCESS")
+                            return True
+                        upload_last_err = (scp_result.stderr or scp_result.stdout or "").strip()
+                        send_log(f"⚠️ {label}: scp fallback failed: {upload_last_err[:220]}", "WARNING")
+                    except subprocess.TimeoutExpired:
+                        upload_last_err = "scp fallback timed out"
+                        send_log(f"⚠️ {label}: scp fallback timed out", "WARNING")
+            except subprocess.TimeoutExpired:
+                upload_last_err = "rsync upload timed out"
+                send_log(f"⚠️ {label}: upload attempt {attempt}/{retries} timed out", "WARNING")
+            if attempt == retries:
+                send_log(f"❌ {label}: upload failed after retries: {upload_last_err[:300]}", "ERROR")
+                return False
+            time.sleep(2)
+
+        return False
+
     def run_microservice_live_collection() -> bool:
         """Run live microservice log streaming script for selected services."""
         selected = [s for s in microservice_services if s in {"epsilon", "calm", "policy", "scheduler"}]
@@ -4609,13 +4731,44 @@ def api_fetch_fluentd_logs():
         ]
 
         send_log("=" * 80, "INFO")
-        send_log("Live-only mode enabled: skipping Fluentd, archived microservice copy, and Logbay", "WARNING")
+        send_log("Live mode: running microservice live streaming", "INFO")
         send_log(
             f"Starting live microservice streaming for {microservice_live_duration_minutes} minute(s): {', '.join(selected)}",
             "INFO",
         )
         send_log(f"Using kubeconfig: {kubeconfig_path}", "INFO")
         send_log("Caution: live collection may increase CPU usage; keep selected services minimal", "WARNING")
+        send_log(f"Live logs will be uploaded to filer path: {filer_base_path}/{bug_folder}/microservice_live_logs", "INFO")
+
+        def upload_live_output_to_filer(local_output_dir: Path) -> bool:
+            """Upload collected live log directory directly to filer (no archive/tar)."""
+            if not local_output_dir.exists() or not local_output_dir.is_dir():
+                send_log(f"❌ Live output directory not found for upload: {local_output_dir}", "ERROR")
+                return False
+
+            filer_target = f"{filer_base_path}/{bug_folder}/microservice_live_logs"
+            send_log("=" * 80, "INFO")
+            send_log("Uploading live logs to filer (direct folder sync, no tar)...", "INFO")
+            send_log(f"Local source: {local_output_dir}", "INFO")
+            send_log(f"Remote target: {filer_user}@{filer_ip}:{filer_target}/", "INFO")
+            ok = upload_path_to_filer(
+                local_output_dir,
+                filer_target,
+                label="Live logs",
+                is_directory=True,
+                retries=3,
+                mkdir_timeout=120,
+                upload_timeout=1800,
+            )
+            if not ok:
+                return False
+
+            send_log("✅ Live logs uploaded to filer successfully", "SUCCESS")
+            send_log(f"Filer path: {filer_target}/", "INFO")
+            with _log_jobs_lock:
+                if log_job_id in _log_jobs:
+                    _log_jobs[log_job_id]["filer_url"] = f"{filer_target}/"
+            return True
 
         process = subprocess.Popen(
             live_cmd,
@@ -4628,6 +4781,7 @@ def api_fetch_fluentd_logs():
         with _log_jobs_lock:
             if log_job_id in _log_jobs:
                 _log_jobs[log_job_id]["process"] = process
+        live_output_dir: Path | None = None
 
         for line in iter(process.stdout.readline, ""):
             if abort_event.is_set():
@@ -4653,6 +4807,14 @@ def api_fetch_fluentd_logs():
                 level = "INFO"
             send_log(clean_line, level)
 
+            out_match = re.search(r"(?:Output directory:|Output:)\s*(\S+)", clean_line)
+            if out_match:
+                out_dir_name = out_match.group(1).strip()
+                out_path = Path(out_dir_name)
+                if not out_path.is_absolute():
+                    out_path = (PROJECT_DIR.parent / out_path).resolve()
+                live_output_dir = out_path
+
             if "No live streams started." in clean_line:
                 send_log(
                     "❌ Live microservice collection could not start any streams. Check kubeconfig and selected services.",
@@ -4662,22 +4824,190 @@ def api_fetch_fluentd_logs():
 
         process.wait()
         if process.returncode == 0 and not abort_event.is_set():
+            if live_output_dir is None:
+                discovered = sorted(PROJECT_DIR.parent.glob("microservice-live-logs_*"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if discovered:
+                    live_output_dir = discovered[0]
+            if live_output_dir is not None:
+                if not upload_live_output_to_filer(live_output_dir):
+                    return False
+            else:
+                send_log("❌ Could not determine live output directory for filer upload", "ERROR")
+                return False
             send_log("✅ Live microservice collection completed successfully", "SUCCESS")
             return True
 
         if not abort_event.is_set():
             send_log(f"❌ Live microservice collection exited with code {process.returncode}", "ERROR")
         return False
+
+    def run_logbay_live_collection() -> bool:
+        """Stream selected logbay-tag logs live from PC for a fixed duration."""
+        # Map logbay tags to concrete files on PC.
+        tag_to_files = {
+            "aplos": ["/home/nutanix/data/logs/aplos.out"],
+            "idf": [
+                "/home/nutanix/data/logs/insights_data_interface.out",
+                "/home/nutanix/data/logs/insights_server.out",
+            ],
+            "nginx": ["/home/nutanix/data/logs/nginx.log", "/home/nutanix/data/logs/nginx.err"],
+            "iam": ["/home/nutanix/data/logs/iam.out"],
+            # Broad CVM tag: stream representative core files.
+            "cvm_logs": [
+                "/home/nutanix/data/logs/acropolis.out",
+                "/home/nutanix/data/logs/stargate.out",
+                "/home/nutanix/data/logs/genesis.out",
+                "/home/nutanix/data/logs/prism_gateway.log",
+            ],
+        }
+        unsupported_live = {"epsilon", "nucalm", "msp", "domain_manager"}
+        selected = [s for s in logbay_services if s in tag_to_files or s in unsupported_live]
+        if not selected:
+            send_log("No valid logbay services selected for live collection", "ERROR")
+            return False
+
+        skipped = [s for s in selected if s in unsupported_live]
+        selected_supported = [s for s in selected if s in tag_to_files]
+        if skipped:
+            send_log(
+                f"Skipping unsupported logbay live services: {', '.join(skipped)}",
+                "WARNING",
+            )
+        if not selected_supported:
+            send_log("No supported logbay live services remain after filtering", "ERROR")
+            return False
+
+        duration_seconds = int(logbay_live_duration_minutes) * 60
+        run_name = f"logbay-live-logs_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        local_output_dir = (PROJECT_DIR.parent / run_name).resolve()
+        local_output_dir.mkdir(parents=True, exist_ok=True)
+
+        send_log("=" * 80, "INFO")
+        send_log("Live mode: running logbay live streaming", "INFO")
+        send_log(
+            f"Starting live logbay streaming for {logbay_live_duration_minutes} minute(s): {', '.join(selected_supported)}",
+            "INFO",
+        )
+        send_log(f"Live logbay output directory: {local_output_dir}", "INFO")
+
+        proc_items: list[tuple[str, subprocess.Popen[Any]]] = []
+        started_count = 0
+        try:
+            for service in selected_supported:
+                service_dir = local_output_dir / service
+                service_dir.mkdir(parents=True, exist_ok=True)
+                for remote_file in tag_to_files[service]:
+                    out_file = service_dir / Path(remote_file).name
+                    # timeout bounds remote tail session; -n 0 means live-only new lines.
+                    remote_cmd = (
+                        f"timeout {duration_seconds}s bash -lc "
+                        f"'test -f \"{remote_file}\" && tail -n 0 -F \"{remote_file}\"'"
+                    )
+                    cmd = [
+                        "sshpass", "-p", pc_password,
+                        "ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                        f"nutanix@{pc_ip}",
+                        remote_cmd,
+                    ]
+                    fh = out_file.open("w", encoding="utf-8")
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdout=fh,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    proc_items.append((str(out_file), proc))
+                    started_count += 1
+                    send_log(f"Streaming {service}/{Path(remote_file).name} -> {run_name}/{service}/{Path(remote_file).name}", "INFO")
+
+            send_log(f"Live streaming started for {started_count} file(s).", "INFO")
+            send_log(f"Press Abort, or wait {duration_seconds}s.", "INFO")
+
+            deadline = time.time() + duration_seconds + 5
+            while time.time() < deadline and any(p.poll() is None for _, p in proc_items):
+                if abort_event.is_set():
+                    send_log("⚠️ Abort requested by user", "WARNING")
+                    break
+                time.sleep(1)
+        finally:
+            for _, p in proc_items:
+                if p.poll() is None:
+                    p.terminate()
+            for _, p in proc_items:
+                try:
+                    p.wait(timeout=5)
+                except Exception:
+                    try:
+                        p.kill()
+                    except Exception:
+                        pass
+
+        if abort_event.is_set():
+            send_log("❌ Live logbay collection aborted", "ERROR")
+            return False
+
+        filer_target = f"{filer_base_path}/{bug_folder}/logbay_live"
+        send_log("=" * 80, "INFO")
+        send_log("Uploading live logbay logs to filer (direct folder sync, no zip)...", "INFO")
+        send_log(f"Local source: {local_output_dir}", "INFO")
+        send_log(f"Remote target: {filer_user}@{filer_ip}:{filer_target}/", "INFO")
+        ok = upload_path_to_filer(
+            local_output_dir,
+            filer_target,
+            label="Logbay live logs",
+            is_directory=True,
+            retries=3,
+            mkdir_timeout=120,
+            upload_timeout=1800,
+        )
+        if not ok:
+            return False
+
+        send_log("✅ Live logbay logs uploaded to filer successfully", "SUCCESS")
+        send_log(f"Filer path: {filer_target}/", "INFO")
+        with _log_jobs_lock:
+            if log_job_id in _log_jobs:
+                _log_jobs[log_job_id]["filer_url"] = f"{filer_target}/"
+        return True
     
     def run_fetch_script():
         """Run the fetch_and_upload_fluentd_logs.sh script."""
         try:
-            if microservice_live_only:
-                live_ok = run_microservice_live_collection()
+            if logbay_collection_mode == "live":
+                # In live mode we support combined selections in a single run:
+                # - Microservice live stream
+                # - Logbay live stream
+                # Fluentd live streaming is currently not implemented and is skipped.
+                if fluentd_namespaces:
+                    send_log(
+                        "Live mode: Fluentd selection detected, but Fluentd live streaming is not supported. Skipping Fluentd.",
+                        "WARNING",
+                    )
+
+                ran_any_live = False
+                combined_live_ok = True
+
+                if microservice_services:
+                    ran_any_live = True
+                    micro_ok = run_microservice_live_collection()
+                    combined_live_ok = combined_live_ok and micro_ok
+
+                if logbay_services and not abort_event.is_set():
+                    ran_any_live = True
+                    logbay_ok = run_logbay_live_collection()
+                    combined_live_ok = combined_live_ok and logbay_ok
+
+                if not ran_any_live:
+                    send_log(
+                        "Live mode selected, but no live-capable section selected. Choose Microservice and/or Logbay services.",
+                        "ERROR",
+                    )
+                    combined_live_ok = False
+
                 with _log_jobs_lock:
                     if log_job_id in _log_jobs:
                         _log_jobs[log_job_id]["status"] = (
-                            "aborted" if abort_event.is_set() else ("completed" if live_ok else "failed")
+                            "aborted" if abort_event.is_set() else ("completed" if combined_live_ok else "failed")
                         )
                         _log_jobs[log_job_id]["end_time"] = dt.datetime.now().isoformat()
                 return
@@ -5058,31 +5388,15 @@ def api_fetch_fluentd_logs():
 
             # 6) Upload to filer.
             filer_target = f"{filer_base_path}/{bug_folder}/microservice_logs"
-            mkdir_cmd = [
-                "sshpass", "-p", filer_password,
-                "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "LogLevel=ERROR",
-                f"{filer_user}@{filer_ip}",
-                f"mkdir -p {filer_target}",
-            ]
-            subprocess.run(mkdir_cmd, capture_output=True, text=True, timeout=30)
-
-            upload_cmd = [
-                "sshpass", "-p", filer_password,
-                "rsync", "-avz", "--progress", "--timeout=300",
-                "-e", "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                str(server_archive_path),
-                f"{filer_user}@{filer_ip}:{filer_target}/",
-            ]
-            upload_result = subprocess.run(upload_cmd, capture_output=True, text=True, timeout=300)
-            if upload_result.returncode != 0:
-                send_log(
-                    f"❌ Upload failed for {service}: "
-                    f"{((upload_result.stderr or upload_result.stdout) or '').strip()[:300]}",
-                    "ERROR",
-                )
+            if not upload_path_to_filer(
+                server_archive_path,
+                filer_target,
+                label=f"Microservice {service}",
+                is_directory=False,
+                retries=3,
+                mkdir_timeout=30,
+                upload_timeout=300,
+            ):
                 send_log(f"SUBSTEP_COMPLETE: {micro_substep_id}", "INFO")
                 fail_count += 1
                 shutil.rmtree(server_temp_dir, ignore_errors=True)
@@ -5547,32 +5861,14 @@ echo "LOGBAY_SUCCESS:{custom_filename_chunk}.zip"
                             send_log(f"Uploading to filer ({chunk_label})...", "INFO")
 
                             filer_target = f"{filer_base_path}/{bug_folder}/logbay"
-
-                            # Create logbay subfolder on filer first
-                            mkdir_cmd = [
-                                "sshpass", "-p", filer_password,
-                                "ssh",
-                                "-o", "StrictHostKeyChecking=no",
-                                "-o", "UserKnownHostsFile=/dev/null",
-                                "-o", "LogLevel=ERROR",
-                                f"{filer_user}@{filer_ip}",
-                                f"mkdir -p {filer_target}"
-                            ]
-                            subprocess.run(mkdir_cmd, capture_output=True)
-
-                            # Upload using rsync (same as fluentd script)
-                            upload_cmd = [
-                                "sshpass", "-p", filer_password,
-                                "rsync", "-avz", "--progress", "--timeout=300",
-                                "-e", "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                                str(server_file_path),
-                                f"{filer_user}@{filer_ip}:{filer_target}/"
-                            ]
-
-                            upload_result = subprocess.run(
-                                upload_cmd,
-                                capture_output=True,
-                                text=True
+                            upload_ok = upload_path_to_filer(
+                                server_file_path,
+                                filer_target,
+                                label=f"Logbay {service} {chunk_label}",
+                                is_directory=False,
+                                retries=3,
+                                mkdir_timeout=30,
+                                upload_timeout=300,
                             )
 
                             # Delete uploaded archive from server immediately
@@ -5580,14 +5876,10 @@ echo "LOGBAY_SUCCESS:{custom_filename_chunk}.zip"
                                 server_file_path.unlink()
                                 send_log("Deleted from server (saved disk space)", "INFO")
 
-                            if upload_result.returncode == 0:
+                            if upload_ok:
                                 send_log(f"✅ Logbay uploaded to filer successfully ({chunk_label})", "SUCCESS")
                                 chunk_successes += 1
                             else:
-                                error_msg = upload_result.stderr or upload_result.stdout or "Unknown error"
-                                send_log(f"❌ Upload to filer failed (exit {upload_result.returncode})", "ERROR")
-                                if error_msg.strip():
-                                    send_log(f"Error details: {error_msg[:300]}", "ERROR")
                                 service_failed = True
                                 chunk_failures += 1
                         except Exception as e:

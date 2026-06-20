@@ -176,6 +176,25 @@
       margin-bottom: 1.5rem;
     }
     
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 1rem 1.25rem;
+      align-items: start;
+    }
+    
+    .config-grid .form-group {
+      margin-bottom: 0;
+    }
+    
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+    
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    
     .form-label {
       display: block;
       font-weight: 600;
@@ -291,6 +310,30 @@
       gap: 0.5rem;
     }
     
+    .field-error-message {
+      color: #DC2626;
+      font-size: 0.8125rem;
+      margin-top: 0.4rem;
+      display: none;
+      font-weight: 500;
+    }
+    
+    .form-group.has-error .field-error-message {
+      display: block;
+    }
+    
+    .form-group.has-error .form-input,
+    .form-input.field-error {
+      border-color: #DC2626 !important;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+    }
+    
+    @media (max-width: 980px) {
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
     .btn-refresh {
       background: var(--primary-blue);
       color: white;
@@ -390,6 +433,74 @@
     
     .btn-secondary:hover {
       background: #4B5563;
+    }
+    
+    .btn-select-toggle {
+      padding: 0.375rem 0.75rem;
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    
+    .btn-select-toggle:hover {
+      background: #E5E7EB;
+      border-color: #9CA3AF;
+    }
+    
+    .btn-start-fetch {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+    
+    .btn-start-fetch:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.42);
+    }
+    
+    .logbay-mode-panel {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      background: #F8FAFC;
+    }
+    
+    .logbay-live-note {
+      margin-top: 0.625rem;
+      padding: 0.625rem;
+      border: 1px solid #BFDBFE;
+      border-radius: 6px;
+      background: #EFF6FF;
+      color: #1E3A8A;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+    }
+    
+    .service-unavailable-live {
+      opacity: 0.55;
+      background: #F9FAFB !important;
+      border-color: #E5E7EB !important;
+      cursor: not-allowed !important;
+    }
+    
+    .service-unavailable-live .service-pill-note {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: #9CA3AF;
+      font-weight: 600;
+    }
+    
+    .global-mode-panel {
+      margin-bottom: 1rem;
+      padding: 0.875rem 1rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      background: #F8FAFC;
     }
     
     /* Live Logs Section */
@@ -507,6 +618,25 @@
       position: relative;
       overflow: hidden;
     }
+
+    .progress-bar-fill.state-active {
+      background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .progress-bar-fill.state-success {
+      background-image: none !important;
+      background-color: #10B981 !important;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+      animation: none !important;
+    }
+
+    .progress-bar-fill.state-error {
+      background-image: none !important;
+      background-color: #DC2626 !important;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+      animation: none !important;
+    }
     
     .progress-bar-fill::before {
       content: '';
@@ -548,6 +678,12 @@
     
     .progress-bar-fill.indeterminate::before {
       display: none; /* Disable shimmer for indeterminate state */
+    }
+
+    .progress-bar-fill.state-success::before,
+    .progress-bar-fill.state-error::before {
+      display: none !important;
+      animation: none !important;
     }
     
     @keyframes indeterminate-progress {
@@ -680,12 +816,93 @@
     .action-buttons-sticky {
       position: sticky;
       top: 4.5rem;
-      background: white;
+      background: #F8FAFC;
       z-index: 100;
-      padding: 1rem 0;
-      margin-bottom: 1rem;
-      border-bottom: 2px solid #E5E7EB;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      padding: 1rem;
+      margin-top: 1.25rem;
+      border-top: 1px solid #E5E7EB;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .logs-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .logs-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #4B5563;
+      background: #F3F4F6;
+      border: 1px solid #D1D5DB;
+      border-radius: 999px;
+      padding: 0.3rem 0.6rem;
+    }
+
+    .btn-panic-abort {
+      background: #B91C1C;
+      color: #fff;
+      border: 1px solid #991B1B;
+      border-radius: 6px;
+      font-weight: 700;
+      padding: 0.45rem 0.7rem;
+      cursor: pointer;
+    }
+
+    .btn-panic-abort:hover:not(:disabled) {
+      background: #991B1B;
+    }
+
+    .step-main.future {
+      opacity: 0.62;
+      background: #F9FAFB !important;
+      border-color: #E5E7EB !important;
+    }
+
+    .step-main.active {
+      background: linear-gradient(90deg, #DBEAFE 0%, #BFDBFE 100%) !important;
+      border: 1px solid #3B82F6 !important;
+      opacity: 1 !important;
+    }
+
+    .step-main.completed {
+      background: linear-gradient(90deg, transparent 0%, #E0E7FF 45%, #E0E7FF 55%, transparent 100%) !important;
+      border: 1px solid #C7D2FE !important;
+      opacity: 0.85 !important;
+    }
+
+    .live-summary-board {
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      background: #F8FAFC;
+      padding: 0.75rem;
+    }
+
+    .live-summary-line {
+      font-size: 0.82rem;
+      color: #374151;
+      margin-bottom: 0.45rem;
+    }
+
+    .mini-progress {
+      height: 8px;
+      border-radius: 999px;
+      background: #E5E7EB;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .mini-progress-fill {
+      height: 100%;
+      background: #3B82F6;
+      transition: width 0.2s ease;
     }
     
     .log-line {
@@ -913,49 +1130,37 @@
         <p class="page-subtitle">Fetch fluentd logs from Prism Central and upload to filer</p>
       </div>
       
-      <!-- Info Box -->
-      <div class="info-box">
-        <div class="info-box-title">ℹ️ About This Tool</div>
-        <div class="info-box-content">
-          This tool automates the process of:
-          <ul>
-            <li>Fetching kubeconfig from Prism Central</li>
-            <li>Copying logs from fluentd-aggregator pod</li>
-            <li>Compressing logs for faster transfer</li>
-            <li>Uploading to filer with retry support</li>
-            <li>Verifying successful upload</li>
-          </ul>
-          <strong>Default credentials:</strong> nutanix/4u (can be overridden)
-        </div>
-      </div>
       
       <!-- Configuration Form -->
       <div class="form-section">
         <h2 class="form-section-title">🔧 Connection Configuration</h2>
         
         <form id="fetchLogsForm">
-          <div class="form-group">
+          <div class="config-grid">
+          <div class="form-group" id="pcIpGroup">
             <label class="form-label" for="pcIp">Prism Central IP / Hostname *</label>
             <input type="text" id="pcIp" name="pcIp" class="form-input" 
                    placeholder="10.0.0.1" required>
             <div class="form-help-text">
               📍 Enter the IP address or hostname of your Prism Central
             </div>
+            <div class="field-error-message" id="pcIpError">Prism Central IP / Hostname is required.</div>
           </div>
           
-          <div class="form-group">
+          <div class="form-group" id="filerServerGroup">
             <label class="form-label" for="filerServer">Select Filer Server *</label>
             <select id="filerServer" name="filerServer" class="form-input" required>
               <option value="">-- Select Filer Server --</option>
-              <option value="filer1" selected>Filer 1 - 10.46.1.165 (nutanix)</option>
-              <option value="filer2">Filer 2 - 10.117.64.207 (aiops)</option>
+              <option value="filer2" selected>Filer 2 - 10.117.64.207 (aiops)</option>
+              <option value="filer1">Filer 1 - 10.46.1.165 (nutanix)</option>
             </select>
             <div class="form-help-text">
               🖥️ Choose the destination filer server
             </div>
+            <div class="field-error-message" id="filerServerError">Please select a filer server.</div>
           </div>
           
-          <div class="form-group">
+          <div class="form-group" id="folderLevel1Group">
             <label class="form-label" for="folderLevel1">Select Folder Level 1</label>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
               <div style="position: relative; flex: 1;">
@@ -989,6 +1194,7 @@
             <div id="level1CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
               📦 Using cached folders from <strong id="level1CacheTime"></strong>
             </div>
+            <div class="field-error-message" id="folderLevel1Error">Please select Folder Level 1.</div>
           </div>
           
           <div class="form-group" id="folderLevel2Group" style="display: none;">
@@ -1024,6 +1230,7 @@
             <div id="level2CacheInfo" class="cache-info" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #10B981; background: #D1FAE5; padding: 0.375rem 0.75rem; border-radius: 4px; border: 1px solid #6EE7B7;">
               📦 Using cached folders from <strong id="level2CacheTime"></strong>
             </div>
+            <div class="field-error-message" id="folderLevel2Error">Please select Folder Level 2.</div>
           </div>
           
           <div class="form-group" id="bugFolderGroup" style="display: none;">
@@ -1035,7 +1242,7 @@
             </div>
           </div>
           
-          <div class="form-group">
+          <div class="form-group full-width">
             <label class="form-label">Filer Server Details</label>
             <div class="path-display" id="filerDetails">
               <strong>IP:</strong> <span id="filerIp">10.46.1.165</span> &nbsp;&nbsp;|&nbsp;&nbsp; 
@@ -1046,7 +1253,7 @@
             </div>
           </div>
           
-          <div class="form-group">
+          <div class="form-group full-width">
             <label class="form-label">Filer Destination Path</label>
             <input type="text" id="filerDestPath" name="filerDestPath" class="form-input" 
                    value="/home/nutanix/data/bugs/[select-folders-above]"
@@ -1058,8 +1265,7 @@
               📂 SSH path where logs will be stored on the filer server
             </div>
           </div>
-          
-          <div class="form-group">
+          <div class="form-group full-width">
             <label class="form-label">Access URL (After Upload)</label>
             <div class="url-display">
               <a id="accessUrl" href="#" target="_blank" style="color: #3B82F6; text-decoration: none; font-family: var(--font-mono); font-size: 0.9375rem;">
@@ -1081,7 +1287,7 @@
           </div>
           
           <!-- Customized Log Collection Filters -->
-          <div style="margin-top: 2rem; border: 1px solid var(--border-gray); border-radius: 8px; overflow: hidden;">
+          <div class="full-width" style="margin-top: 1rem; border: 1px solid var(--border-gray); border-radius: 8px; overflow: hidden;">
             <div style="background: #F3F4F6; padding: 0.75rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;" 
                  onclick="document.getElementById('filterContent').style.display = document.getElementById('filterContent').style.display === 'none' ? 'block' : 'none'; this.querySelector('.toggle-icon').textContent = document.getElementById('filterContent').style.display === 'none' ? '▶' : '▼';">
               <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
@@ -1092,6 +1298,22 @@
             </div>
             
             <div id="filterContent" style="display: block; padding: 1.5rem; background: white;">
+              <div class="global-mode-panel">
+                <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-dark); margin-bottom: 0.5rem;">
+                  🌐 Global Collection Mode (applies to all sections)
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="globalCollectionMode" value="historical" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem; font-weight: 500;">Historic</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="globalCollectionMode" value="live" style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem; font-weight: 500;">Live</span>
+                  </label>
+                </div>
+              </div>
+
               <!-- Fluentd Section -->
               <div style="margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
@@ -1099,7 +1321,7 @@
                     <span style="color: #3B82F6;">📦</span>
                     <span>Fluentd Namespaces</span>
                   </div>
-                  <button type="button" onclick="toggleAllCheckboxes('fluentd')" style="padding: 0.375rem 0.75rem; background: #3B82F6; color: white; border: none; border-radius: 4px; font-size: 0.8125rem; cursor: pointer; font-weight: 500;">
+                  <button type="button" class="btn-select-toggle" onclick="toggleAllCheckboxes('fluentd')">
                     Select All / Deselect All
                   </button>
                 </div>
@@ -1186,7 +1408,7 @@
                     <span style="color: #10B981;">📊</span>
                     <span>Logbay Services</span>
                   </div>
-                  <button type="button" onclick="toggleAllCheckboxes('logbay')" style="padding: 0.375rem 0.75rem; background: #10B981; color: white; border: none; border-radius: 4px; font-size: 0.8125rem; cursor: pointer; font-weight: 500;">
+                  <button type="button" class="btn-select-toggle" onclick="toggleAllCheckboxes('logbay')">
                     Select All / Deselect All
                   </button>
                 </div>
@@ -1248,7 +1470,7 @@
                 </div>
                 
                 <!-- Logbay Duration Options -->
-                <div style="margin-top: 1.5rem; padding: 1rem; background: #F0FDF4; border-radius: 6px; border: 1px solid #BBF7D0;">
+                <div id="logbayHistoricalDurationBlock" style="margin-top: 1.5rem; padding: 1rem; background: #F0FDF4; border-radius: 6px; border: 1px solid #BBF7D0;">
                   <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-dark); margin-bottom: 0.75rem;">
                     ⏱️ Duration Settings
                   </div>
@@ -1298,6 +1520,17 @@
                     ⚠️ Long duration selected (&gt;168h). Collection may take longer and produce large archives.
                   </div>
                 </div>
+                <div id="logbayLiveDurationBlock" style="display:none; margin-top: 1rem; padding: 0.875rem; border-radius: 6px; border: 1px solid #BFDBFE; background: #F8FAFF;">
+                  <div style="font-weight: 600; font-size: 0.875rem; color: #1E3A8A; margin-bottom: 0.5rem;">⏱️ Live Stream Duration</div>
+                  <div style="display:flex; align-items:center; gap: 0.5rem; flex-wrap: wrap;">
+                    <label for="logbayLiveDurationMinutes" style="font-size: 0.8125rem; color: #374151;">Minutes:</label>
+                    <input type="number" id="logbayLiveDurationMinutes" value="30" min="1" max="240" style="width: 90px; padding: 0.375rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;">
+                    <span style="font-size: 0.8125rem; color: #6B7280;">(streams current logs only)</span>
+                  </div>
+                  <div class="logbay-live-note" style="display:block; margin-bottom: 0;">
+                    Live mode streams current logs from PC and microservice pods. Unsupported in live mode: <strong>epsilon</strong>, <strong>nucalm</strong>, <strong>domain_manager</strong>.
+                  </div>
+                </div>
               </div>
 
               <!-- Microservice Logs Section -->
@@ -1307,7 +1540,7 @@
                     <span style="color: #8B5CF6;">🧩</span>
                     <span>Microservice Logs (*.log*)</span>
                   </div>
-                  <button type="button" onclick="toggleAllCheckboxes('microservice')" style="padding: 0.375rem 0.75rem; background: #8B5CF6; color: white; border: none; border-radius: 4px; font-size: 0.8125rem; cursor: pointer; font-weight: 500;">
+                  <button type="button" class="btn-select-toggle" onclick="toggleAllCheckboxes('microservice')">
                     Select All / Deselect All
                   </button>
                 </div>
@@ -1340,7 +1573,7 @@
                 <div style="margin-top: 0.625rem; font-size: 0.8125rem; color: var(--text-muted);">
                   Pod names are auto-discovered on every run; only files matching <code>*.log*</code> are collected.
                 </div>
-                <div style="margin-top: 0.875rem; padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 8px; background: #FAFAFA;">
+                <div id="microserviceLiveOnlyContainer" style="margin-top: 0.875rem; padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 8px; background: #FAFAFA;">
                   <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600; color: #111827;">
                     <input type="checkbox" id="microserviceLiveOnlyToggle" style="width: 16px; height: 16px; cursor: pointer; accent-color: #8B5CF6;">
                     <span>Only collect live logs (tail -F, no older logs)</span>
@@ -1366,8 +1599,8 @@
             </div>
           </div>
           
-          <div class="action-buttons-sticky" style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button type="submit" class="btn-primary" id="startBtn" disabled>
+          <div class="action-buttons-sticky full-width" style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn-primary btn-start-fetch" id="startBtn" disabled>
               Start Log Fetch
             </button>
             <button type="button" class="btn-secondary" id="abortBtn" onclick="abortLogFetch()" style="display: none; background: #DC2626;">
@@ -1377,9 +1610,7 @@
               Back to Home
             </button>
           </div>
-          <div id="buttonHint" style="margin-top: 0.5rem; color: #DC2626; font-size: 0.875rem; display: none;">
-            ⚠️ Please complete all folder selections
-          </div>
+          <div id="startBtnDisabledReason" class="form-help-text" style="margin-top: 0.5rem; color: #DC2626; font-weight: 500; display: none;"></div>
         </form>
       </div>
       
@@ -1387,7 +1618,19 @@
       <div class="logs-section" id="logsSection">
         <div class="logs-header">
           <div class="logs-title">📋 Live Progress</div>
-          <div class="logs-status running" id="logsStatus">Running...</div>
+          <div class="logs-header-controls">
+            <label class="logs-toggle">
+              <input type="checkbox" id="toggleDetailedLogs" style="accent-color: #3B82F6;">
+              Detailed Logs
+            </label>
+            <button type="button" id="abortPanicBtn" class="btn-panic-abort" onclick="abortLogFetch()" style="display: none;">
+              🛑 Abort Job
+            </button>
+            <div class="logs-status running" id="liveTimerBadge" style="display:none; background:#EFF6FF; color:#1E3A8A;">
+              ⏱️ Time left: --
+            </div>
+            <div class="logs-status running" id="logsStatus">Running...</div>
+          </div>
         </div>
         
         <!-- Filer Link (shown after folder creation) -->
@@ -1421,6 +1664,12 @@
               <span class="progress-bar-text" id="progressBarText"></span>
             </div>
           </div>
+        </div>
+        
+        <div id="liveSummaryBoard" class="live-summary-board" style="display: block;">
+          <div class="live-summary-line" id="liveSummaryHeadline">Waiting for stream initialization...</div>
+          <div class="live-summary-line" id="liveSummaryTimer">Selected: -- | Time left: --</div>
+          <div id="liveSummaryServices"></div>
         </div>
         
         <div class="logs-container" id="logsContainer">
@@ -1541,6 +1790,13 @@
       if (customDurationInput) {
         customDurationInput.addEventListener('input', updateLogbayDurationWarning);
       }
+      document.querySelectorAll('input[name="globalCollectionMode"]').forEach((radio) => {
+        radio.addEventListener('change', updateGlobalCollectionModeUI);
+      });
+      const logbayLiveDurationInput = document.getElementById('logbayLiveDurationMinutes');
+      if (logbayLiveDurationInput) {
+        logbayLiveDurationInput.addEventListener('input', updateGlobalCollectionModeUI);
+      }
 
       const liveOnlyToggle = document.getElementById('microserviceLiveOnlyToggle');
       const liveDurationInput = document.getElementById('microserviceLiveDurationMinutes');
@@ -1550,13 +1806,22 @@
       if (liveDurationInput) {
         liveDurationInput.addEventListener('input', updateMicroserviceLiveOnlyUI);
       }
+      const mode = document.querySelector('input[name="globalCollectionMode"]:checked')?.value || 'historical';
+      if (mode === 'historical') {
+        liveOnlyToggle.disabled = false;
+      } else {
+        liveOnlyToggle.checked = true;
+        liveOnlyToggle.disabled = true;
+      }
       updateMicroserviceLiveOnlyUI();
+      updateGlobalCollectionModeUI();
     });
     
     // Toggle all checkboxes for a specific type (fluentd or logbay)
     function toggleAllCheckboxes(type) {
-      const checkboxes = document.querySelectorAll(`.filter-checkbox[data-type="${type}"]`);
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const checkboxes = Array.from(document.querySelectorAll(`.filter-checkbox[data-type="${type}"]`))
+        .filter(cb => !cb.disabled);
+      const allChecked = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
       checkboxes.forEach(cb => cb.checked = !allChecked);
     }
     
@@ -1602,6 +1867,67 @@
       if (!toggle || !options) return;
       options.style.display = toggle.checked ? 'block' : 'none';
     }
+
+    let lastGlobalCollectionMode = 'historical';
+
+    function updateGlobalCollectionModeUI() {
+      const mode = document.querySelector('input[name="globalCollectionMode"]:checked')?.value || 'historical';
+      const live = mode === 'live';
+      const logbayHist = document.getElementById('logbayHistoricalDurationBlock');
+      const logbayLive = document.getElementById('logbayLiveDurationBlock');
+      const microLiveToggle = document.getElementById('microserviceLiveOnlyToggle');
+      const microLiveContainer = document.getElementById('microserviceLiveOnlyContainer');
+      if (logbayHist) logbayHist.style.display = live ? 'none' : 'block';
+      // Single live duration source: use only bottom (microservice) duration input.
+      if (logbayLive) logbayLive.style.display = 'none';
+      if (microLiveContainer) microLiveContainer.style.display = live ? 'block' : 'none';
+      if (microLiveToggle) {
+        if (live) {
+          microLiveToggle.checked = true;
+          microLiveToggle.disabled = true;
+        } else {
+          microLiveToggle.checked = false;
+          microLiveToggle.disabled = false;
+        }
+      }
+
+      // On entering live mode, start with all sections unselected.
+      if (live && lastGlobalCollectionMode !== 'live') {
+        document.querySelectorAll('.filter-checkbox').forEach((cb) => {
+          cb.checked = false;
+        });
+      }
+
+      updateLogbaySectionByMode(mode);
+      updateMicroserviceLiveOnlyUI();
+      lastGlobalCollectionMode = mode;
+    }
+
+    function updateLogbaySectionByMode(mode) {
+      const unavailableInLive = new Set(['epsilon', 'nucalm', 'domain_manager']);
+      const logbayChecks = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]'));
+
+      logbayChecks.forEach((cb) => {
+        const label = cb.closest('label');
+        if (!label) return;
+        const notAllowed = mode === 'live' && unavailableInLive.has(cb.value);
+        cb.disabled = !!notAllowed;
+        if (notAllowed) cb.checked = false;
+        label.classList.toggle('service-unavailable-live', !!notAllowed);
+        let note = label.querySelector('.service-pill-note');
+        if (notAllowed) {
+          if (!note) {
+            note = document.createElement('span');
+            note.className = 'service-pill-note';
+            note.textContent = 'not live';
+            label.appendChild(note);
+          }
+        } else if (note) {
+          note.remove();
+        }
+      });
+      validateFormAndUpdateButton();
+    }
     
     // Step tracker configuration
     const stepTrackerSteps = [
@@ -1636,6 +1962,7 @@
         stepDiv.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem;';
         
         const mainStepDiv = document.createElement('div');
+        mainStepDiv.className = 'step-main future';
         mainStepDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px; border: 1px solid #E5E7EB;';
         
         const checkbox = document.createElement('input');
@@ -1710,10 +2037,194 @@
       });
       
       document.getElementById('stepTrackerContainer').style.display = 'block';
+      for (let i = 1; i <= visibleSteps.length; i++) {
+        setStepVisualState(i, 'future');
+      }
     }
     
     // Track current active step for expansion
     let currentActiveStep = null;
+    let logDetailMode = false;
+    let progressBarDetailText = '';
+    const liveSummaryState = {
+      totalFiles: 0,
+      streamedFiles: 0,
+      services: {}
+    };
+    let liveCountdownInterval = null;
+
+    function formatDurationSec(totalSec) {
+      const s = Math.max(0, Math.floor(totalSec || 0));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}h ${m}m ${sec}s`;
+      if (m > 0) return `${m}m ${sec}s`;
+      return `${sec}s`;
+    }
+
+    function stopLiveCountdown() {
+      if (liveCountdownInterval) {
+        clearInterval(liveCountdownInterval);
+        liveCountdownInterval = null;
+      }
+      const badge = document.getElementById('liveTimerBadge');
+      if (badge) {
+        badge.style.display = 'none';
+        badge.textContent = '⏱️ Time left: --';
+      }
+    }
+
+    function startLiveCountdown(selectedMinutes) {
+      stopLiveCountdown();
+      const timerEl = document.getElementById('liveSummaryTimer');
+      const badge = document.getElementById('liveTimerBadge');
+      if (!timerEl) return;
+      const totalSec = Math.max(0, Math.floor((selectedMinutes || 0) * 60));
+      if (totalSec <= 0) {
+        timerEl.textContent = 'Selected: -- | Time left: --';
+        if (badge) {
+          badge.style.display = 'none';
+          badge.textContent = '⏱️ Time left: --';
+        }
+        return;
+      }
+      if (badge) badge.style.display = 'inline-flex';
+      const startedMs = Date.now();
+      const selectedLabel = formatDurationSec(totalSec);
+      const render = () => {
+        const elapsedSec = Math.floor((Date.now() - startedMs) / 1000);
+        const leftSec = Math.max(0, totalSec - elapsedSec);
+        const leftLabel = formatDurationSec(leftSec);
+        timerEl.textContent = `Selected: ${selectedLabel} | Time left: ${leftLabel}`;
+        if (badge) badge.textContent = `⏱️ Time left: ${leftLabel}`;
+        if (leftSec <= 0) stopLiveCountdown();
+      };
+      render();
+      liveCountdownInterval = setInterval(render, 1000);
+    }
+
+    function setAbortButtonsVisible(visible) {
+      const abortBtn = document.getElementById('abortBtn');
+      const abortPanicBtn = document.getElementById('abortPanicBtn');
+      if (abortBtn) abortBtn.style.display = visible ? 'inline-block' : 'none';
+      if (abortPanicBtn) abortPanicBtn.style.display = visible ? 'inline-block' : 'none';
+    }
+
+    function setStepVisualState(stepNum, state) {
+      const stepId = `step${stepNum}`;
+      const stepDiv = document.getElementById(`tracker-${stepId}`);
+      const mainStep = stepDiv?.firstElementChild;
+      const statusBadge = document.getElementById(`status-${stepId}`);
+      if (!mainStep) return;
+      mainStep.classList.remove('future', 'active', 'completed');
+
+      if (state === 'active') {
+        mainStep.classList.add('active');
+        if (statusBadge) {
+          statusBadge.style.display = 'inline-block';
+          statusBadge.textContent = '⏳ Running';
+          statusBadge.style.background = '#DBEAFE';
+          statusBadge.style.color = '#1E40AF';
+          statusBadge.style.border = '1px solid #3B82F6';
+        }
+      } else if (state === 'completed') {
+        mainStep.classList.add('completed');
+        if (statusBadge) {
+          statusBadge.style.display = 'inline-block';
+          statusBadge.textContent = '✅ Completed';
+          statusBadge.style.background = '#D1FAE5';
+          statusBadge.style.color = '#065F46';
+          statusBadge.style.border = '1px solid #10B981';
+        }
+      } else {
+        mainStep.classList.add('future');
+        if (statusBadge) {
+          statusBadge.style.display = 'none';
+        }
+      }
+    }
+
+    function updateLogDetailModeUI() {
+      const board = document.getElementById('liveSummaryBoard');
+      const logsContainer = document.getElementById('logsContainer');
+      if (board) board.style.display = logDetailMode ? 'none' : 'block';
+      if (logsContainer) logsContainer.style.maxHeight = logDetailMode ? '420px' : '280px';
+    }
+
+    function isVerboseStreamingLine(message) {
+      return message.includes('Streaming ') && message.includes(' -> ') && message.includes('.log');
+    }
+
+    function updateLiveSummaryUI() {
+      const headline = document.getElementById('liveSummaryHeadline');
+      const servicesEl = document.getElementById('liveSummaryServices');
+      if (!headline || !servicesEl) return;
+
+      const total = liveSummaryState.totalFiles || 0;
+      const streamed = liveSummaryState.streamedFiles || 0;
+      if (total > 0) {
+        headline.textContent = `Streaming file ${Math.min(streamed, total)} of ${total}...`;
+        progressBarDetailText = `File ${Math.min(streamed, total)}/${total}`;
+      } else {
+        headline.textContent = 'Preparing live streams...';
+      }
+
+      const serviceNames = Object.keys(liveSummaryState.services);
+      servicesEl.innerHTML = serviceNames.map((svc) => {
+        const st = liveSummaryState.services[svc];
+        const totalSvc = Math.max(st.total || 0, st.streamed || 0);
+        const done = st.streamed || 0;
+        const pct = totalSvc > 0 ? Math.min(100, Math.round((done / totalSvc) * 100)) : 0;
+        return `
+          <div class="live-summary-line">
+            <strong>${svc}</strong>: ${done}${totalSvc ? ` / ${totalSvc}` : ''} files
+            <div class="mini-progress"><div class="mini-progress-fill" style="width:${pct}%"></div></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateLiveSummaryFromMessage(message) {
+      const waitMatch = message.match(/wait\s+(\d+)s/i);
+      if (waitMatch && !liveCountdownInterval) {
+        const sec = parseInt(waitMatch[1], 10) || 0;
+        if (sec > 0) {
+          startLiveCountdown(Math.ceil(sec / 60));
+        }
+      }
+      const totalMatch = message.match(/Live streaming started for\s+(\d+)\s+file\(s\)\./i);
+      if (totalMatch) {
+        liveSummaryState.totalFiles = parseInt(totalMatch[1], 10) || 0;
+      }
+
+      const streamMatch = message.match(/Streaming\s+([a-zA-Z0-9_-]+)\/([^\s]+)\s+->/);
+      if (streamMatch) {
+        const service = streamMatch[1];
+        const fileName = streamMatch[2];
+        if (!liveSummaryState.services[service]) {
+          liveSummaryState.services[service] = { total: 0, streamed: 0, seen: {} };
+        }
+        const svc = liveSummaryState.services[service];
+        if (!svc.seen[fileName]) {
+          svc.seen[fileName] = true;
+          svc.streamed += 1;
+          liveSummaryState.streamedFiles += 1;
+        }
+      }
+
+      const svcTotalMatch = message.match(/Started\s+(\d+)\s+live stream\(s\)\s+for\s+([a-zA-Z0-9_-]+)/i);
+      if (svcTotalMatch) {
+        const total = parseInt(svcTotalMatch[1], 10) || 0;
+        const service = svcTotalMatch[2];
+        if (!liveSummaryState.services[service]) {
+          liveSummaryState.services[service] = { total: 0, streamed: 0, seen: {} };
+        }
+        liveSummaryState.services[service].total = total;
+      }
+
+      updateLiveSummaryUI();
+    }
     
     function updateStepTracker(stepNum, substep = null, completed = false, markAllSubsteps = false, inProgress = false) {
       const stepId = `step${stepNum}`;
@@ -1754,19 +2265,10 @@
         }
         currentActiveStep = stepNum;
         
-        // Highlight in-progress step (full highlight)
-        if (stepDiv) {
-          stepDiv.style.background = 'linear-gradient(90deg, #DBEAFE 0%, #BFDBFE 100%)';
-          stepDiv.style.border = '1px solid #3B82F6';
-        }
-        
-        // Update status badge to "In Progress"
-        if (statusBadge) {
-          statusBadge.style.display = 'inline-block';
-          statusBadge.textContent = 'In Progress';
-          statusBadge.style.background = '#DBEAFE';
-          statusBadge.style.color = '#1E40AF';
-          statusBadge.style.border = '1px solid #3B82F6';
+        setStepVisualState(stepNum, 'active');
+        const expectedTotal = getExpectedTotalSteps();
+        for (let i = stepNum + 1; i <= expectedTotal; i++) {
+          setStepVisualState(i, 'future');
         }
       }
       
@@ -1820,12 +2322,7 @@
             checkbox.checked = true;
           }
           
-          // Completed step - middle highlight
-          if (stepDiv) {
-            stepDiv.style.background = 'linear-gradient(90deg, transparent 0%, #E0E7FF 45%, #E0E7FF 55%, transparent 100%)';
-            stepDiv.style.border = '1px solid #C7D2FE';
-            stepDiv.style.opacity = '0.8';
-          }
+          setStepVisualState(stepNum, 'completed');
         }
       } else if (completed && !substep) {
         // Mark main step complete only if explicitly requested without substeps
@@ -1846,33 +2343,13 @@
         if (allSubstepsComplete && checkbox) {
           checkbox.checked = true;
           
-          // Completed step - middle highlight
-          if (stepDiv) {
-            stepDiv.style.background = 'linear-gradient(90deg, transparent 0%, #E0E7FF 45%, #E0E7FF 55%, transparent 100%)';
-            stepDiv.style.border = '1px solid #C7D2FE';
-            stepDiv.style.opacity = '0.8';
-          }
-          
-          // Update status badge to "Success"
-          if (statusBadge) {
-            statusBadge.style.display = 'inline-block';
-            statusBadge.textContent = '✓ Success';
-            statusBadge.style.background = '#D1FAE5';
-            statusBadge.style.color = '#065F46';
-            statusBadge.style.border = '1px solid #10B981';
-          }
+          setStepVisualState(stepNum, 'completed');
         }
       }
       
       // Also update badge for completed steps without substeps
       if (completed && !substep && checkbox && checkbox.checked) {
-        if (statusBadge) {
-          statusBadge.style.display = 'inline-block';
-          statusBadge.textContent = '✓ Success';
-          statusBadge.style.background = '#D1FAE5';
-          statusBadge.style.color = '#065F46';
-          statusBadge.style.border = '1px solid #10B981';
-        }
+        setStepVisualState(stepNum, 'completed');
       }
     }
     
@@ -2114,7 +2591,9 @@
       }
     }
     
-    let currentFilerConfig = filerServers.filer1;
+    const filerSelectEl = document.getElementById('filerServer');
+    const initialFilerKey = (filerSelectEl && filerServers[filerSelectEl.value]) ? filerSelectEl.value : 'filer1';
+    let currentFilerConfig = filerServers[initialFilerKey];
     let currentPath = currentFilerConfig.basePath;
     
     // Update filer details in UI
@@ -2150,7 +2629,14 @@
         }
       });
       
-      // Initialize with default filer (filer1)
+      // Initialize from currently selected filer value in dropdown
+      const initialSelectedFiler = document.getElementById('filerServer').value;
+      if (initialSelectedFiler && filerServers[initialSelectedFiler]) {
+        updateFilerDetails(filerServers[initialSelectedFiler]);
+      } else {
+        updateFilerDetails(currentFilerConfig);
+      }
+
       const level1Group = document.getElementById('folderLevel1').closest('.form-group');
       const initialSpinner = document.createElement('div');
       initialSpinner.className = 'loading-indicator';
@@ -2450,6 +2936,7 @@
       updatePathPreview();
       validateFormAndUpdateButton();
     });
+    document.getElementById('filerServer').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('folderLevel1').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('folderLevel2').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('bugFolder').addEventListener('input', validateFormAndUpdateButton);
@@ -2494,28 +2981,114 @@
       validateFormAndUpdateButton();
     }
     
-    function validateFormAndUpdateButton() {
+    var showInlineValidation = false;
+
+    function setFieldInlineError(groupId, inputId, messageId, hasError) {
+      const group = document.getElementById(groupId);
+      const input = document.getElementById(inputId);
+      const msg = document.getElementById(messageId);
+      if (group) group.classList.toggle('has-error', !!hasError);
+      if (input) input.classList.toggle('field-error', !!hasError);
+      if (msg) msg.style.display = hasError ? 'block' : 'none';
+    }
+
+    function syncSearchValueToSelect(searchId, selectId) {
+      const searchEl = document.getElementById(searchId);
+      const selectEl = document.getElementById(selectId);
+      if (!searchEl || !selectEl) return;
+      if (selectEl.value) return; // already selected
+      const typed = (searchEl.value || '').trim();
+      if (!typed) return;
+      const exact = Array.from(selectEl.options || []).find(
+        (opt) => String(opt.value || '').trim().toLowerCase() === typed.toLowerCase()
+      );
+      if (exact) {
+        selectEl.value = exact.value;
+      }
+    }
+
+    function getEffectiveFolderValue(selectId, searchId) {
+      const selectEl = document.getElementById(selectId);
+      const searchEl = document.getElementById(searchId);
+      const selectedVal = (selectEl?.value || '').trim();
+      if (selectedVal) return selectedVal;
+      return (searchEl?.value || '').trim();
+    }
+
+    function ensureSelectHasValue(selectId, searchId) {
+      const selectEl = document.getElementById(selectId);
+      if (!selectEl) return '';
+      const effective = getEffectiveFolderValue(selectId, searchId);
+      if (!effective) return '';
+      if (selectEl.value === effective) return effective;
+      const existing = Array.from(selectEl.options || []).find((opt) => (opt.value || '').trim() === effective);
+      if (!existing) {
+        const opt = document.createElement('option');
+        opt.value = effective;
+        opt.textContent = effective;
+        selectEl.appendChild(opt);
+      }
+      selectEl.value = effective;
+      return effective;
+    }
+
+    function validateFormAndUpdateButton(options = {}) {
+      const forceShowErrors = !!options.forceShowErrors;
+      syncSearchValueToSelect('folderLevel1Search', 'folderLevel1');
+      syncSearchValueToSelect('folderLevel2Search', 'folderLevel2');
       const pcIp = document.getElementById('pcIp').value.trim();
-      const level1 = document.getElementById('folderLevel1').value;
-      const level2 = document.getElementById('folderLevel2').value;
+      const filerServer = document.getElementById('filerServer').value;
+      const level1 = getEffectiveFolderValue('folderLevel1', 'folderLevel1Search');
+      const level2 = getEffectiveFolderValue('folderLevel2', 'folderLevel2Search');
+      const level2Select = document.getElementById('folderLevel2');
+      const level2GroupEl = document.getElementById('folderLevel2Group');
       const startBtn = document.getElementById('startBtn');
-      const buttonHint = document.getElementById('buttonHint');
+      const startBtnReason = document.getElementById('startBtnDisabledReason');
+      const level2Visible = !!(
+        level2GroupEl &&
+        window.getComputedStyle(level2GroupEl).display !== 'none'
+      );
+      const level2HasChoices = !!(
+        level2Select &&
+        Array.from(level2Select.options || []).some((opt) => (opt.value || '').trim())
+      );
+      const level2Required = level2Visible && level2HasChoices && !level2Select?.disabled;
+      const missingLevel2 = level2Required && !level2;
       
       // Check if all required fields are filled (bugFolder is now optional)
-      const isFormComplete = pcIp && level1 && level2;
+      const isFormComplete = !!(pcIp && filerServer && level1 && !missingLevel2);
+      if (forceShowErrors) showInlineValidation = true;
+      const showErrors = showInlineValidation;
       
       if (startBtn) {
         startBtn.disabled = !isFormComplete;
       }
-      
-      if (buttonHint) {
-        buttonHint.style.display = isFormComplete ? 'none' : 'block';
+      if (startBtnReason) {
+        if (isFormComplete) {
+          startBtnReason.style.display = 'none';
+          startBtnReason.textContent = '';
+        } else {
+          const reasons = [];
+          if (!pcIp) reasons.push('Prism Central IP is required');
+          if (!filerServer) reasons.push('Filer server is required');
+          if (!level1) reasons.push('Folder Level 1 must be selected from dropdown');
+          if (missingLevel2) reasons.push('Folder Level 2 must be selected from dropdown');
+          startBtnReason.textContent = '⚠️ ' + reasons.join(' | ');
+          startBtnReason.style.display = 'flex';
+        }
       }
+
+      setFieldInlineError('pcIpGroup', 'pcIp', 'pcIpError', showErrors && !pcIp);
+      setFieldInlineError('filerServerGroup', 'filerServer', 'filerServerError', showErrors && !filerServer);
+      setFieldInlineError('folderLevel1Group', 'folderLevel1Search', 'folderLevel1Error', showErrors && !level1);
+      setFieldInlineError('folderLevel2Group', 'folderLevel2Search', 'folderLevel2Error', showErrors && missingLevel2);
+
+      return isFormComplete;
     }
     
     function getFullBugFolder() {
-      const level1 = document.getElementById('folderLevel1').value;
-      const level2 = document.getElementById('folderLevel2').value;
+      const level1 = getEffectiveFolderValue('folderLevel1', 'folderLevel1Search');
+      const level2 = getEffectiveFolderValue('folderLevel2', 'folderLevel2Search');
       const bugFolder = document.getElementById('bugFolder').value.trim();
       
       let parts = [];
@@ -2598,15 +3171,15 @@
     // Handle form submission
     document.getElementById('fetchLogsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
+      if (!validateFormAndUpdateButton({ forceShowErrors: true })) {
+        return;
+      }
+      ensureSelectHasValue('folderLevel1', 'folderLevel1Search');
+      ensureSelectHasValue('folderLevel2', 'folderLevel2Search');
       
       const pcIp = document.getElementById('pcIp').value.trim();
       let bugFolder = document.getElementById('bugFolder').value.trim();
       const filerPassword = document.getElementById('filerPassword').value.trim();
-      
-      if (!pcIp) {
-        alert('Please enter PC IP address');
-        return;
-      }
       
       // Generate default folder name if empty
       if (!bugFolder) {
@@ -2619,15 +3192,13 @@
       }
       
       const fullBugFolder = getFullBugFolder();
-      
       if (!fullBugFolder) {
-        alert('Please select folders');
         return;
       }
       
       // Disable form and show logs section
       document.getElementById('startBtn').disabled = true;
-      document.getElementById('abortBtn').style.display = 'inline-block';
+      setAbortButtonsVisible(true);
       document.getElementById('abortBtn').disabled = false;
       document.getElementById('abortBtn').textContent = '⚠️ Abort Collection';
       document.getElementById('logsSection').classList.add('active');
@@ -2637,6 +3208,14 @@
       
       // Reset log batching state
       resetLogState();
+      liveSummaryState.totalFiles = 0;
+      liveSummaryState.streamedFiles = 0;
+      liveSummaryState.services = {};
+      progressBarDetailText = '';
+      stopLiveCountdown();
+      const timerEl = document.getElementById('liveSummaryTimer');
+      if (timerEl) timerEl.textContent = 'Selected: -- | Time left: --';
+      updateLiveSummaryUI();
       
       // Reset progress bar - start with indeterminate state
       setIndeterminateProgress();
@@ -2679,71 +3258,92 @@
         lastProgressPct: 0
       };
       
-      // Collect filter selections
-      const fluentdNamespaces = Array.from(document.querySelectorAll('.filter-checkbox[data-type="fluentd"]:checked'))
-        .map(cb => cb.value);
-      const logbayServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]:checked'))
-        .map(cb => cb.value);
-      const microserviceServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]:checked'))
-        .map(cb => cb.value);
-      const microserviceLiveOnly = document.getElementById('microserviceLiveOnlyToggle')?.checked || false;
-      const microserviceLiveDurationMinutes = parseInt(
-        document.getElementById('microserviceLiveDurationMinutes')?.value || '30',
-        10
-      );
-      const expectedTotalSteps = (logbayServices.length > 0 || microserviceServices.length > 0) ? 8 : 7;
-      window.operationTimes.expectedTotalSteps = expectedTotalSteps;
+      try {
+        // Collect filter selections
+        const fluentdNamespaces = Array.from(document.querySelectorAll('.filter-checkbox[data-type="fluentd"]:checked'))
+          .map(cb => cb.value);
+        const logbayServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]:checked'))
+          .map(cb => cb.value);
+        const microserviceServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]:checked'))
+          .map(cb => cb.value);
+        const globalCollectionMode = document.querySelector('input[name="globalCollectionMode"]:checked')?.value || 'historical';
+        const microserviceLiveOnly = globalCollectionMode === 'live' && microserviceServices.length > 0;
+        const microserviceLiveDurationMinutes = parseInt(
+          document.getElementById('microserviceLiveDurationMinutes')?.value || '30',
+          10
+        );
+        if (globalCollectionMode === 'live') {
+          startLiveCountdown(microserviceLiveDurationMinutes);
+        }
+        const expectedTotalSteps = (logbayServices.length > 0 || microserviceServices.length > 0) ? 8 : 7;
+        window.operationTimes.expectedTotalSteps = expectedTotalSteps;
 
-      if (microserviceLiveOnly) {
-        if (microserviceServices.length === 0) {
-          alert('Please select at least one microservice when "Only collect live logs" is enabled.');
-          document.getElementById('startBtn').disabled = false;
-          return;
+        if (microserviceLiveOnly) {
+          if (microserviceServices.length === 0) {
+            alert('Please select at least one microservice when "Only collect live logs" is enabled.');
+            document.getElementById('startBtn').disabled = false;
+            return;
+          }
+          if (!Number.isInteger(microserviceLiveDurationMinutes) || microserviceLiveDurationMinutes <= 0) {
+            alert('Please enter a valid positive duration in minutes for live logs.');
+            document.getElementById('startBtn').disabled = false;
+            return;
+          }
         }
-        if (!Number.isInteger(microserviceLiveDurationMinutes) || microserviceLiveDurationMinutes <= 0) {
-          alert('Please enter a valid positive duration in minutes for live logs.');
-          document.getElementById('startBtn').disabled = false;
-          return;
+      
+        // Collect logbay duration settings
+        const durationTypeInput = document.querySelector('input[name="logbayDurationType"]:checked');
+        const durationType = durationTypeInput ? durationTypeInput.value : 'recent';
+        const logbayCollectionMode = globalCollectionMode === 'live' ? 'live' : 'historical';
+        // Single live duration source: bottom/global live duration input.
+        const logbayLiveDurationMinutes = microserviceLiveDurationMinutes;
+        let logbayDuration = {};
+      
+        if (logbayCollectionMode === 'historical') {
+          if (durationType === 'recent') {
+            const hours = document.getElementById('recentHours').value;
+            logbayDuration = {
+              type: 'recent',
+              hours: parseInt(hours)
+            };
+          } else {
+            const fromDate = document.getElementById('customFromDate').value;
+            const fromTime = document.getElementById('customFromTime').value;
+            const durationHours = document.getElementById('customDurationHours').value;
+            
+            if (!fromDate) {
+              alert('Please select a from date for custom duration');
+              return;
+            }
+            
+            logbayDuration = {
+              type: 'custom',
+              from_date: fromDate,
+              from_time: fromTime,
+              duration_hours: parseInt(durationHours)
+            };
+          }
+        } else {
+          if (!Number.isInteger(logbayLiveDurationMinutes) || logbayLiveDurationMinutes <= 0) {
+            alert('Please enter valid live log duration in minutes.');
+            return;
+          }
+          const fallbackHours = Math.max(1, Math.ceil(logbayLiveDurationMinutes / 60));
+          logbayDuration = {
+            type: 'recent',
+            hours: fallbackHours
+          };
         }
-      }
       
-      // Collect logbay duration settings
-      const durationType = document.querySelector('input[name="logbayDurationType"]:checked').value;
-      let logbayDuration = {};
-      
-      if (durationType === 'recent') {
-        const hours = document.getElementById('recentHours').value;
-        logbayDuration = {
-          type: 'recent',
-          hours: parseInt(hours)
-        };
-      } else {
-        const fromDate = document.getElementById('customFromDate').value;
-        const fromTime = document.getElementById('customFromTime').value;
-        const durationHours = document.getElementById('customDurationHours').value;
-        
-        if (!fromDate) {
-          alert('Please select a from date for custom duration');
-          return;
+        // Ensure destination path preview reflects the final bug folder value.
+        if (typeof updatePathPreview === 'function') {
+          updatePathPreview();
         }
-        
-        logbayDuration = {
-          type: 'custom',
-          from_date: fromDate,
-          from_time: fromTime,
-          duration_hours: parseInt(durationHours)
-        };
-      }
-      
-      // Ensure destination path preview reflects the final bug folder value.
-      if (typeof updatePathPreview === 'function') {
-        updatePathPreview();
-      }
 
-      // Handle custom filer destination path
-      let customDestPath = document.getElementById('filerDestPath').value.trim();
-      let filerBasePathOverride = currentFilerConfig.basePath;
-      let bugFolderOverride = fullBugFolder;
+        // Handle custom filer destination path
+        let customDestPath = document.getElementById('filerDestPath').value.trim();
+        let filerBasePathOverride = currentFilerConfig.basePath;
+        let bugFolderOverride = fullBugFolder;
       
       // Check if user manually edited the path (doesn't match auto-generated)
       const expectedPath = `${currentFilerConfig.basePath}/${fullBugFolder}`;
@@ -2816,8 +3416,8 @@
         });
       }
       
-      // Send POST request
-      fetch('/api/fetch_fluentd_logs', {
+        // Send POST request
+        fetch('/api/fetch_fluentd_logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -2835,14 +3435,16 @@
           microservice_live_only: microserviceLiveOnly,
           microservice_live_duration_minutes: microserviceLiveDurationMinutes,
           logbay_services: logbayServices,
-          logbay_duration: logbayDuration
+          logbay_duration: logbayDuration,
+          logbay_collection_mode: logbayCollectionMode,
+          logbay_live_duration_minutes: logbayLiveDurationMinutes
         })
-      }).then(response => {
+        }).then(response => {
         if (!response.ok) {
           throw new Error('Failed to start log fetch');
         }
         return response.body;
-      }).then(body => {
+        }).then(body => {
         const reader = body.getReader();
         const decoder = new TextDecoder();
         
@@ -2850,7 +3452,8 @@
           reader.read().then(({ done, value }) => {
             if (done) {
               document.getElementById('startBtn').disabled = false;
-              document.getElementById('abortBtn').style.display = 'none';
+              setAbortButtonsVisible(false);
+              stopLiveCountdown();
               return;
             }
             
@@ -2870,13 +3473,14 @@
                   if (data.type === 'job_id') {
                     window.currentLogJobId = data.job_id;
                     // Show abort button
-                    document.getElementById('abortBtn').style.display = 'inline-block';
+                    setAbortButtonsVisible(true);
                     continue;
                   }
                   
                   if (data.message === 'END') {
                     // Hide abort button when job ends
-                    document.getElementById('abortBtn').style.display = 'none';
+                    setAbortButtonsVisible(false);
+                    stopLiveCountdown();
                     // Check for any error logs or exit code != 0
                     const errorLogs = document.querySelectorAll('.log-line.error');
                     const logsContainer = document.getElementById('logsContainer');
@@ -2904,9 +3508,8 @@
                     if (hasErrors) {
                       document.getElementById('logsStatus').className = 'logs-status error';
                       document.getElementById('logsStatus').textContent = 'Failed';
-                      const progressBarFill = document.getElementById('progressBarFill');
-                      progressBarFill.style.background = '#DC2626'; // Red for error
                       updateProgress(100, 'Failed - Check logs');
+                      setProgressBarState('error');
                       
                       // Hide performance indicator on failure
                       setTimeout(() => {
@@ -2916,9 +3519,8 @@
                     } else {
                       document.getElementById('logsStatus').className = 'logs-status success';
                       document.getElementById('logsStatus').textContent = 'Completed';
-                      const progressBarFill = document.getElementById('progressBarFill');
-                      progressBarFill.style.background = ''; // Reset to default green
                       updateProgress(100, 'Completed Successfully');
+                      setProgressBarState('success');
                       
                       // Hide performance indicator on completion
                       setTimeout(() => {
@@ -3038,17 +3640,28 @@
         }
         
         readStream();
-      }).catch(error => {
+        }).catch(error => {
         console.error('Error:', error);
         document.getElementById('logsStatus').className = 'logs-status error';
         document.getElementById('logsStatus').textContent = 'Error';
         document.getElementById('startBtn').disabled = false;
-        document.getElementById('abortBtn').style.display = 'none';
+        setAbortButtonsVisible(false);
+        stopLiveCountdown();
         updateProgress(100, 'Error: ' + error.message);
         
         // Add error to log batch
         addLogToBatch(new Date().toLocaleTimeString(), 'ERROR', 'Error: ' + error.message);
-      });
+        });
+      } catch (error) {
+        console.error('Submit handler failed before request start:', error);
+        document.getElementById('logsStatus').className = 'logs-status error';
+        document.getElementById('logsStatus').textContent = 'Error';
+        document.getElementById('startBtn').disabled = false;
+        setAbortButtonsVisible(false);
+        stopLiveCountdown();
+        updateProgress(100, 'Error before start: ' + (error?.message || String(error)));
+        addLogToBatch(new Date().toLocaleTimeString(), 'ERROR', 'Start failed before API call: ' + (error?.stack || error?.message || String(error)));
+      }
     });
     
     function escapeHtml(text) {
@@ -3138,6 +3751,28 @@
       'Upload verified': 95,
       'Done': 100
     };
+
+    function setProgressBarState(state) {
+      const progressBarFill = document.getElementById('progressBarFill');
+      const progressPercentage = document.getElementById('progressPercentage');
+      const progressBarText = document.getElementById('progressBarText');
+      if (!progressBarFill) return;
+
+      progressBarFill.classList.remove('state-active', 'state-success', 'state-error');
+      if (state === 'success') {
+        progressBarFill.classList.remove('indeterminate');
+        progressBarFill.classList.add('state-success');
+        if (progressPercentage) progressPercentage.textContent = 'Completed';
+        if (progressBarText) progressBarText.textContent = '🎉 Fetch Completed Successfully';
+      } else if (state === 'error') {
+        progressBarFill.classList.remove('indeterminate');
+        progressBarFill.classList.add('state-error');
+        if (progressPercentage) progressPercentage.textContent = 'Failed';
+        if (progressBarText) progressBarText.textContent = '❌ Fetch Failed';
+      } else {
+        progressBarFill.classList.add('state-active');
+      }
+    }
     
     function updateProgress(percentage, stepText, stepNumber = null, totalSteps = null, substep = null, totalSubsteps = null, substepName = null) {
       const progressBarFill = document.getElementById('progressBarFill');
@@ -3159,6 +3794,7 @@
       // Switch from indeterminate to deterministic mode once we have real progress
       if (monotonicPct > 0 && monotonicPct < 100) {
         progressBarFill.classList.remove('indeterminate');
+        setProgressBarState('active');
       }
       
       // Build step text with number if provided
@@ -3179,7 +3815,9 @@
       progressStep.textContent = displayText;
       
       // Update text inside bar if there's enough space
-      if (monotonicPct > 20) {
+      if (progressBarDetailText) {
+        progressBarText.textContent = progressBarDetailText;
+      } else if (monotonicPct > 20) {
         progressBarText.textContent = monotonicPct + '%';
       } else {
         progressBarText.textContent = '';
@@ -3191,9 +3829,10 @@
       const progressPercentage = document.getElementById('progressPercentage');
       const progressBarText = document.getElementById('progressBarText');
       
+      setProgressBarState('active');
       progressBarFill.classList.add('indeterminate');
       progressPercentage.textContent = '...';
-      progressBarText.textContent = 'Calculating...';
+      progressBarText.textContent = progressBarDetailText || 'Calculating...';
     }
     
     // ===== PERFORMANCE IMPROVEMENTS =====
@@ -3259,6 +3898,9 @@
      * FIX #4: Debounce and batch UI redraws
      */
     function addLogToBatch(timestamp, level, message) {
+      if (!logDetailMode && isVerboseStreamingLine(message)) {
+        return;
+      }
       logBuffer.push({ timestamp, level, message });
       totalLogCount++;
       
@@ -3437,6 +4079,7 @@
       if (logWorker && workerReady) {
         logWorker.postMessage({ type: 'RESET' });
       }
+      updateLogDetailModeUI();
     }
     
     /**
@@ -3472,9 +4115,20 @@
     document.addEventListener('DOMContentLoaded', function() {
       initializeJumpToBottom();
       initLogWorker(); // Initialize Web Worker for log processing
+      const toggle = document.getElementById('toggleDetailedLogs');
+      if (toggle) {
+        toggle.checked = false;
+        logDetailMode = false;
+        toggle.addEventListener('change', function() {
+          logDetailMode = !!this.checked;
+          updateLogDetailModeUI();
+        });
+      }
+      updateLogDetailModeUI();
     });
     
     function detectProgressFromLog(message) {
+      updateLiveSummaryFromMessage(message);
       // Check for error/failure indicators FIRST - most aggressive detection
       const errorPatterns = [
         'Script exited with code 1',
@@ -3506,13 +4160,15 @@
       const hasError = errorPatterns.some(pattern => message.includes(pattern));
       
       if (hasError) {
+        progressBarDetailText = '';
+        stopLiveCountdown();
         const progressBarFill = document.getElementById('progressBarFill');
         const logsStatus = document.getElementById('logsStatus');
         
         // Immediately update to error state
-        progressBarFill.style.background = '#DC2626'; // Red for error
         logsStatus.className = 'logs-status error';
         logsStatus.textContent = 'Failed';
+        setProgressBarState('error');
         
         // Get current step info for better error message
         const currentStep = window.operationTimes?.currentStep || 'Unknown Step';
@@ -3942,6 +4598,8 @@
         // Fluentd completed, prepare for logbay if applicable
         updateProgress(94, 'Fluentd Collection Complete', 7);
       } else if (message.includes('completed successfully') || message.includes('✅') || message.includes('Success - All Operations Completed')) {
+        progressBarDetailText = '';
+        stopLiveCountdown();
         // Mark final step complete (7 or 8 depending on whether logbay ran) with all substeps
         const finalStep = window.operationTimes.currentStepNumber || getExpectedTotalSteps();
         updateStepTracker(finalStep, null, true, true);
@@ -3953,11 +4611,10 @@
           const totalDuration = Math.round((Date.now() - window.operationTimes.totalStart) / 1000);
           saveTimingMetric('total', totalDuration);
         }
-        const progressBarFill = document.getElementById('progressBarFill');
-        progressBarFill.style.background = ''; // Reset to default green
         // Use the current step number (8 if logbay ran, 7 otherwise)
         const finalStepNumber = window.operationTimes.currentStepNumber || getExpectedTotalSteps();
         updateProgress(100, 'Completed Successfully', finalStepNumber);
+        setProgressBarState('success');
       }
     }
     
@@ -3974,8 +4631,13 @@
       
       // Disable abort button
       const abortBtn = document.getElementById('abortBtn');
+      const abortPanicBtn = document.getElementById('abortPanicBtn');
       abortBtn.disabled = true;
       abortBtn.textContent = 'Aborting...';
+      if (abortPanicBtn) {
+        abortPanicBtn.disabled = true;
+        abortPanicBtn.textContent = 'Aborting...';
+      }
       
       fetch('/api/abort_log_fetch', {
         method: 'POST',
@@ -3994,6 +4656,10 @@
           alert('Failed to abort: ' + data.error);
           abortBtn.disabled = false;
           abortBtn.textContent = '⚠️ Abort Collection';
+          if (abortPanicBtn) {
+            abortPanicBtn.disabled = false;
+            abortPanicBtn.textContent = '🛑 Abort Job';
+          }
         }
       })
       .catch(error => {
@@ -4001,6 +4667,10 @@
         alert('Error aborting job: ' + error.message);
         abortBtn.disabled = false;
         abortBtn.textContent = '⚠️ Abort Collection';
+        if (abortPanicBtn) {
+          abortPanicBtn.disabled = false;
+          abortPanicBtn.textContent = '🛑 Abort Job';
+        }
       });
     }
   </script>
