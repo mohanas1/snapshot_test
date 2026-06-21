@@ -3272,9 +3272,6 @@
           document.getElementById('microserviceLiveDurationMinutes')?.value || '30',
           10
         );
-        if (globalCollectionMode === 'live') {
-          startLiveCountdown(microserviceLiveDurationMinutes);
-        }
         const expectedTotalSteps = (logbayServices.length > 0 || microserviceServices.length > 0) ? 8 : 7;
         window.operationTimes.expectedTotalSteps = expectedTotalSteps;
 

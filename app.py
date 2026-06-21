@@ -4641,47 +4641,28 @@ def api_fetch_fluentd_logs():
                 return False
             time.sleep(2)
 
-        source_arg = f"{str(local_source)}/" if is_directory else str(local_source)
-        upload_cmd = [
-            "sshpass", "-p", filer_password,
-            "rsync", "-avz", "--progress", "--timeout=300",
-            "-e", "ssh",
-            source_arg,
-            f"{filer_user}@{filer_ip}:{filer_target}/",
-        ]
-        send_log(f"{label}: upload command => {' '.join(upload_cmd)}", "INFO")
-
+        source_arg = str(local_source)
         upload_last_err = ""
         for attempt in range(1, retries + 1):
             try:
-                upload_result = subprocess.run(upload_cmd, capture_output=True, text=True, timeout=upload_timeout)
-                if upload_result.returncode == 0:
+                scp_cmd = ["sshpass", "-p", filer_password, "scp"]
+                if is_directory:
+                    scp_cmd.append("-r")
+                    # Copy directory contents (not top directory) to avoid nested duplicate folder.
+                    scp_source = f"{source_arg.rstrip('/')}/."
+                else:
+                    scp_source = source_arg
+                scp_cmd.extend([scp_source, f"{filer_user}@{filer_ip}:{filer_target}/"])
+                send_log(f"{label}: upload command => {' '.join(scp_cmd)}", "INFO")
+
+                scp_result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=upload_timeout)
+                if scp_result.returncode == 0:
+                    send_log(f"{label}: scp upload succeeded", "SUCCESS")
                     return True
-                upload_last_err = (upload_result.stderr or upload_result.stdout or "").strip()
+                upload_last_err = (scp_result.stderr or scp_result.stdout or "").strip()
                 send_log(f"⚠️ {label}: upload attempt {attempt}/{retries} failed: {upload_last_err[:220]}", "WARNING")
-                if "rsync: command not found" in upload_last_err:
-                    send_log(f"{label}: rsync missing on remote; falling back to scp", "WARNING")
-                    scp_cmd = ["sshpass", "-p", filer_password, "scp"]
-                    if is_directory:
-                        scp_cmd.append("-r")
-                        # Copy directory contents (not top directory) to avoid nested duplicate folder.
-                        scp_source = f"{str(local_source).rstrip('/')}/."
-                    else:
-                        scp_source = source_arg
-                    scp_cmd.extend([scp_source, f"{filer_user}@{filer_ip}:{filer_target}/"])
-                    send_log(f"{label}: scp fallback command => {' '.join(scp_cmd)}", "INFO")
-                    try:
-                        scp_result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=upload_timeout)
-                        if scp_result.returncode == 0:
-                            send_log(f"{label}: scp fallback upload succeeded", "SUCCESS")
-                            return True
-                        upload_last_err = (scp_result.stderr or scp_result.stdout or "").strip()
-                        send_log(f"⚠️ {label}: scp fallback failed: {upload_last_err[:220]}", "WARNING")
-                    except subprocess.TimeoutExpired:
-                        upload_last_err = "scp fallback timed out"
-                        send_log(f"⚠️ {label}: scp fallback timed out", "WARNING")
             except subprocess.TimeoutExpired:
-                upload_last_err = "rsync upload timed out"
+                upload_last_err = "scp upload timed out"
                 send_log(f"⚠️ {label}: upload attempt {attempt}/{retries} timed out", "WARNING")
             if attempt == retries:
                 send_log(f"❌ {label}: upload failed after retries: {upload_last_err[:300]}", "ERROR")
@@ -4843,31 +4824,54 @@ def api_fetch_fluentd_logs():
 
     def run_logbay_live_collection() -> bool:
         """Stream selected logbay-tag logs live from PC for a fixed duration."""
-        # Map logbay tags to concrete files on PC.
-        tag_to_files = {
-            "aplos": ["/home/nutanix/data/logs/aplos.out"],
-            "idf": [
-                "/home/nutanix/data/logs/insights_data_interface.out",
-                "/home/nutanix/data/logs/insights_server.out",
+        def _resolve_live_kubeconfig() -> Path | None:
+            candidates = [
+                PROJECT_DIR / "kubeconfigs" / f"{pc_ip}_kubeconfig",
+                Path.home() / "kube" / "ss_kube",
+                Path.home() / "kube" / "si_kube",
+            ]
+            return next((p for p in candidates if p.exists()), None)
+
+        # Map logbay tags to live sources:
+        # - pc_file: tail file via SSH on PC
+        # - k8s_label: stream kubectl logs by label selector
+        # - k8s_name_contains: stream kubectl logs for pod names containing substring
+        service_sources = {
+            "aplos": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/aplos.out"},
             ],
-            "nginx": ["/home/nutanix/data/logs/nginx.log", "/home/nutanix/data/logs/nginx.err"],
-            "iam": ["/home/nutanix/data/logs/iam.out"],
+            "idf": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/insights_data_interface.out"},
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/insights_server.out"},
+            ],
+            "nginx": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/nginx.log"},
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/nginx.err"},
+            ],
+            "iam": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/iam.out"},
+                {"type": "k8s_name_contains", "namespace": "ntnx-base", "contains": "iam"},
+            ],
+            "msp": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/msp_controller.out"},
+                {"type": "k8s_label", "namespace": "ntnx-base", "selector": "app=svcmgr"},
+            ],
             # Broad CVM tag: stream representative core files.
             "cvm_logs": [
-                "/home/nutanix/data/logs/acropolis.out",
-                "/home/nutanix/data/logs/stargate.out",
-                "/home/nutanix/data/logs/genesis.out",
-                "/home/nutanix/data/logs/prism_gateway.log",
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/acropolis.out"},
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/stargate.out"},
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/genesis.out"},
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/prism_gateway.log"},
             ],
         }
-        unsupported_live = {"epsilon", "nucalm", "msp", "domain_manager"}
-        selected = [s for s in logbay_services if s in tag_to_files or s in unsupported_live]
+        unsupported_live = {"epsilon", "nucalm", "domain_manager"}
+        selected = [s for s in logbay_services if s in service_sources or s in unsupported_live]
         if not selected:
             send_log("No valid logbay services selected for live collection", "ERROR")
             return False
 
         skipped = [s for s in selected if s in unsupported_live]
-        selected_supported = [s for s in selected if s in tag_to_files]
+        selected_supported = [s for s in selected if s in service_sources]
         if skipped:
             send_log(
                 f"Skipping unsupported logbay live services: {', '.join(skipped)}",
@@ -4878,6 +4882,8 @@ def api_fetch_fluentd_logs():
             return False
 
         duration_seconds = int(logbay_live_duration_minutes) * 60
+        fluentd_grace_seconds = 120
+        total_wait_seconds = duration_seconds + fluentd_grace_seconds
         run_name = f"logbay-live-logs_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         local_output_dir = (PROJECT_DIR.parent / run_name).resolve()
         local_output_dir.mkdir(parents=True, exist_ok=True)
@@ -4890,50 +4896,161 @@ def api_fetch_fluentd_logs():
         )
         send_log(f"Live logbay output directory: {local_output_dir}", "INFO")
 
-        proc_items: list[tuple[str, subprocess.Popen[Any]]] = []
+        kubeconfig_path = _resolve_live_kubeconfig()
+        if kubeconfig_path:
+            send_log(f"Logbay live using kubeconfig: {kubeconfig_path}", "INFO")
+        else:
+            send_log(
+                "Logbay live: kubeconfig not found. MSP/IAM kubectl-based streams will be skipped.",
+                "WARNING",
+            )
+
+        proc_items: list[tuple[str, subprocess.Popen[Any], Any]] = []
         started_count = 0
         try:
             for service in selected_supported:
                 service_dir = local_output_dir / service
                 service_dir.mkdir(parents=True, exist_ok=True)
-                for remote_file in tag_to_files[service]:
-                    out_file = service_dir / Path(remote_file).name
-                    # timeout bounds remote tail session; -n 0 means live-only new lines.
-                    remote_cmd = (
-                        f"timeout {duration_seconds}s bash -lc "
-                        f"'test -f \"{remote_file}\" && tail -n 0 -F \"{remote_file}\"'"
-                    )
-                    cmd = [
-                        "sshpass", "-p", pc_password,
-                        "ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                        f"nutanix@{pc_ip}",
-                        remote_cmd,
-                    ]
-                    fh = out_file.open("w", encoding="utf-8")
-                    proc = subprocess.Popen(
-                        cmd,
-                        stdout=fh,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                    )
-                    proc_items.append((str(out_file), proc))
-                    started_count += 1
-                    send_log(f"Streaming {service}/{Path(remote_file).name} -> {run_name}/{service}/{Path(remote_file).name}", "INFO")
+                for source in service_sources[service]:
+                    src_type = source["type"]
+                    if src_type == "pc_file":
+                        remote_file = source["path"]
+                        out_file = service_dir / Path(remote_file).name
+                        # timeout bounds remote tail session; -n 0 means live-only new lines.
+                        remote_cmd = (
+                            f"timeout {duration_seconds}s bash -lc "
+                            f"'test -f \"{remote_file}\" && tail -n 0 -F \"{remote_file}\"'"
+                        )
+                        cmd = [
+                            "sshpass", "-p", pc_password,
+                            "ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                            f"nutanix@{pc_ip}",
+                            remote_cmd,
+                        ]
+                        fh = out_file.open("w", encoding="utf-8")
+                        proc = subprocess.Popen(
+                            cmd,
+                            stdout=fh,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        proc_items.append((str(out_file), proc, fh))
+                        started_count += 1
+                        send_log(
+                            f"Streaming {service}/{Path(remote_file).name} -> {run_name}/{service}/{Path(remote_file).name}",
+                            "INFO",
+                        )
+                    elif src_type == "k8s_label":
+                        if kubeconfig_path is None:
+                            send_log(
+                                f"Skipping {service} kubectl stream (no kubeconfig): selector={source['selector']}",
+                                "WARNING",
+                            )
+                            continue
+                        ns = source["namespace"]
+                        selector = source["selector"]
+                        out_file = service_dir / f"{service}_{selector.replace('=', '_')}.log"
+                        cmd = [
+                            "kubectl",
+                            f"--kubeconfig={kubeconfig_path}",
+                            "logs",
+                            "-f",
+                            "-n",
+                            ns,
+                            "-l",
+                            selector,
+                            "--all-containers=true",
+                            "--prefix=true",
+                            "--since=1s",
+                        ]
+                        fh = out_file.open("w", encoding="utf-8")
+                        proc = subprocess.Popen(
+                            cmd,
+                            stdout=fh,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        proc_items.append((str(out_file), proc, fh))
+                        started_count += 1
+                        send_log(
+                            f"Streaming {service} kubectl logs ({ns}, {selector}) -> {run_name}/{service}/{out_file.name}",
+                            "INFO",
+                        )
+                    elif src_type == "k8s_name_contains":
+                        if kubeconfig_path is None:
+                            send_log(
+                                f"Skipping {service} kubectl pod-name streams (no kubeconfig): contains={source['contains']}",
+                                "WARNING",
+                            )
+                            continue
+                        ns = source["namespace"]
+                        contains = source["contains"]
+                        pod_list_cmd = [
+                            "kubectl",
+                            f"--kubeconfig={kubeconfig_path}",
+                            "get",
+                            "pods",
+                            "-n",
+                            ns,
+                            "-o",
+                            "jsonpath={range .items[*]}{.metadata.name}{'\\n'}{end}",
+                        ]
+                        pod_result = subprocess.run(pod_list_cmd, capture_output=True, text=True, timeout=20)
+                        if pod_result.returncode != 0:
+                            send_log(
+                                f"Failed to list pods for {service} in {ns}: {(pod_result.stderr or pod_result.stdout).strip()[:220]}",
+                                "WARNING",
+                            )
+                            continue
+                        matched_pods = [p.strip() for p in pod_result.stdout.splitlines() if contains.lower() in p.lower()]
+                        if not matched_pods:
+                            send_log(f"No pods matched '{contains}' in namespace {ns} for {service}", "WARNING")
+                            continue
+                        for pod_name in matched_pods:
+                            out_file = service_dir / f"{service}_{pod_name}.log"
+                            cmd = [
+                                "kubectl",
+                                f"--kubeconfig={kubeconfig_path}",
+                                "logs",
+                                "-f",
+                                "-n",
+                                ns,
+                                pod_name,
+                                "--all-containers=true",
+                                "--prefix=true",
+                                "--since=1s",
+                            ]
+                            fh = out_file.open("w", encoding="utf-8")
+                            proc = subprocess.Popen(
+                                cmd,
+                                stdout=fh,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                            )
+                            proc_items.append((str(out_file), proc, fh))
+                            started_count += 1
+                            send_log(
+                                f"Streaming {service} kubectl logs ({ns}/{pod_name}) -> {run_name}/{service}/{out_file.name}",
+                                "INFO",
+                            )
 
+            if started_count <= 0:
+                send_log("No live logbay streams were started.", "ERROR")
+                return False
             send_log(f"Live streaming started for {started_count} file(s).", "INFO")
             send_log(f"Press Abort, or wait {duration_seconds}s.", "INFO")
 
-            deadline = time.time() + duration_seconds + 5
-            while time.time() < deadline and any(p.poll() is None for _, p in proc_items):
+            deadline = time.time() + duration_seconds
+            while time.time() < deadline:
                 if abort_event.is_set():
                     send_log("⚠️ Abort requested by user", "WARNING")
                     break
                 time.sleep(1)
         finally:
-            for _, p in proc_items:
+            for _, p, _ in proc_items:
                 if p.poll() is None:
                     p.terminate()
-            for _, p in proc_items:
+            for _, p, fh in proc_items:
                 try:
                     p.wait(timeout=5)
                 except Exception:
@@ -4941,6 +5058,10 @@ def api_fetch_fluentd_logs():
                         p.kill()
                     except Exception:
                         pass
+                try:
+                    fh.close()
+                except Exception:
+                    pass
 
         if abort_event.is_set():
             send_log("❌ Live logbay collection aborted", "ERROR")
@@ -4969,37 +5090,276 @@ def api_fetch_fluentd_logs():
             if log_job_id in _log_jobs:
                 _log_jobs[log_job_id]["filer_url"] = f"{filer_target}/"
         return True
+
+    def run_fluentd_live_collection() -> bool:
+        """Stream live fluentd logs for selected namespaces using latest folder mapping."""
+        selected_namespaces = [ns.strip() for ns in fluentd_namespaces if str(ns).strip()]
+        if not selected_namespaces:
+            send_log("No fluentd namespaces selected for live collection", "ERROR")
+            return False
+
+        kubeconfig_candidates = [
+            PROJECT_DIR / "kubeconfigs" / f"{pc_ip}_kubeconfig",
+            Path.home() / "kube" / "ss_kube",
+            Path.home() / "kube" / "si_kube",
+        ]
+        kubeconfig_path = next((p for p in kubeconfig_candidates if p.exists()), None)
+        if kubeconfig_path is None:
+            send_log("No kubeconfig found for fluentd live collection", "ERROR")
+            return False
+
+        fluentd_namespace = "ntnx-system"
+        fluentd_base_dir = "/fluentd/data/logs"
+        duration_seconds = int(logbay_live_duration_minutes) * 60
+        fluentd_grace_seconds = 120
+        total_wait_seconds = duration_seconds + fluentd_grace_seconds
+        run_name = f"fluentd-live-logs_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        local_output_dir = (PROJECT_DIR.parent / run_name).resolve()
+        local_output_dir.mkdir(parents=True, exist_ok=True)
+
+        send_log("=" * 80, "INFO")
+        send_log("Live mode: running fluentd live streaming", "INFO")
+        send_log(f"Using kubeconfig: {kubeconfig_path}", "INFO")
+        send_log(
+            f"Starting fluentd live streaming for {int(duration_seconds / 60)} minute(s): {', '.join(selected_namespaces)}",
+            "INFO",
+        )
+        send_log(
+            f"Applying extra fluentd grace window: +{int(fluentd_grace_seconds / 60)} minute(s) for delayed updates",
+            "INFO",
+        )
+        send_log(f"Fluentd live output directory: {local_output_dir}", "INFO")
+
+        fluentd_pod_cmd = [
+            "kubectl",
+            f"--kubeconfig={kubeconfig_path}",
+            "get",
+            "pods",
+            "-n",
+            fluentd_namespace,
+            "--field-selector=status.phase=Running",
+            "-o",
+            "jsonpath={range .items[*]}{.metadata.name}{'\\n'}{end}",
+        ]
+        pod_result = subprocess.run(fluentd_pod_cmd, capture_output=True, text=True, timeout=20)
+        if pod_result.returncode != 0:
+            send_log(f"Failed to discover fluentd pod: {(pod_result.stderr or pod_result.stdout).strip()[:220]}", "ERROR")
+            return False
+        fluentd_pods = [p.strip() for p in pod_result.stdout.splitlines() if p.strip().startswith("fluentd-aggregator")]
+        if not fluentd_pods:
+            send_log("No running fluentd-aggregator pod found in ntnx-system", "ERROR")
+            return False
+        fluentd_pod = fluentd_pods[0]
+        send_log(f"Using fluentd pod: {fluentd_namespace}/{fluentd_pod}", "INFO")
+
+        proc_items: list[tuple[str, subprocess.Popen[Any], Any]] = []
+        started_count = 0
+        try:
+            for ns in selected_namespaces:
+                ns_dir = local_output_dir / ns
+                ns_dir.mkdir(parents=True, exist_ok=True)
+                pod_list_cmd = [
+                    "kubectl",
+                    f"--kubeconfig={kubeconfig_path}",
+                    "get",
+                    "pods",
+                    "-n",
+                    ns,
+                    "--field-selector=status.phase=Running",
+                    "-o",
+                    "jsonpath={range .items[*]}{.metadata.name}{'|'}{range .spec.containers[*]}{.name}{','}{end}{'\\n'}{end}",
+                ]
+                pods_result = subprocess.run(pod_list_cmd, capture_output=True, text=True, timeout=30)
+                if pods_result.returncode != 0:
+                    send_log(f"Failed to list running pods in namespace {ns}: {(pods_result.stderr or pods_result.stdout).strip()[:220]}", "WARNING")
+                    continue
+                lines = [ln.strip() for ln in pods_result.stdout.splitlines() if ln.strip()]
+                if not lines:
+                    send_log(f"No running pods found in namespace {ns}", "INFO")
+                    continue
+
+                for line in lines:
+                    if "|" not in line:
+                        continue
+                    pod_name, containers_csv = line.split("|", 1)
+                    containers = [c.strip() for c in containers_csv.split(",") if c.strip()]
+                    for container_name in containers:
+                        pattern = f"{fluentd_base_dir}/kube.{ns}.{pod_name}.*.{container_name}.*"
+                        latest_dir_cmd = [
+                            "kubectl",
+                            f"--kubeconfig={kubeconfig_path}",
+                            "exec",
+                            "-n",
+                            fluentd_namespace,
+                            fluentd_pod,
+                            "-c",
+                            "aggregator",
+                            "--",
+                            "sh",
+                            "-lc",
+                            f"ls -dt {pattern} 2>/dev/null | head -n 1",
+                        ]
+                        send_log(f"Latest dir cmd: {' '.join(latest_dir_cmd)}", "INFO")
+                        latest_dir_res = subprocess.run(latest_dir_cmd, capture_output=True, text=True, timeout=20)
+                        latest_dir = (latest_dir_res.stdout or "").strip()
+                        send_log(f"Latest dir: {latest_dir}", "INFO")
+                        if latest_dir_res.returncode != 0 or not latest_dir:
+                            continue
+                        send_log(f"Fluentd latest folder [{ns}/{pod_name}/{container_name}]: {latest_dir}", "INFO")
+                        latest_log = latest_dir + "/file.log.log"
+                        send_log(f"Latest log: {latest_log}", "INFO")
+                        out_file = ns_dir / f"{pod_name}-{container_name}.log"
+                        tail_cmd = [
+                            "kubectl",
+                            f"--kubeconfig={kubeconfig_path}",
+                            "exec",
+                            "-n",
+                            fluentd_namespace,
+                            fluentd_pod,
+                            "-c",
+                            "aggregator",
+                            "--",
+                            "tail",
+                            "-n",
+                            "0",
+                            "-F",
+                            latest_log,
+                        ]
+                        send_log(f"Tail cmd: {' '.join(tail_cmd)}", "INFO")
+                        fh = out_file.open("a", encoding="utf-8")
+                        proc = subprocess.Popen(
+                            tail_cmd,
+                            stdout=fh,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        send_log(f"Proc: {proc}", "INFO")
+                        proc_items.append((str(out_file), proc, fh))
+                        started_count += 1
+                        send_log(
+                            f"Streaming {ns}/{pod_name}/{container_name} -> {run_name}/{ns}/{out_file.name}",
+                            "INFO",
+                        )
+
+            if started_count <= 0:
+                send_log("No fluentd live streams were started. Check selected namespaces and fluentd folder matches.", "ERROR")
+                return False
+            send_log(f"Live streaming started for {started_count} file(s).", "INFO")
+            send_log(f"Press Abort, or wait {total_wait_seconds}s (includes fluentd grace).", "INFO")
+
+            deadline = time.time() + total_wait_seconds
+            while time.time() < deadline:
+                if abort_event.is_set():
+                    send_log("⚠️ Abort requested by user", "WARNING")
+                    break
+                time.sleep(1)
+        finally:
+            for _, p, _ in proc_items:
+                if p.poll() is None:
+                    p.terminate()
+            for _, p, fh in proc_items:
+                try:
+                    p.wait(timeout=5)
+                except Exception:
+                    try:
+                        p.kill()
+                    except Exception:
+                        pass
+                try:
+                    fh.close()
+                except Exception:
+                    pass
+
+        if abort_event.is_set():
+            send_log("❌ Fluentd live collection aborted", "ERROR")
+            return False
+
+        filer_target = f"{filer_base_path}/{bug_folder}/fluentd_live"
+        send_log("=" * 80, "INFO")
+        send_log("Uploading fluentd live logs to filer (direct folder sync, no tar)...", "INFO")
+        send_log(f"Local source: {local_output_dir}", "INFO")
+        send_log(f"Remote target: {filer_user}@{filer_ip}:{filer_target}/", "INFO")
+        ok = upload_path_to_filer(
+            local_output_dir,
+            filer_target,
+            label="Fluentd live logs",
+            is_directory=True,
+            retries=3,
+            mkdir_timeout=120,
+            upload_timeout=1800,
+        )
+        if not ok:
+            return False
+
+        send_log("✅ Fluentd live logs uploaded to filer successfully", "SUCCESS")
+        send_log(f"Filer path: {filer_target}/", "INFO")
+        with _log_jobs_lock:
+            if log_job_id in _log_jobs:
+                _log_jobs[log_job_id]["filer_url"] = f"{filer_target}/"
+        return True
     
     def run_fetch_script():
         """Run the fetch_and_upload_fluentd_logs.sh script."""
         try:
             if logbay_collection_mode == "live":
                 # In live mode we support combined selections in a single run:
+                # - Fluentd live stream
                 # - Microservice live stream
                 # - Logbay live stream
-                # Fluentd live streaming is currently not implemented and is skipped.
-                if fluentd_namespaces:
-                    send_log(
-                        "Live mode: Fluentd selection detected, but Fluentd live streaming is not supported. Skipping Fluentd.",
-                        "WARNING",
-                    )
+                live_workers: list[tuple[str, Any]] = []
+                live_results: dict[str, bool] = {}
+                results_lock = threading.Lock()
 
-                ran_any_live = False
+                if fluentd_namespaces:
+                    live_workers.append(("fluentd", run_fluentd_live_collection))
+                if microservice_services:
+                    live_workers.append(("microservice", run_microservice_live_collection))
+                if logbay_services:
+                    live_workers.append(("logbay", run_logbay_live_collection))
+
+                ran_any_live = len(live_workers) > 0
                 combined_live_ok = True
 
-                if microservice_services:
-                    ran_any_live = True
-                    micro_ok = run_microservice_live_collection()
-                    combined_live_ok = combined_live_ok and micro_ok
+                if ran_any_live:
+                    send_log(
+                        "Live mode: launching selected collectors in parallel: "
+                        + ", ".join(name for name, _ in live_workers),
+                        "INFO",
+                    )
 
-                if logbay_services and not abort_event.is_set():
-                    ran_any_live = True
-                    logbay_ok = run_logbay_live_collection()
-                    combined_live_ok = combined_live_ok and logbay_ok
+                    def _run_live_worker(name: str, worker_fn):
+                        ok = False
+                        try:
+                            ok = bool(worker_fn())
+                        except Exception:
+                            APP_LOGGER.exception("Live collector %s crashed", name)
+                            send_log(f"❌ Live collector failed with exception: {name}", "ERROR")
+                            ok = False
+                        finally:
+                            with results_lock:
+                                live_results[name] = ok
+
+                    threads: list[threading.Thread] = []
+                    for name, fn in live_workers:
+                        t = threading.Thread(
+                            target=_run_live_worker,
+                            args=(name, fn),
+                            daemon=True,
+                            name=f"live-{name}-{log_job_id}",
+                        )
+                        threads.append(t)
+                        t.start()
+
+                    for t in threads:
+                        t.join()
+
+                    with results_lock:
+                        if live_results:
+                            combined_live_ok = all(live_results.values())
 
                 if not ran_any_live:
                     send_log(
-                        "Live mode selected, but no live-capable section selected. Choose Microservice and/or Logbay services.",
+                        "Live mode selected, but no live-capable section selected. Choose Fluentd and/or Microservice and/or Logbay services.",
                         "ERROR",
                     )
                     combined_live_ok = False
