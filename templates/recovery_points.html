@@ -380,6 +380,21 @@
       border-bottom: 2px solid var(--border-gray);
       color: var(--text-dark);
     }
+
+    .sortable-th {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sortable-th:hover {
+      background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+    }
+
+    .sort-indicator {
+      margin-left: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
     
     td {
       padding: 1rem 1.25rem;
@@ -974,6 +989,13 @@
                   Showing <span id="showingStart">0</span>-<span id="showingEnd">0</span> of <span id="totalVmsCount">0</span> VMs
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <label style="font-size: 0.875rem; color: var(--text-muted);">Sort by:</label>
+                  <select id="sortBySelect" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px;">
+                    <option value="vm_name">Name</option>
+                    <option value="recovery_point_count">Recovery Points</option>
+                    <option value="reclaimable_bytes" selected>Reclaimable Space</option>
+                  </select>
+                  <button id="sortDirBtn" type="button" class="pagination-btn" onclick="toggleSortDirection()" title="Toggle sort direction">↓</button>
                   <label style="font-size: 0.875rem; color: var(--text-muted);">Per page:</label>
                   <select id="perPageSelect" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px;">
                     <option value="10">10</option>
@@ -988,10 +1010,10 @@
               <table>
                 <thead>
                   <tr>
-                    <th>VM Name</th>
+                    <th class="sortable-th" onclick="setSort('vm_name')">VM Name <span id="sort-vm_name" class="sort-indicator">↕</span></th>
                     <th>VM UUID</th>
-                    <th>Recovery Points</th>
-                    <th>Reclaimable Space</th>
+                    <th class="sortable-th" onclick="setSort('recovery_point_count')">Recovery Points <span id="sort-recovery_point_count" class="sort-indicator">↕</span></th>
+                    <th class="sortable-th" onclick="setSort('reclaimable_bytes')">Reclaimable Space <span id="sort-reclaimable_bytes" class="sort-indicator">↕</span></th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -1040,6 +1062,8 @@
     let perPage = 20;
     let totalPages = 1;
     let recoveryHealthInterval = null;
+    let sortColumn = 'reclaimable_bytes';
+    let sortDirection = 'desc';
 
     function truncateText(value, maxLen = 64) {
       const text = String(value || '').trim();
@@ -1294,10 +1318,32 @@
       const tbody = document.getElementById('vmTableBody');
       tbody.innerHTML = '';
       
+      // Sort before pagination
+      const sortedVMs = [...allVMs].sort((a, b) => {
+        let av;
+        let bv;
+        if (sortColumn === 'vm_name') {
+          av = String(a?.vm_name || '').toLowerCase();
+          bv = String(b?.vm_name || '').toLowerCase();
+        } else if (sortColumn === 'recovery_point_count') {
+          av = Number(a?.recovery_point_count || 0);
+          bv = Number(b?.recovery_point_count || 0);
+        } else if (sortColumn === 'reclaimable_bytes') {
+          av = Number(a?.reclaimable_bytes || 0);
+          bv = Number(b?.reclaimable_bytes || 0);
+        } else {
+          av = 0;
+          bv = 0;
+        }
+        if (av < bv) return sortDirection === 'asc' ? -1 : 1;
+        if (av > bv) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+
       // Calculate pagination
       const perPageSelect = document.getElementById('perPageSelect');
-      perPage = perPageSelect.value === 'all' ? allVMs.length : parseInt(perPageSelect.value);
-      totalPages = Math.ceil(allVMs.length / perPage);
+      perPage = perPageSelect.value === 'all' ? sortedVMs.length : parseInt(perPageSelect.value);
+      totalPages = Math.ceil(sortedVMs.length / perPage);
       
       // Ensure current page is valid
       if (currentPage > totalPages) currentPage = totalPages;
@@ -1305,10 +1351,10 @@
       
       // Calculate start and end indices
       const startIdx = (currentPage - 1) * perPage;
-      const endIdx = Math.min(startIdx + perPage, allVMs.length);
+      const endIdx = Math.min(startIdx + perPage, sortedVMs.length);
       
       // Get VMs for current page
-      const pageVMs = allVMs.slice(startIdx, endIdx);
+      const pageVMs = sortedVMs.slice(startIdx, endIdx);
       
       // Populate table with current page VMs
       pageVMs.forEach((vm, idx) => {
@@ -1404,12 +1450,52 @@
       });
       
       // Update pagination info
-      document.getElementById('showingStart').textContent = allVMs.length > 0 ? startIdx + 1 : 0;
+      document.getElementById('showingStart').textContent = sortedVMs.length > 0 ? startIdx + 1 : 0;
       document.getElementById('showingEnd').textContent = endIdx;
-      document.getElementById('totalVmsCount').textContent = allVMs.length;
+      document.getElementById('totalVmsCount').textContent = sortedVMs.length;
       
       // Update pagination controls
       renderPaginationControls();
+    }
+
+    function updateSortIndicators() {
+      const ids = ['vm_name', 'recovery_point_count', 'reclaimable_bytes'];
+      ids.forEach((id) => {
+        const el = document.getElementById(`sort-${id}`);
+        if (!el) return;
+        if (id !== sortColumn) {
+          el.textContent = '↕';
+          return;
+        }
+        el.textContent = sortDirection === 'asc' ? '↑' : '↓';
+      });
+      const sortBySelect = document.getElementById('sortBySelect');
+      if (sortBySelect) {
+        sortBySelect.value = sortColumn;
+      }
+      const sortDirBtn = document.getElementById('sortDirBtn');
+      if (sortDirBtn) {
+        sortDirBtn.textContent = sortDirection === 'asc' ? '↑' : '↓';
+      }
+    }
+
+    function setSort(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = column === 'vm_name' ? 'asc' : 'desc';
+      }
+      currentPage = 1;
+      updateSortIndicators();
+      renderPage();
+    }
+
+    function toggleSortDirection() {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      currentPage = 1;
+      updateSortIndicators();
+      renderPage();
     }
     
     function renderPaginationControls() {
@@ -1486,6 +1572,19 @@
         currentPage = 1;
         renderPage();
       });
+      const sortBySelect = document.getElementById('sortBySelect');
+      if (sortBySelect) {
+        sortBySelect.addEventListener('change', () => {
+          sortColumn = sortBySelect.value || 'reclaimable_bytes';
+          if (sortColumn === 'vm_name' && sortDirection !== 'asc' && sortDirection !== 'desc') {
+            sortDirection = 'asc';
+          }
+          currentPage = 1;
+          updateSortIndicators();
+          renderPage();
+        });
+      }
+      updateSortIndicators();
       refreshRecoveryHealthWidget();
       recoveryHealthInterval = window.setInterval(refreshRecoveryHealthWidget, 5000);
     });

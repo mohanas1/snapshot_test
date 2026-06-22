@@ -26,6 +26,7 @@ ERGON_PREFIX = base64.b64encode(b"ergon").decode("ascii")
 TERMINAL = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "CANCELED", "CANCELLED"})
 # Lab/self-signed PC: never verify TLS for requests.
 TLS_VERIFY = False
+DEFAULT_PARALLEL_WORKERS_CAP = 4
 
 RECOVERY_CRASH = "CRASH_CONSISTENT"
 RECOVERY_APP = "APPLICATION_CONSISTENT"
@@ -34,6 +35,7 @@ RANDOM_CRASH_OR_APP = "RANDOM_CRASH_OR_APP"
 SNAPSHOT_API_RETRY_HTTP_CODES = frozenset({401, 429})
 SNAPSHOT_API_MAX_RETRIES = 1
 SNAPSHOT_API_429_BACKOFF_BASE_SEC = 0.8
+MAX_SNAPSHOTS_PER_VM = 50
 
 
 class RunCancelled(Exception):
@@ -236,6 +238,66 @@ def list_all_vm_uuids(
     return list(seen.items()), ignored_by_name
 
 
+def list_vm_recovery_point_counts(
+    session: requests.Session,
+    base: str,
+    cfg: SnapshotConfig,
+    log: Optional[logging.Logger] = None,
+) -> Dict[str, int]:
+    """
+    Return current non-LIVE recovery point counts keyed by VM UUID.
+    Uses v3 groups grouped by entity_uuid for vm_recovery_point.
+    """
+    url = base + GROUPS_PATH
+    out: Dict[str, int] = {}
+    group_offset = 0
+    group_page = 200
+
+    while True:
+        body = {
+            "entity_type": "vm_recovery_point",
+            "group_count": group_page,
+            "group_offset": group_offset,
+            "grouping_attribute": "entity_uuid",
+            "group_sort_attribute": "entity_uuid",
+            "group_sort_order": "ASCENDING",
+            "group_member_count": 0,
+            "filter_criteria": "snapshot_type!=LIVE",
+        }
+        r = _request_with_cookie_retry(
+            session,
+            "POST",
+            url,
+            base=base,
+            cfg=cfg,
+            log=log,
+            json=body,
+            verify=TLS_VERIFY,
+        )
+        r.raise_for_status()
+        data = r.json() or {}
+        group_results = data.get("group_results") or []
+        if not group_results:
+            break
+
+        for group in group_results:
+            vm_uuid = str(group.get("group_by_column_value") or "").strip()
+            if not vm_uuid:
+                continue
+            try:
+                cnt = int(group.get("total_entity_count") or 0)
+            except (TypeError, ValueError):
+                cnt = 0
+            out[vm_uuid] = max(0, cnt)
+
+        filtered_group_count = int(data.get("filtered_group_count") or 0)
+        group_offset += group_page
+        if group_offset >= filtered_group_count:
+            break
+
+    return out
+
+
 def take_snapshot(
     session: requests.Session,
     base: str,
@@ -343,6 +405,20 @@ def wait_batch(
             )
             if st != "SUCCEEDED":
                 log.warning("    WARNING: VM %s", vm)
+                # Include backend task diagnostics to avoid opaque "FAILED" lines.
+                error_blob: Any = (
+                    row.get("errorMessages")
+                    or row.get("error")
+                    or row.get("message")
+                    or row.get("progressMessage")
+                    or ((row.get("legacyErrorResponse") or {}).get("message"))
+                )
+                if error_blob:
+                    try:
+                        detail = json.dumps(error_blob, ensure_ascii=True)[:1200]
+                    except Exception:
+                        detail = str(error_blob)[:1200]
+                    log.warning("    DETAIL: %s", detail)
 
         if pending:
             log.info(
@@ -393,6 +469,7 @@ def run_snapshots(
         "failed": 0,
         "other": 0,
     }
+    ignored_by_cap = 0
     log.info(
         "Found %d VMs to snapshot (ignored by name rules: %d).",
         len(vms),
@@ -403,6 +480,32 @@ def run_snapshots(
     if len(vms) > 15:
         log.info("  … +%d more", len(vms) - 15)
 
+    # Per-VM safety cap: do not create snapshots for VMs already at cap.
+    rp_counts = list_vm_recovery_point_counts(session, base, cfg, log=log)
+    eligible_vms: List[Tuple[str, Optional[str]]] = []
+    for vm_uuid, vm_name in vms:
+        cur = int(rp_counts.get(vm_uuid, 0))
+        if cur >= MAX_SNAPSHOTS_PER_VM:
+            ignored_by_cap += 1
+            log.info(
+                "Skipping VM %s… (%s): recovery points=%d reached cap=%d",
+                vm_uuid[:8],
+                vm_name or "?",
+                cur,
+                MAX_SNAPSHOTS_PER_VM,
+            )
+            continue
+        eligible_vms.append((vm_uuid, vm_name))
+
+    if ignored_by_cap:
+        tally["ignored"] += ignored_by_cap
+        log.info(
+            "Per-VM snapshot cap applied: skipped %d VM(s) already at %d recovery points.",
+            ignored_by_cap,
+            MAX_SNAPSHOTS_PER_VM,
+        )
+
+    vms = eligible_vms
     n_vms = len(vms)
 
     def _emit_sp() -> None:
@@ -435,8 +538,9 @@ def run_snapshots(
     random_rp: Dict[str, int] = {"crash": 0, "app": 0}
     rp_random_lock = threading.Lock() if mode == "parallel" else None
 
-    def _wait_and_clear(batch: List[Dict[str, Any]], label: str) -> None:
+    def _wait_and_clear(batch: List[Dict[str, Any]], label: str) -> bool:
         log.info("--- %s: wait %d tasks (v4 list) ---", label, len(batch))
+        timed_out = False
         try:
             _abort_if_needed()
             if cfg.sleep_before_task_poll_sec > 0:
@@ -449,8 +553,10 @@ def run_snapshots(
             wait_batch(session, base, batch, tally, cfg, log, cancel_event)
         except TimeoutError as e:
             log.error("  %s", e)
+            timed_out = True
         batch.clear()
         _emit_sp()
+        return timed_out
 
     _emit_sp()
 
@@ -493,21 +599,26 @@ def run_snapshots(
                 return False, {}, e
 
         wave_start = 0
+        current_wave_size = max(1, int(cfg.batch_size))
+        timeout_streak = 0
+        clean_streak = 0
         while wave_start < n_vms:
             _abort_if_needed()
-            wave_end = min(wave_start + cfg.batch_size, n_vms)
+            wave_end = min(wave_start + current_wave_size, n_vms)
             wave_tuples = [
                 (wave_start + j, vms[wave_start + j][0], vms[wave_start + j][1])
                 for j in range(wave_end - wave_start)
             ]
             log.info(
-                "Parallel snapshot API wave: VMs %d–%d (%d POSTs)",
+                "Parallel snapshot API wave: VMs %d–%d (%d POSTs, dynamic_wave_size=%d)",
                 wave_start + 1,
                 wave_end,
                 len(wave_tuples),
+                current_wave_size,
             )
             batch: List[Dict[str, Any]] = []
-            workers = max(1, len(wave_tuples))
+            workers = max(1, min(len(wave_tuples), DEFAULT_PARALLEL_WORKERS_CAP))
+            log.info("Using %d parallel worker(s) for this wave", workers)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
                 for ok, meta, err in pool.map(_parallel_snap_one, wave_tuples):
                     if ok:
@@ -517,7 +628,29 @@ def run_snapshots(
                         log.error("  FAILED: %s", err)
             _abort_if_needed()
             if batch:
-                _wait_and_clear(batch, "wave")
+                wave_timed_out = _wait_and_clear(batch, "wave")
+                if wave_timed_out:
+                    timeout_streak += 1
+                    clean_streak = 0
+                    new_wave_size = max(1, current_wave_size // 2)
+                    if new_wave_size < current_wave_size:
+                        log.warning(
+                            "Wave timeout detected (streak=%d). Reducing dynamic wave size from %d to %d.",
+                            timeout_streak,
+                            current_wave_size,
+                            new_wave_size,
+                        )
+                        current_wave_size = new_wave_size
+                else:
+                    clean_streak += 1
+                    timeout_streak = 0
+                    if clean_streak >= 2 and current_wave_size < cfg.batch_size:
+                        current_wave_size += 1
+                        log.info(
+                            "Stable waves detected (streak=%d). Increasing dynamic wave size to %d.",
+                            clean_streak,
+                            current_wave_size,
+                        )
             _emit_sp()
             wave_start = wave_end
     else:

@@ -30,7 +30,7 @@ kill_port_process() {
 case "$1" in
     start)
         echo "Starting $SERVICE_NAME..."
-        kill_port_process
+        # kill_port_process
         sudo systemctl start "$SERVICE_NAME"
         sleep 1
         sudo systemctl status "$SERVICE_NAME" --no-pager
@@ -42,7 +42,7 @@ case "$1" in
         ;;
     restart)
         echo "Restarting $SERVICE_NAME..."
-        kill_port_process
+        # kill_port_process
         sudo systemctl restart "$SERVICE_NAME"
         sleep 2
         sudo systemctl status "$SERVICE_NAME" --no-pager
@@ -66,10 +66,10 @@ case "$1" in
         echo "Disabling $SERVICE_NAME from starting on boot..."
         sudo systemctl disable "$SERVICE_NAME"
         ;;
-    kill-port)
-        echo "Killing any process on port $PORT..."
-        kill_port_process
-        ;;
+    # kill-port)
+    #     echo "Killing any process on port $PORT..."
+    #     kill_port_process
+    #     ;;
     *)
         echo "Bulk Snapshots UI Service Manager"
         echo ""

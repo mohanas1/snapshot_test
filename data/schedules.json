@@ -1,1 +1,33 @@
-{}
+{
+  "10.114.55.128": {
+    "schedule_job_id": "schedule_1782092750_246a2a",
+    "schedule_id": "a51ca406-ce88-44c6-b73e-b849277be0a6",
+    "kind": "for_loop",
+    "job_type": "snapshot",
+    "pc_ip": "10.114.55.128",
+    "next_run_utc": "2026-06-22T05:32:20.039070+00:00",
+    "recurring_interval_minutes": 60,
+    "cfg": {
+      "base_url": "https://10.114.55.128:9440",
+      "pc_user": "admin",
+      "pc_password": "Nutanix.123",
+      "batch_size": 10,
+      "recovery_point_type": "CRASH_CONSISTENT",
+      "expiration_days": 30,
+      "poll_interval": 4.0,
+      "task_timeout_sec": 300,
+      "group_member_page": 500,
+      "sleep_before_task_poll_sec": 0.0,
+      "snapshot_trigger_mode": "series",
+      "skip_substrings": [
+        "auto_pc"
+      ],
+      "skip_regex_patterns": [
+        "nc-.+-default"
+      ],
+      "target_vm_uuids": []
+    },
+    "requested_runs": 5,
+    "remaining_runs": 3
+  }
+}

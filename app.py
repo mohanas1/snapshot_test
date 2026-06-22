@@ -4522,9 +4522,21 @@ def api_fetch_fluentd_logs():
     filer_base_path = data.get("filer_base_path", "/home/nutanix/data/Bugs").strip()
     
     # Get filter selections
-    fluentd_namespaces = data.get("fluentd_namespaces", [])
-    microservice_services = data.get("microservice_services", [])
-    logbay_services = data.get("logbay_services", [])
+    # De-duplicate while preserving order to avoid duplicate chunk/service processing.
+    def _unique_ordered(values):
+        seen = set()
+        out = []
+        for item in values or []:
+            norm = str(item).strip()
+            if not norm or norm in seen:
+                continue
+            seen.add(norm)
+            out.append(norm)
+        return out
+
+    fluentd_namespaces = _unique_ordered(data.get("fluentd_namespaces", []))
+    microservice_services = _unique_ordered(data.get("microservice_services", []))
+    logbay_services = _unique_ordered(data.get("logbay_services", []))
     logbay_duration = data.get("logbay_duration", {})
     microservice_live_only = bool(data.get("microservice_live_only", False))
     logbay_collection_mode = str(data.get("logbay_collection_mode", "historical") or "historical").strip().lower()
@@ -4657,8 +4669,35 @@ def api_fetch_fluentd_logs():
 
                 scp_result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=upload_timeout)
                 if scp_result.returncode == 0:
-                    send_log(f"{label}: scp upload succeeded", "SUCCESS")
-                    return True
+                    # Harden success criteria: confirm uploaded path exists on filer.
+                    if is_directory:
+                        verify_cmd = [
+                            "sshpass", "-p", filer_password,
+                            "ssh",
+                            f"{filer_user}@{filer_ip}",
+                            f"test -d \"{filer_target}\"",
+                        ]
+                    else:
+                        uploaded_name = Path(source_arg).name
+                        verify_cmd = [
+                            "sshpass", "-p", filer_password,
+                            "ssh",
+                            f"{filer_user}@{filer_ip}",
+                            f"test -f \"{filer_target}/{uploaded_name}\"",
+                        ]
+                    verify_result = subprocess.run(
+                        verify_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=min(mkdir_timeout, 30),
+                    )
+                    if verify_result.returncode == 0:
+                        send_log(f"{label}: scp upload succeeded", "SUCCESS")
+                        return True
+                    upload_last_err = (
+                        f"post-upload verification failed for target {filer_target}"
+                    )
+                    send_log(f"⚠️ {label}: {upload_last_err}", "WARNING")
                 upload_last_err = (scp_result.stderr or scp_result.stdout or "").strip()
                 send_log(f"⚠️ {label}: upload attempt {attempt}/{retries} failed: {upload_last_err[:220]}", "WARNING")
             except subprocess.TimeoutExpired:
@@ -4678,13 +4717,12 @@ def api_fetch_fluentd_logs():
             send_log("No valid microservice services selected for live-only collection", "ERROR")
             return False
 
-        script_candidates = [
-            PROJECT_DIR / "collect_microservice_live_logs.sh",
-            PROJECT_DIR.parent / "collect_microservice_live_logs.sh",
-        ]
-        script_path = next((p for p in script_candidates if p.exists()), None)
-        if script_path is None:
-            send_log("collect_microservice_live_logs.sh not found", "ERROR")
+        script_path = PROJECT_DIR / "collect_microservice_live_logs.sh"
+        if not script_path.exists():
+            send_log(
+                f"Required project-local script not found: {script_path}",
+                "ERROR",
+            )
             return False
 
         kubeconfig_candidates = [
@@ -4753,7 +4791,7 @@ def api_fetch_fluentd_logs():
 
         process = subprocess.Popen(
             live_cmd,
-            cwd=str(PROJECT_DIR.parent),
+            cwd=str(PROJECT_DIR),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -4793,7 +4831,7 @@ def api_fetch_fluentd_logs():
                 out_dir_name = out_match.group(1).strip()
                 out_path = Path(out_dir_name)
                 if not out_path.is_absolute():
-                    out_path = (PROJECT_DIR.parent / out_path).resolve()
+                    out_path = (PROJECT_DIR / out_path).resolve()
                 live_output_dir = out_path
 
             if "No live streams started." in clean_line:
@@ -4806,7 +4844,7 @@ def api_fetch_fluentd_logs():
         process.wait()
         if process.returncode == 0 and not abort_event.is_set():
             if live_output_dir is None:
-                discovered = sorted(PROJECT_DIR.parent.glob("microservice-live-logs_*"), key=lambda p: p.stat().st_mtime, reverse=True)
+                discovered = sorted(PROJECT_DIR.glob("microservice-live-logs_*"), key=lambda p: p.stat().st_mtime, reverse=True)
                 if discovered:
                     live_output_dir = discovered[0]
             if live_output_dir is not None:
@@ -5400,6 +5438,33 @@ def api_fetch_fluentd_logs():
             env["FILER_BASE_PATH"] = filer_base_path
             # Don't use subfolder - upload directly to bug folder
             # env["FLUENTD_SUBFOLDER"] = "fluentd"
+
+            # Pass global historical duration window for Fluentd file-level filtering.
+            # This applies only to historical mode (live mode bypasses this script).
+            try:
+                if logbay_duration.get("type") == "custom":
+                    from_date = str(logbay_duration.get("from_date") or "").strip()
+                    from_time = str(logbay_duration.get("from_time") or "09:00").strip() or "09:00"
+                    hours = int(logbay_duration.get("duration_hours", 24) or 24)
+                    start_dt = dt.datetime.strptime(f"{from_date} {from_time}:00", "%Y-%m-%d %H:%M:%S")
+                    end_dt = start_dt + dt.timedelta(hours=max(1, hours))
+                    env["FLUENTD_TIME_FILTER_TYPE"] = "custom"
+                    env["FLUENTD_TIME_FROM_EPOCH"] = str(int(start_dt.timestamp()))
+                    env["FLUENTD_TIME_TO_EPOCH"] = str(int(end_dt.timestamp()))
+                    env["FLUENTD_TIME_FROM_TS"] = start_dt.strftime("%Y%m%d%H%M%S")
+                    env["FLUENTD_TIME_TO_TS"] = end_dt.strftime("%Y%m%d%H%M%S")
+                else:
+                    hours = int(logbay_duration.get("hours", 24) or 24)
+                    end_dt = dt.datetime.now()
+                    start_dt = end_dt - dt.timedelta(hours=max(1, hours))
+                    env["FLUENTD_TIME_FILTER_TYPE"] = "recent"
+                    env["FLUENTD_TIME_FROM_EPOCH"] = str(int(start_dt.timestamp()))
+                    env["FLUENTD_TIME_TO_EPOCH"] = str(int(end_dt.timestamp()))
+                    env["FLUENTD_TIME_FROM_TS"] = start_dt.strftime("%Y%m%d%H%M%S")
+                    env["FLUENTD_TIME_TO_TS"] = end_dt.strftime("%Y%m%d%H%M%S")
+            except Exception:
+                # If duration parsing fails, script falls back to no time filtering.
+                APP_LOGGER.exception("Failed to set FLUENTD time filter env; continuing without strict filter")
             
             # Pass selected namespaces if any are specified
             if fluentd_namespaces:
@@ -5620,12 +5685,12 @@ def api_fetch_fluentd_logs():
 
             # 1) Build tar.gz in pod with only *.log* files.
             make_tar_cmd = (
-                f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc "
+                f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c "
                 f"'set -e; "
-                f"if ! find {log_dir} -maxdepth 1 -type f -name \"*.log*\" -print -quit | grep -q .; then "
+                f"if ! find \"{log_dir}\" -maxdepth 1 -type f -name \"*.log*\" -print -quit | grep -q .; then "
                 f"echo \"NO_LOG_FILES\"; exit 44; fi; "
-                f"find {log_dir} -maxdepth 1 -type f -name \"*.log*\" -print0 | "
-                f"tar --null -T - -czf {pod_archive_path}'"
+                f"find \"{log_dir}\" -maxdepth 1 -type f -name \"*.log*\" -print0 | "
+                f"tar --null -T - -czf \"{pod_archive_path}\"'"
             )
             make_tar_ssh = [
                 "sshpass", "-p", pc_password,
@@ -5675,7 +5740,7 @@ def api_fetch_fluentd_logs():
                         "ssh", "-o", "StrictHostKeyChecking=no",
                         "-o", "UserKnownHostsFile=/dev/null",
                         f"nutanix@{pc_ip}",
-                        f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc 'rm -f {pod_archive_path}'",
+                        f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
                     ],
                     capture_output=True,
                     text=True,
@@ -5693,7 +5758,7 @@ def api_fetch_fluentd_logs():
                     "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null",
                     f"nutanix@{pc_ip}",
-                    f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- bash -lc 'rm -f {pod_archive_path}'",
+                    f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
                 ],
                 capture_output=True,
                 text=True,
@@ -5797,12 +5862,9 @@ def api_fetch_fluentd_logs():
             encoded_password = quote(filer_password, safe='')
             filer_dest = f"ftp://{filer_user}:{encoded_password}@{filer_ip}/{filer_base_path}/{bug_folder}"
             
-            # Build day-based duration chunks for logbay using --from windows.
-            # Examples:
-            # - 240h => 10 chunks (24h each)
-            # - 36h  => 2 chunks (24h + 12h)
-            # Product max is 96h per command, and day-chunking stays well within it.
-            max_chunk_hours = 24
+            # Default chunking for standard services.
+            default_chunk_hours = 24
+            heavy_chunk_services = {"msp", "cvm_logs", "csv_logs"}
 
             def _fmt_logbay_from(dt_obj):
                 # Logbay format: 2025/12/16-09:00:00
@@ -5813,7 +5875,7 @@ def api_fetch_fluentd_logs():
                 end_dt = dt.datetime.now()
                 start_dt = end_dt - dt.timedelta(hours=total_hours)
                 send_log(
-                    f"Duration: Last {total_hours} hours (chunked in <= {max_chunk_hours}h windows)",
+                    f"Duration: Last {total_hours} hours (default chunk <= {default_chunk_hours}h; heavy services use 3h/6h)",
                     "INFO",
                 )
             else:
@@ -5825,27 +5887,35 @@ def api_fetch_fluentd_logs():
                 end_dt = start_dt + dt.timedelta(hours=total_hours)
                 send_log(
                     f"Duration: From {_fmt_logbay_from(start_dt)}, +{total_hours} hours "
-                    f"(chunked in <= {max_chunk_hours}h windows)",
+                    f"(default chunk <= {default_chunk_hours}h; heavy services use 3h/6h)",
                     "INFO",
                 )
 
-            duration_chunks = []
-            cursor_dt = start_dt
-            chunk_idx = 1
-            while cursor_dt < end_dt:
-                next_dt = min(cursor_dt + dt.timedelta(hours=max_chunk_hours), end_dt)
-                chunk_hours = max(1, int((next_dt - cursor_dt).total_seconds() // 3600))
-                from_datetime = _fmt_logbay_from(cursor_dt)
-                duration_chunks.append(
-                    {
-                        "index": chunk_idx,
-                        "hours": chunk_hours,
-                        "from_datetime": from_datetime,
-                        "duration_param": f"--from={from_datetime} --duration=+{chunk_hours}h",
-                    }
-                )
-                chunk_idx += 1
-                cursor_dt = next_dt
+            def _service_chunk_hours(service_name: str, requested_hours: int) -> int:
+                if service_name in heavy_chunk_services:
+                    # More granular windows for heavier services.
+                    return 6 if requested_hours > 24 else 3
+                return default_chunk_hours
+
+            def _build_duration_chunks(chunk_hours_cap: int):
+                chunks = []
+                cursor_dt = start_dt
+                chunk_idx = 1
+                while cursor_dt < end_dt:
+                    next_dt = min(cursor_dt + dt.timedelta(hours=chunk_hours_cap), end_dt)
+                    chunk_hours = max(1, int((next_dt - cursor_dt).total_seconds() // 3600))
+                    from_datetime = _fmt_logbay_from(cursor_dt)
+                    chunks.append(
+                        {
+                            "index": chunk_idx,
+                            "hours": chunk_hours,
+                            "from_datetime": from_datetime,
+                            "duration_param": f"--from={from_datetime} --duration=+{chunk_hours}h",
+                        }
+                    )
+                    chunk_idx += 1
+                    cursor_dt = next_dt
+                return chunks
             
             # Run logbay for each selected service
             for idx, service in enumerate(logbay_services, 1):
@@ -5898,7 +5968,12 @@ def api_fetch_fluentd_logs():
                 server_hostname = "mohan-as1.r8.ubvm.nutanix.com"
                 
                 send_log(f"Collecting logbay on PC: {service}", "INFO")
-                send_log(f"Service: {service}, Chunks: {len(duration_chunks)}", "INFO")
+                service_chunk_cap = _service_chunk_hours(service, total_hours)
+                duration_chunks = _build_duration_chunks(service_chunk_cap)
+                send_log(
+                    f"Service: {service}, chunk cap: {service_chunk_cap}h, chunks: {len(duration_chunks)}",
+                    "INFO",
+                )
                 
                 # Step 1: Generate SSH key on PC (via SSH)
                 send_log("Step 1: Generating SSH key on PC...", "INFO")

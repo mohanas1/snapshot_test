@@ -119,7 +119,7 @@ ssh_exec() {
     shift 3
     local cmd="$@"
     
-    local ssh_cmd="ssh"
+    local ssh_cmd="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     
     if [ -n "$password" ] && command -v sshpass &> /dev/null; then
         ssh_cmd="sshpass -p '$password' $ssh_cmd"
@@ -135,7 +135,7 @@ scp_upload() {
     local password=$4
     local dest=$5
     
-    local scp_cmd="scp -r"
+    local scp_cmd="scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     
     if [ -n "$password" ] && command -v sshpass &> /dev/null; then
         scp_cmd="sshpass -p '$password' $scp_cmd"
@@ -216,60 +216,192 @@ copy_pod_logs_selective() {
         local dir_count
         dir_count=$(echo "$matching_dirs" | wc -l | tr -d '[:space:]')
         print_info "Found ${dir_count} log director(y/ies) for ${ns}"
+        local candidate_dirs="$matching_dirs"
         
         # Create namespace output directory locally
         local ns_output_dir="${output_dir}/${ns}"
         mkdir -p "$ns_output_dir"
         
-        # Download all directories for this namespace to local
-        print_info "Downloading ${dir_count} directories to local..."
-        local download_success_count=0
-        local download_failed_count=0
-        local current_dir=0
-        
-        while IFS= read -r pod_dir; do
-            [ -z "$pod_dir" ] && continue
-            current_dir=$((current_dir + 1))
-            local dir_name=$(basename "$pod_dir")
-            
-            # Download this directory - show count and namespace
-            print_info "  [${ns}] Downloading ${current_dir}/${dir_count}..."
-            
-            set +e
-            cp_output=$(kubectl --kubeconfig="$kubeconfig_file" cp \
-                -n "$NAMESPACE" \
-                "${POD_NAME}:${pod_dir}" \
-                "${ns_output_dir}/${dir_name}" \
-                2>&1)
-            local cp_exit=$?
-            set -e
-            
-            # Filter output but show errors
-            filtered_output=$(echo "$cp_output" | grep -v "Defaulted container" | grep -v "tar: removing leading" || true)
-            
-            if [ $cp_exit -eq 0 ]; then
-                download_success_count=$((download_success_count + 1))
-                print_success "  ✓ [${ns}] ${current_dir}/${dir_count}"
-            else
-                download_failed_count=$((download_failed_count + 1))
-                print_error "  ✗ [${ns}] Failed ${current_dir}/${dir_count} - exit: $cp_exit"
-                if [ -n "$filtered_output" ]; then
-                    print_error "    Error: $filtered_output"
+        # Download only matching timestamp files (not whole directories).
+        local from_ts="${FLUENTD_TIME_FROM_TS:-}"
+        local to_ts="${FLUENTD_TIME_TO_TS:-}"
+        local filter_type="${FLUENTD_TIME_FILTER_TYPE:-recent}"
+        local remote_file_list=""
+
+        if [ -n "$from_ts" ] && [ -n "$to_ts" ]; then
+            print_info "Applying remote timestamp filter for ${ns}: ${from_ts}..${to_ts} (${filter_type})"
+            # Hybrid optimization:
+            # 1) prune candidate folders by folder mtime around requested window
+            # 2) apply accurate file timestamp boundary logic within pruned folders
+            local from_epoch="${FLUENTD_TIME_FROM_EPOCH:-}"
+            local to_epoch="${FLUENTD_TIME_TO_EPOCH:-}"
+            local prune_grace_sec=86400   # 24h grace on each side
+            if [ -n "$from_epoch" ] && [ -n "$to_epoch" ]; then
+                local prune_from=$((from_epoch - prune_grace_sec))
+                local prune_to=$((to_epoch + prune_grace_sec))
+                local prune_cmd="
+prune_from='${prune_from}'; prune_to='${prune_to}';
+while IFS= read -r d; do
+  [ -z \"\$d\" ] && continue
+  mt=\$(stat -c %Y \"\$d\" 2>/dev/null || echo 0)
+  [ \"\$mt\" -ge \"\$prune_from\" ] && [ \"\$mt\" -le \"\$prune_to\" ] && echo \"\$d\"
+done"
+                local pruned_dirs
+                pruned_dirs=$(echo "$matching_dirs" | kubectl --kubeconfig="$kubeconfig_file" exec -i -n "$NAMESPACE" "$POD_NAME" -- sh -c "$prune_cmd" 2>/dev/null || true)
+                local pruned_count
+                pruned_count=$(echo "$pruned_dirs" | sed '/^$/d' | wc -l | tr -d '[:space:]')
+                if [ "$pruned_count" -gt 0 ]; then
+                    candidate_dirs="$pruned_dirs"
+                    print_info "Folder-time prune for ${ns}: ${dir_count} -> ${pruned_count} candidate folder(s)"
+                else
+                    # Safe fallback when mtime pruning is too strict.
+                    print_warning "Folder-time prune yielded 0 for ${ns}; falling back to all ${dir_count} folders"
                 fi
             fi
-        done <<< "$matching_dirs"
+
+            while IFS= read -r pod_dir; do
+                [ -z "$pod_dir" ] && continue
+
+                local rotated_cmd="
+for f in \"${pod_dir}\"/file.log.log.*; do
+  [ -f \"\$f\" ] || continue
+  b=\$(basename \"\$f\")
+  ts=\$(echo \"\$b\" | sed -n -E 's/^file\\.log\\.log\\.([0-9]{14})(\\.gz)?$/\\1/p')
+  [ -n \"\$ts\" ] && echo \"\$ts|\$f\"
+done | sort"
+                local rotated_list
+                rotated_list=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$rotated_cmd" 2>/dev/null || true)
+
+                local active_cmd="[ -f \"${pod_dir}/file.log.log\" ] && echo \"${pod_dir}/file.log.log\" || true"
+                local active_path
+                active_path=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$active_cmd" 2>/dev/null || true)
+
+                local started=0
+                local done=0
+                local last_ts=""
+                while IFS= read -r row; do
+                    [ -z "$row" ] && continue
+                    local ts="${row%%|*}"
+                    local path="${row#*|}"
+                    last_ts="$ts"
+                    if [ "$started" -eq 0 ]; then
+                        # Include first rotated file that ends after/equal window start.
+                        if [[ "$ts" > "$from_ts" || "$ts" == "$from_ts" ]]; then
+                            started=1
+                            remote_file_list="${remote_file_list}${path}"$'\n'
+                            if [[ "$ts" > "$to_ts" || "$ts" == "$to_ts" ]]; then
+                                done=1
+                                break
+                            fi
+                        fi
+                    else
+                        remote_file_list="${remote_file_list}${path}"$'\n'
+                        if [[ "$ts" > "$to_ts" || "$ts" == "$to_ts" ]]; then
+                            done=1
+                            break
+                        fi
+                    fi
+                done <<< "$rotated_list"
+
+                if [ "$started" -eq 1 ]; then
+                    # If window extends beyond last rotated file, include active file.
+                    if [ "$done" -eq 0 ] && [ -n "$active_path" ]; then
+                        remote_file_list="${remote_file_list}${active_path}"$'\n'
+                    fi
+                else
+                    # No rotated file boundary found in range. Include active for recent and
+                    # for ranges newer than last rotated boundary.
+                    if [ -n "$active_path" ]; then
+                        if [ "$filter_type" = "recent" ]; then
+                            remote_file_list="${remote_file_list}${active_path}"$'\n'
+                        elif [ -n "$last_ts" ] && [[ "$from_ts" > "$last_ts" ]]; then
+                            remote_file_list="${remote_file_list}${active_path}"$'\n'
+                        fi
+                    fi
+                fi
+            done <<< "$candidate_dirs"
+        fi
+
+        local download_success_count=0
+        local download_failed_count=0
+        local current_item=0
+
+        if [ -n "$remote_file_list" ]; then
+            local file_count
+            file_count=$(echo "$remote_file_list" | wc -l | tr -d '[:space:]')
+            print_info "Downloading ${file_count} filtered file(s) to local..."
+            while IFS= read -r remote_file; do
+                [ -z "$remote_file" ] && continue
+                current_item=$((current_item + 1))
+                local parent_dir_name
+                parent_dir_name=$(basename "$(dirname "$remote_file")")
+                mkdir -p "${ns_output_dir}/${parent_dir_name}"
+                local dest_file="${ns_output_dir}/${parent_dir_name}/$(basename "$remote_file")"
+
+                print_info "  [${ns}] Downloading ${current_item}/${file_count}..."
+                set +e
+                cp_output=$(kubectl --kubeconfig="$kubeconfig_file" cp \
+                    -n "$NAMESPACE" \
+                    "${POD_NAME}:${remote_file}" \
+                    "${dest_file}" \
+                    2>&1)
+                local cp_exit=$?
+                set -e
+
+                filtered_output=$(echo "$cp_output" | grep -v "Defaulted container" | grep -v "tar: removing leading" || true)
+                if [ $cp_exit -eq 0 ]; then
+                    download_success_count=$((download_success_count + 1))
+                    print_success "  ✓ [${ns}] ${current_item}/${file_count}"
+                else
+                    download_failed_count=$((download_failed_count + 1))
+                    print_error "  ✗ [${ns}] Failed ${current_item}/${file_count} - exit: $cp_exit"
+                    if [ -n "$filtered_output" ]; then
+                        print_error "    Error: $filtered_output"
+                    fi
+                fi
+            done <<< "$remote_file_list"
+        else
+            # Fallback for compatibility if timestamp filter is missing.
+            print_warning "No timestamp-filtered file list found; falling back to directory copy."
+            print_info "Downloading ${dir_count} directories to local..."
+            while IFS= read -r pod_dir; do
+                [ -z "$pod_dir" ] && continue
+                current_item=$((current_item + 1))
+                local dir_name=$(basename "$pod_dir")
+                print_info "  [${ns}] Downloading ${current_item}/${dir_count}..."
+                set +e
+                cp_output=$(kubectl --kubeconfig="$kubeconfig_file" cp \
+                    -n "$NAMESPACE" \
+                    "${POD_NAME}:${pod_dir}" \
+                    "${ns_output_dir}/${dir_name}" \
+                    2>&1)
+                local cp_exit=$?
+                set -e
+                filtered_output=$(echo "$cp_output" | grep -v "Defaulted container" | grep -v "tar: removing leading" || true)
+                if [ $cp_exit -eq 0 ]; then
+                    download_success_count=$((download_success_count + 1))
+                    print_success "  ✓ [${ns}] ${current_item}/${dir_count}"
+                else
+                    download_failed_count=$((download_failed_count + 1))
+                    print_error "  ✗ [${ns}] Failed ${current_item}/${dir_count} - exit: $cp_exit"
+                    if [ -n "$filtered_output" ]; then
+                        print_error "    Error: $filtered_output"
+                    fi
+                fi
+            done <<< "$matching_dirs"
+        fi
         
         if [ $download_success_count -eq 0 ]; then
-            print_error "Failed to download any directories for ${ns}"
+            print_error "Failed to download any filtered files for ${ns}"
             total_failed=$((total_failed + 1))
             rm -rf "$ns_output_dir"
             continue
         fi
         
         if [ $download_failed_count -gt 0 ]; then
-            print_warning "Downloaded ${download_success_count}/${dir_count} directories (${download_failed_count} failed)"
+            print_warning "Downloaded ${download_success_count} filtered file(s) (${download_failed_count} failed)"
         else
-            print_success "Downloaded ${download_success_count}/${dir_count} directories"
+            print_success "Downloaded ${download_success_count} filtered file(s)"
         fi
         
         # Verify directories actually exist and have content
@@ -366,10 +498,12 @@ copy_pod_logs_selective() {
                         if upload_file_to_filer "$local_tar" "$FILER_TARGET_PATH"; then
                             print_success "  ✓ Uploaded ${filer_filename}"
                             UPLOADED_FILES+=("$filer_filename")
+                            UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
                             total_copied=$((total_copied + chunk_dir_count))
                             rm -f "$local_tar"
                         else
                             print_error "  ✗ Upload failed"
+                            UPLOAD_FAILED_COUNT=$((UPLOAD_FAILED_COUNT + 1))
                             total_failed=$((total_failed + 1))
                             rm -f "$local_tar"
                         fi
@@ -428,10 +562,12 @@ copy_pod_logs_selective() {
                     print_success "Uploaded ${filer_filename} to filer"
                     total_copied=$((total_copied + download_success_count))
                     UPLOADED_FILES+=("$filer_filename")
+                    UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
                     rm -f "$local_tar"
                     print_info "Deleted local tar (saved disk space)"
                 else
                     print_error "Failed to upload ${filer_filename} to filer"
+                    UPLOAD_FAILED_COUNT=$((UPLOAD_FAILED_COUNT + 1))
                     total_failed=$((total_failed + 1))
                     rm -f "$local_tar"
                 fi
@@ -527,9 +663,9 @@ create_filer_folder() {
         
         # Verify folder actually exists
         local verify_output
-        verify_output=$(ssh_exec "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" "[ -d '$folder_path' ] && echo 'exists' || echo 'missing'" 2>&1)
-        
-        if [ "$verify_output" = "exists" ]; then
+        verify_output=$(ssh_exec "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" "[ -d '$folder_path' ] && echo 'exists' || echo 'missing'" 2>&1 || true)
+        # SSH may prepend warning lines (known_hosts, etc). Match token, not full string.
+        if echo "$verify_output" | grep -qE '(^|[[:space:]])exists($|[[:space:]])'; then
             print_success "Folder verified: $folder_path"
             return 0
         else
@@ -610,6 +746,82 @@ extract_namespaces() {
     fi
 }
 
+timestamp_to_epoch() {
+    local ts="$1"
+    # Expected: YYYYMMDDHHMMSS
+    if [[ ! "$ts" =~ ^[0-9]{14}$ ]]; then
+        echo ""
+        return 1
+    fi
+    local yyyy="${ts:0:4}"
+    local mm="${ts:4:2}"
+    local dd="${ts:6:2}"
+    local hh="${ts:8:2}"
+    local mi="${ts:10:2}"
+    local ss="${ts:12:2}"
+    date -d "${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}" +%s 2>/dev/null || true
+}
+
+apply_time_filter_for_namespace() {
+    local logs_dir="$1"
+    local namespace="$2"
+
+    local from_epoch="${FLUENTD_TIME_FROM_EPOCH:-}"
+    local to_epoch="${FLUENTD_TIME_TO_EPOCH:-}"
+    local filter_type="${FLUENTD_TIME_FILTER_TYPE:-recent}"
+
+    if [[ -z "$from_epoch" || -z "$to_epoch" ]]; then
+        print_warning "No fluentd time window provided; skipping time filter for ${namespace}" >&2
+        return 0
+    fi
+
+    local pattern="kube.${namespace}.*"
+    local total_seen=0
+    local kept=0
+    local removed=0
+
+    while IFS= read -r ns_dir; do
+        [ -z "$ns_dir" ] && continue
+        while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            total_seen=$((total_seen + 1))
+            local base
+            base="$(basename "$f")"
+            local keep_file=0
+
+            # Active rolling file without timestamp suffix.
+            if [[ "$base" == "file.log.log" ]]; then
+                if [[ "$filter_type" == "recent" ]]; then
+                    keep_file=1
+                else
+                    # For custom window, include active file only if mtime is within window.
+                    local mtime_epoch
+                    mtime_epoch=$(stat -c %Y "$f" 2>/dev/null || echo "")
+                    if [[ -n "$mtime_epoch" && "$mtime_epoch" -ge "$from_epoch" && "$mtime_epoch" -le "$to_epoch" ]]; then
+                        keep_file=1
+                    fi
+                fi
+            elif [[ "$base" =~ ^file\.log\.log\.([0-9]{14})(\.gz)?$ ]]; then
+                local ts="${BASH_REMATCH[1]}"
+                local ts_epoch
+                ts_epoch="$(timestamp_to_epoch "$ts")"
+                if [[ -n "$ts_epoch" && "$ts_epoch" -ge "$from_epoch" && "$ts_epoch" -le "$to_epoch" ]]; then
+                    keep_file=1
+                fi
+            fi
+
+            if [[ "$keep_file" -eq 1 ]]; then
+                kept=$((kept + 1))
+            else
+                rm -f "$f"
+                removed=$((removed + 1))
+            fi
+        done < <(find "$ns_dir" -type f -name "file.log.log*")
+    done < <(find "$logs_dir" -maxdepth 1 -type d -name "$pattern")
+
+    print_info "Time filter [${namespace}] window=${from_epoch}..${to_epoch} type=${filter_type} seen=${total_seen}, kept=${kept}, removed=${removed}" >&2
+}
+
 compress_logs_by_namespace() {
     local source_dir=$1
     local output_dir=$2
@@ -683,6 +895,9 @@ compress_logs_by_namespace() {
             print_warning "  No folders found for pattern: $pattern" >&2
             continue
         fi
+
+        # Filter historical fluentd files by requested time window before compression.
+        apply_time_filter_for_namespace "$logs_dir" "$namespace"
         
         # Get size before compression
         local namespace_size=$(du -sh "$logs_dir" 2>/dev/null | awk '{s+=$1}END{print s}' || echo "0")
@@ -754,57 +969,8 @@ upload_file_to_filer() {
     print_info "  Destination: ${FILER_HOST}:${filer_path}/"
     print_info "  Size: $(du -sh "$local_file" 2>/dev/null | cut -f1)"
     
-    # Try with rsync first (supports resume and progress)
-    if command -v rsync &> /dev/null && command -v sshpass &> /dev/null && [ -n "$FILER_PASSWORD" ]; then
-        print_info "  Using rsync for reliable transfer..."
-        
-        while [ $retry_count -lt $max_retries ]; do
-            if [ $retry_count -gt 0 ]; then
-                print_warning "  Retry attempt $retry_count/$max_retries..."
-                sleep 5
-            fi
-            
-            rsync_output=$(sshpass -p "$FILER_PASSWORD" rsync -avz --progress --timeout=300 \
-                -e "ssh" \
-                "$local_file" "${FILER_USER}@${FILER_HOST}:${filer_path}/" 2>&1 | \
-                grep -v "StrictHostKeyChecking" | grep -v "Warning" || true)
-            
-            rsync_exit=$?
-            
-            if [ $rsync_exit -eq 0 ]; then
-                print_success "  Uploaded: $upload_name"
-                return 0
-            else
-                # Provide detailed error based on output
-                if echo "$rsync_output" | grep -qi "permission denied"; then
-                    print_error "  ERROR: Permission denied on filer"
-                    print_error "  Path: $filer_path"
-                    print_error "  User: $FILER_USER may not have write access"
-                elif echo "$rsync_output" | grep -qi "authentication failed\|password"; then
-                    print_error "  ERROR: Authentication failed to filer"
-                    print_error "  Check FILER_PASSWORD for user: $FILER_USER"
-                elif echo "$rsync_output" | grep -qi "no such file\|not found"; then
-                    print_error "  ERROR: Target path not found on filer"
-                    print_error "  Path: $filer_path"
-                elif echo "$rsync_output" | grep -qi "connection refused\|network\|unreachable\|timeout"; then
-                    print_error "  ERROR: Cannot connect to filer"
-                    print_error "  Filer: $FILER_HOST (check network/firewall)"
-                else
-                    print_error "  rsync failed (exit: $rsync_exit)"
-                    if [ -n "$rsync_output" ]; then
-                        print_error "  Details: $rsync_output"
-                    fi
-                fi
-            fi
-            
-            retry_count=$((retry_count + 1))
-        done
-        
-        print_error "  rsync upload failed after $max_retries attempts"
-    fi
-    
-    # Fallback to scp with retries
-    print_warning "  Falling back to scp..."
+    # Use scp directly (requested behavior), with strict post-upload verification.
+    print_info "  Using scp transfer..."
     retry_count=0
     
     while [ $retry_count -lt $max_retries ]; do
@@ -813,9 +979,28 @@ upload_file_to_filer() {
             sleep 5
         fi
         
-        if scp_upload "$local_file" "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" "$filer_path" 2>&1 | grep -v "StrictHostKeyChecking" | grep -v "Warning"; then
-            print_success "  Uploaded: $upload_name"
-            return 0
+        local scp_out
+        set +e
+        scp_out=$(scp_upload "$local_file" "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" "$filer_path" 2>&1)
+        local scp_rc=$?
+        set -e
+        if [ $scp_rc -eq 0 ]; then
+            local remote_path="${filer_path%/}/${upload_name}"
+            local verify_out
+            verify_out=$(ssh_exec "$FILER_HOST" "$FILER_USER" "$FILER_PASSWORD" "[ -f '$remote_path' ] && du -sh '$remote_path' 2>/dev/null | cut -f1 || echo MISSING" 2>/dev/null || true)
+            if [ -n "$verify_out" ] && [ "$verify_out" != "MISSING" ]; then
+                print_success "  Uploaded: $upload_name"
+                print_info "  Verified on filer: ${verify_out}"
+                return 0
+            fi
+            print_error "  Upload command succeeded but filer verification failed: ${remote_path}"
+            [ -n "$verify_out" ] && print_error "  Verify output: $verify_out"
+        else
+            if [ -n "$scp_out" ]; then
+                print_error "  scp failed: $(echo "$scp_out" | tr '\n' ' ' | cut -c1-300)"
+            else
+                print_error "  scp failed with exit: $scp_rc"
+            fi
         fi
         
         retry_count=$((retry_count + 1))
@@ -1268,8 +1453,8 @@ echo ""
 # Note: Step numbers are dynamically updated by Python backend based on logbay inclusion
 print_header "Step 6/7: Cleanup"
 
-# No verification needed as files were already deleted after upload
-VERIFY_SUCCESS=${UPLOAD_SUCCESS_COUNT:-0}
+# Use uploaded file list as source of truth for verification summary.
+VERIFY_SUCCESS=${#UPLOADED_FILES[@]}
 VERIFY_FAILED=${UPLOAD_FAILED_COUNT:-0}
 
 print_info "Verifying uploaded files on filer..."
