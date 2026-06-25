@@ -1,0 +1,25 @@
+Defaulted container "ncm-calm" out of: ncm-calm, ncm-logging-sidecar
+*******************************************************************
+You are logged in to the calm container
+
+DO NOT EDIT ANY FILES: THIS MIGHT CORRUPT CALM DATA OR SERVICES
+
+Commands for container:
+activate - Activates calm virtual env
+code     - Changes directory to calm code directory
+home     - Changes directory to calm home, containing conf files
+status   - Prints calm service status
+********************************************************************
+
+Have Fun!
+
+I0531 04:04:53.674010     377 zookeeper_session.go:158] ZK: Starting Zookeeper session state monitor
+I0531 04:04:53.674048     377 zookeeper_session.go:161] ZK: Connection watchdog is enabled
+2026/05/31 04:04:53 ZK : Connected to 10.200.32.119:9876
+2026/05/31 04:04:53 ZK : Authenticating connection 0x0
+2026/05/31 04:04:53 eos is attempting to connect to Zookeeper
+2026/05/31 04:04:53 Unable to parse cluster id as file does not exist /home/nutanix/config/zookeeper/cluster_identifier.json
+2026/05/31 04:04:53 ZK : Authenticated: id=0x19e7c2ec5960061, timeout=40000
+I0531 04:04:53.762914     377 zookeeper_session.go:188] ZK: session 0x19e7c2ec5960061 (re)connected
+2026-05-31 04:04:53.76297Z INFO eos 377   clusterconfig.go:217 github.com/ideadevice/gamma-libs/clusterconfig.InitZookeeperSession [logger:cluster config] Created zookeeper session with Id: 116667180683493473
+2026-05-31 04:04:53.76364Z INFO eos 377   eos.go:40 main.main                                               [logger:eos] server listening at /tmp/eos.sock

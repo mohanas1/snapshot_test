@@ -1,0 +1,45 @@
+Defaulted container "ncm-policy" out of: ncm-policy, ncm-logging-sidecar
+*******************************************************************
+You are logged in policy container.
+Dont edit any files. this might corrupt Calm data.
+Commands for container:
+activate - activate's policy virtual env
+code - Changes directory to policy code
+home - Changes directory to policy home which has conf files
+status - Prints policy service status
+********************************************************************
+2026-06-23 04:52:10.05992Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:ca7730a4-a65f-480b-bea1-f9985dc052e3][pr:][rr:ca7730a4-a65f-480b-bea1-f9985dc052e3][logger:ganga] Filters: 
+time="2026-06-23T04:52:10Z" level=info msg="GET /v1/events ListEvent 11.590384ms"
+time="2026-06-23T04:57:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T04:57:09Z" level=info msg="API req body schema validation"
+2026-06-23 04:57:09.52208Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:41363697-1ca5-4c41-9dc2-56d868e77c19][pr:][rr:41363697-1ca5-4c41-9dc2-56d868e77c19][logger:ganga] Filters: 
+time="2026-06-23T04:57:09Z" level=info msg="GET /v1/events ListEvent 1.172283ms"
+time="2026-06-23T05:02:10Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:02:10Z" level=info msg="API req body schema validation"
+2026-06-23 05:02:10.41262Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:3171cb10-0e72-4a7d-96f5-9d34e59fa727][pr:][rr:3171cb10-0e72-4a7d-96f5-9d34e59fa727][logger:ganga] Filters: 
+time="2026-06-23T05:02:10Z" level=info msg="GET /v1/events ListEvent 5.224981ms"
+tail: inotify cannot be used, reverting to polling: Too many open files
+time="2026-06-23T05:07:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:07:09Z" level=info msg="API req body schema validation"
+2026-06-23 05:07:09.65787Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:52548642-a28d-4932-8e79-676414a642c3][pr:][rr:52548642-a28d-4932-8e79-676414a642c3][logger:ganga] Filters: 
+time="2026-06-23T05:07:09Z" level=info msg="GET /v1/events ListEvent 3.725498ms"
+time="2026-06-23T05:12:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:12:09Z" level=info msg="API req body schema validation"
+2026-06-23 05:12:09.92303Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:b5da6a02-09fc-4afd-a89e-145f4f145952][pr:][rr:b5da6a02-09fc-4afd-a89e-145f4f145952][logger:ganga] Filters: 
+time="2026-06-23T05:12:09Z" level=info msg="GET /v1/events ListEvent 12.944445ms"
+time="2026-06-23T05:17:08Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:17:08Z" level=info msg="API req body schema validation"
+2026-06-23 05:17:08.70502Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:b9dd9d1b-8bab-4341-9a2a-85ed52b0286c][pr:][rr:b9dd9d1b-8bab-4341-9a2a-85ed52b0286c][logger:ganga] Filters: 
+time="2026-06-23T05:17:08Z" level=info msg="GET /v1/events ListEvent 58.049923ms"
+time="2026-06-23T05:22:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:22:09Z" level=info msg="API req body schema validation"
+2026-06-23 05:22:09.92801Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:6b9ac27e-d7f5-4931-a9f6-40917a0d4602][pr:][rr:6b9ac27e-d7f5-4931-a9f6-40917a0d4602][logger:ganga] Filters: 
+time="2026-06-23T05:22:09Z" level=info msg="GET /v1/events ListEvent 11.530512ms"
+time="2026-06-23T05:27:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:27:09Z" level=info msg="API req body schema validation"
+2026-06-23 05:27:09.76230Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:d23b0ffa-bdac-48cf-9f7d-d73fd817f495][pr:][rr:d23b0ffa-bdac-48cf-9f7d-d73fd817f495][logger:ganga] Filters: 
+time="2026-06-23T05:27:09Z" level=info msg="GET /v1/events ListEvent 1.262981ms"
+time="2026-06-23T05:32:09Z" level=info msg="API req body schema validation is ON"
+time="2026-06-23T05:32:09Z" level=info msg="API req body schema validation"
+2026-06-23 05:32:09.22509Z INFO ganga 138   fiql_helper.go:64 github.com/ideadevice/gamma-libs/policydb/models.GenerateFilterQueryMod [cr:b89676d8-d51c-4207-9ec7-90af14f59c39][pr:][rr:b89676d8-d51c-4207-9ec7-90af14f59c39][logger:ganga] Filters: 
+time="2026-06-23T05:32:09Z" level=info msg="GET /v1/events ListEvent 3.676062ms"

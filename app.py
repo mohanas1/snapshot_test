@@ -45,6 +45,12 @@ app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 PROJECT_DIR = Path(__file__).resolve().parent
 LOG_DIR = PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
+RUN_LOG_DIR = LOG_DIR / "runs"
+FETCH_LOG_DIR = LOG_DIR / "fetch"
+POWER_LOG_DIR = LOG_DIR / "power"
+OPS_LOG_DIR = LOG_DIR / "ops"
+for _d in (RUN_LOG_DIR, FETCH_LOG_DIR, POWER_LOG_DIR, OPS_LOG_DIR):
+    _d.mkdir(parents=True, exist_ok=True)
 
 # Log collection jobs history
 LOG_JOBS_HISTORY_FILE = PROJECT_DIR / "data" / "log_jobs_history.jsonl"
@@ -52,12 +58,28 @@ LOG_JOBS_HISTORY_FILE.parent.mkdir(exist_ok=True)
 
 # Setup SEPARATE log files for each operation type
 LOG_FILES = {
-    'app': LOG_DIR / "app.log",              # General Flask app logs
-    'snapshots': LOG_DIR / "snapshots.log",  # Snapshot operations
-    'diskops': LOG_DIR / "diskops.log",      # Disk operations (VM/disk runner)
-    'recovery': LOG_DIR / "recovery_points.log",  # Recovery points operations
-    'logs_fetch': LOG_DIR / "logs_fetch.log",     # Fluentd/Logbay log collection
+    'app': OPS_LOG_DIR / "app.log",              # General Flask app logs
+    'snapshots': OPS_LOG_DIR / "snapshots.log",  # Snapshot operations
+    'diskops': OPS_LOG_DIR / "diskops.log",      # Disk operations (VM/disk runner)
+    'recovery': OPS_LOG_DIR / "recovery_points.log",  # Recovery points operations
+    'logs_fetch': OPS_LOG_DIR / "logs_fetch.log",     # Fluentd/Logbay log collection
 }
+
+
+def _run_log_path(run_id: str) -> Path:
+    return RUN_LOG_DIR / f"run_{run_id}.log"
+
+
+def _legacy_run_log_path(run_id: str) -> Path:
+    return LOG_DIR / f"run_{run_id}.log"
+
+
+def _fetch_job_log_path(log_job_id: str) -> Path:
+    return FETCH_LOG_DIR / f"{log_job_id}.log"
+
+
+def _power_log_path(run_id: str) -> Path:
+    return POWER_LOG_DIR / f"power_{run_id}.log"
 
 def setup_operation_logger(name, log_file):
     """Setup a separate logger for a specific operation type."""
@@ -868,12 +890,14 @@ def _allocate_run_id_and_path(pc_label: str) -> tuple[str, Path]:
             rid = f"{slug}_{ts}"
             if n:
                 rid = f"{rid}_{n}"
-            path = LOG_DIR / f"run_{rid}.log"
-            if rid not in runs and not path.is_file():
+            path = _run_log_path(rid)
+            legacy = _legacy_run_log_path(rid)
+            if rid not in runs and not path.is_file() and not legacy.is_file():
                 return rid, path
         rid = f"{slug}_{uuid.uuid4().hex}"
-        path = LOG_DIR / f"run_{rid}.log"
-        if rid not in runs and not path.is_file():
+        path = _run_log_path(rid)
+        legacy = _legacy_run_log_path(rid)
+        if rid not in runs and not path.is_file() and not legacy.is_file():
             return rid, path
     raise RuntimeError("Could not allocate a unique run_id for log file.")
 
@@ -1865,7 +1889,9 @@ def _get_run_info(run_id: str):
         if power is not None:
             out["power_progress"] = power
         return out
-    path = LOG_DIR / f"run_{run_id}.log"
+    path = _run_log_path(run_id)
+    if not path.is_file():
+        path = _legacy_run_log_path(run_id)
     if path.is_file():
         return {
             "status": "complete",
@@ -4562,7 +4588,7 @@ def api_fetch_fluentd_logs():
     # Generate unique job ID
     log_job_id = f"log_fetch_{pc_ip}_{int(time.time())}"
     abort_event = threading.Event()
-    job_log_path = LOG_DIR / f"{log_job_id}.log"
+    job_log_path = _fetch_job_log_path(log_job_id)
     try:
         job_log_path.parent.mkdir(parents=True, exist_ok=True)
         job_log_path.touch(exist_ok=True)
@@ -5594,6 +5620,18 @@ def api_fetch_fluentd_logs():
     
     def run_microservice_collection():
         """Collect selected microservice logs (*.log*) by dynamic pod discovery."""
+        pc_kube_prefix = (
+            'KUBE_ARG=""; '
+            'for kc in "nc_kubecconfig" "/home/nutanix/nc_kubecconfig" "$HOME/kube/ss_kube" "$HOME/kube/si_kube"; do '
+            'if [ -f "$kc" ]; then KUBE_ARG="--kubeconfig=$kc"; break; fi; '
+            'done; '
+            'if [ -z "$KUBE_ARG" ] && [ -x "/usr/local/nutanix/cluster/bin/mspctl" ]; then '
+            'TMP_KC="/tmp/nc_kubecconfig_auto"; '
+            '/usr/local/nutanix/cluster/bin/mspctl cls kubeconfig nc > "$TMP_KC" 2>/dev/null || true; '
+            'if [ -s "$TMP_KC" ]; then KUBE_ARG="--kubeconfig=$TMP_KC"; fi; '
+            'fi; '
+            '[ -n "$KUBE_ARG" ] || { echo "NO_VALID_KUBECONFIG"; exit 42; }; '
+        )
         service_specs = {
             "epsilon": {
                 "namespace": "ntnx-ncm-common",
@@ -5657,7 +5695,8 @@ def api_fetch_fluentd_logs():
             send_log(f"SUBSTEP_UPDATE: {micro_substep_id} Discovering pod", "INFO")
 
             discover_cmd = (
-                f"kubectl --kubeconfig=nc_kubecconfig get pods -n {namespace} "
+                f"{pc_kube_prefix}"
+                f"kubectl $KUBE_ARG get pods -n {namespace} "
                 "-o jsonpath='{range .items[*]}{.metadata.name}{\"\\n\"}{end}' "
                 f"| grep '^{pod_prefix}' | head -n 1"
             )
@@ -5672,6 +5711,12 @@ def api_fetch_fluentd_logs():
             pod_name = (pod_result.stdout or "").strip().splitlines()
             pod_name = pod_name[0].strip() if pod_name else ""
             if pod_result.returncode != 0 or not pod_name:
+                err_blob = ((pod_result.stdout or "") + " " + (pod_result.stderr or "")).strip()
+                if "NO_VALID_KUBECONFIG" in err_blob:
+                    send_log(
+                        "❌ Could not discover pod: no usable kubeconfig on PC (checked nc_kubecconfig, ~/kube/*, and mspctl generation).",
+                        "ERROR",
+                    )
                 send_log(
                     f"❌ Could not discover pod for {service}. stderr: {(pod_result.stderr or '').strip()[:240]}",
                     "ERROR",
@@ -5685,7 +5730,8 @@ def api_fetch_fluentd_logs():
 
             # 1) Build tar.gz in pod with only *.log* files.
             make_tar_cmd = (
-                f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c "
+                f"{pc_kube_prefix}"
+                f"kubectl $KUBE_ARG exec -n {namespace} {pod_name} -- sh -c "
                 f"'set -e; "
                 f"if ! find \"{log_dir}\" -maxdepth 1 -type f -name \"*.log*\" -print -quit | grep -q .; then "
                 f"echo \"NO_LOG_FILES\"; exit 44; fi; "
@@ -5716,7 +5762,8 @@ def api_fetch_fluentd_logs():
 
             # 2) Copy archive from pod to PC.
             pod_to_pc_cmd = (
-                f"kubectl --kubeconfig=nc_kubecconfig cp -n {namespace} "
+                f"{pc_kube_prefix}"
+                f"kubectl $KUBE_ARG cp -n {namespace} "
                 f"{pod_name}:{pod_archive_path} {pc_archive_path}"
             )
             pod_to_pc_ssh = [
@@ -5740,7 +5787,7 @@ def api_fetch_fluentd_logs():
                         "ssh", "-o", "StrictHostKeyChecking=no",
                         "-o", "UserKnownHostsFile=/dev/null",
                         f"nutanix@{pc_ip}",
-                        f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
+                        f"{pc_kube_prefix}kubectl $KUBE_ARG exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
                     ],
                     capture_output=True,
                     text=True,
@@ -5758,7 +5805,7 @@ def api_fetch_fluentd_logs():
                     "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null",
                     f"nutanix@{pc_ip}",
-                    f"kubectl --kubeconfig=nc_kubecconfig exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
+                    f"{pc_kube_prefix}kubectl $KUBE_ARG exec -n {namespace} {pod_name} -- sh -c 'rm -f \"{pod_archive_path}\"'",
                 ],
                 capture_output=True,
                 text=True,
@@ -6526,7 +6573,7 @@ def api_start_power_ops():
     
     # Queue the job
     run_id = str(uuid.uuid4())
-    log_file = LOG_DIR / f"power_{run_id}.log"
+    log_file = _power_log_path(run_id)
     
     run_record = {
         "run_id": run_id,

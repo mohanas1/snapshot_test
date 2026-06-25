@@ -119,13 +119,13 @@ ssh_exec() {
     shift 3
     local cmd="$@"
     
-    local ssh_cmd="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    local ssh_cmd="ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     
     if [ -n "$password" ] && command -v sshpass &> /dev/null; then
         ssh_cmd="sshpass -p '$password' $ssh_cmd"
     fi
     
-    eval "$ssh_cmd ${user}@${host} '$cmd'"
+    eval "$ssh_cmd ${user}@${host} '$cmd'" < /dev/null
 }
 
 scp_upload() {
@@ -141,7 +141,7 @@ scp_upload() {
         scp_cmd="sshpass -p '$password' $scp_cmd"
     fi
     
-    eval "$scp_cmd '$source' ${user}@${host}:'$dest/'"
+    eval "$scp_cmd '$source' ${user}@${host}:'$dest/'" < /dev/null
 }
 
 fetch_kubeconfig() {
@@ -221,6 +221,13 @@ copy_pod_logs_selective() {
         # Create namespace output directory locally
         local ns_output_dir="${output_dir}/${ns}"
         mkdir -p "$ns_output_dir"
+        local ns_filer_target="${FILER_TARGET_PATH}/${ns}"
+        if ! create_filer_folder "$ns_filer_target"; then
+            print_error "Failed to create namespace folder on filer: ${ns_filer_target}"
+            total_failed=$((total_failed + 1))
+            rm -rf "$ns_output_dir"
+            continue
+        fi
         
         # Download only matching timestamp files (not whole directories).
         local from_ts="${FLUENTD_TIME_FROM_TS:-}"
@@ -259,8 +266,20 @@ done"
                 fi
             fi
 
+            local candidate_count
+            candidate_count=$(echo "$candidate_dirs" | sed '/^$/d' | wc -l | tr -d '[:space:]')
+            local heartbeat_every="${FLUENTD_HEARTBEAT_EVERY_FOLDERS:-25}"
+            if ! [[ "$heartbeat_every" =~ ^[0-9]+$ ]] || [ "$heartbeat_every" -le 0 ]; then
+                heartbeat_every=25
+            fi
+            print_info "Scanning ${candidate_count} candidate folder(s) for ${ns} (heartbeat every ${heartbeat_every})"
+            local candidate_index=0
             while IFS= read -r pod_dir; do
                 [ -z "$pod_dir" ] && continue
+                candidate_index=$((candidate_index + 1))
+                if [ "$candidate_index" -eq 1 ] || [ $((candidate_index % heartbeat_every)) -eq 0 ] || [ "$candidate_index" -eq "$candidate_count" ]; then
+                    print_info "  [${ns}] Timestamp scan progress: folder ${candidate_index}/${candidate_count}"
+                fi
 
                 local rotated_cmd="
 for f in \"${pod_dir}\"/file.log.log.*; do
@@ -420,114 +439,157 @@ done | sort"
         local total_size_kb=$(du -sk "$ns_output_dir" 2>/dev/null | awk '{print $1}' || echo "0")
         local total_size_mb=$((total_size_kb / 1024))
         
-        # Chunk settings: split if total size > 3GB, target chunk size ~3GB
-        local chunk_size_mb=3000
+        # Chunk settings:
+        # - pack small containers together up to ~5GB
+        # - split oversized single container into ~5GB parts
+        local chunk_size_mb=5000
         local chunk_threshold_mb=3000
         
         if [ $total_size_mb -gt $chunk_threshold_mb ] && [ $download_success_count -gt 30 ]; then
-            # Split into chunks
-            local num_chunks=$(( (total_size_mb + chunk_size_mb - 1) / chunk_size_mb ))  # Ceiling division
             print_info "Large namespace detected (${total_size_mb}MB, ${download_success_count} dirs)"
-            print_info "Splitting into ${num_chunks} chunks for better reliability..."
-            
-            # Get directory sizes from local
+            print_info "Using container-wise grouping with size-aware packing/splitting"
+
+            # Build deterministic groups by container name so each tar maps to container(s).
             local dirs_with_sizes
             dirs_with_sizes=$(du -sk "${ns_output_dir}"/* 2>/dev/null | sort -k2 || true)
-            
-            # Split directories into chunks
-            local chunk_num=1
-            local current_chunk_size=0
-            local chunk_dirs=""
-            local chunk_dir_count=0
-            local current_line_num=0
-            local total_lines
-            total_lines=$(echo "$dirs_with_sizes" | grep -c '.')
-            
+            declare -A container_dirs
+            declare -A container_size_kb
+            declare -A container_dir_count
+
             while IFS= read -r line; do
                 [ -z "$line" ] && continue
-                current_line_num=$((current_line_num + 1))
-                
-                local size_kb=$(echo "$line" | awk '{print $1}')
-                local dir_path=$(echo "$line" | awk '{print $2}')
-                local dir_name=$(basename "$dir_path")
-                
-                # Add directory to current chunk
-                chunk_dirs="${chunk_dirs}${dir_name}\n"
-                chunk_dir_count=$((chunk_dir_count + 1))
-                current_chunk_size=$((current_chunk_size + size_kb))
-                
-                # Check if chunk is full or this is the last directory
-                local should_create_chunk=0
-                if [ $((current_chunk_size / 1024)) -ge $chunk_size_mb ]; then
-                    should_create_chunk=1
-                fi
-                
-                # Last directory
-                if [ "$current_line_num" -ge "$total_lines" ]; then
-                    should_create_chunk=1  # Last directory
-                fi
-                
-                if [ $should_create_chunk -eq 1 ] && [ -n "$chunk_dirs" ]; then
-                    # Create this chunk locally
-                    print_info ""
-                    print_info "  📦 Chunk ${chunk_num}/${num_chunks} (${chunk_dir_count} dirs, ~$((current_chunk_size / 1024))MB)"
-                    
-                    # Create tar locally from downloaded directories
-                    local local_tar="${output_dir}/${ns}_${chunk_num}.tar.gz"
-                    
-                    # Build list of directories for this chunk (remove trailing newlines)
-                    local dirs_array=()
-                    while IFS= read -r dir_entry; do
-                        [ -z "$dir_entry" ] && continue
-                        dirs_array+=("$dir_entry")
-                    done < <(echo -e "$chunk_dirs" | grep -v '^$')
-                    
-                    # Create tar locally
-                    print_info "  Creating tar locally..."
-                    tar_chunk_output=$(tar -czf "$local_tar" -C "$ns_output_dir" "${dirs_array[@]}" 2>&1)
-                    tar_chunk_exit=$?
-                    
-                    if [ $tar_chunk_exit -eq 0 ] && [ -f "$local_tar" ]; then
-                        local tar_size=$(du -sh "$local_tar" 2>/dev/null | cut -f1)
-                        print_success "  Created tar (${tar_size})"
-                        
-                        # Upload to filer
-                        local filer_filename="${ns}_${chunk_num}.tar.gz"
-                        print_info "  Uploading ${filer_filename}..."
-                        
-                        if upload_file_to_filer "$local_tar" "$FILER_TARGET_PATH"; then
-                            print_success "  ✓ Uploaded ${filer_filename}"
-                            UPLOADED_FILES+=("$filer_filename")
-                            UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
-                            total_copied=$((total_copied + chunk_dir_count))
-                            rm -f "$local_tar"
-                        else
-                            print_error "  ✗ Upload failed"
-                            UPLOAD_FAILED_COUNT=$((UPLOAD_FAILED_COUNT + 1))
-                            total_failed=$((total_failed + 1))
-                            rm -f "$local_tar"
-                        fi
-                    else
-                        print_error "  ✗ Tar creation failed"
-                        if [ -n "$tar_chunk_output" ]; then
-                            print_error "  Tar error: $tar_chunk_output"
-                        fi
-                        total_failed=$((total_failed + 1))
-                    fi
-                    
-                    # Reset for next chunk
-                    chunk_num=$((chunk_num + 1))
-                    chunk_dirs=""
-                    chunk_dir_count=0
-                    current_chunk_size=0
-                    
-                fi
+                local size_kb
+                local dir_path
+                local dir_name
+                local container_name
+                size_kb=$(echo "$line" | awk '{print $1}')
+                dir_path=$(echo "$line" | awk '{print $2}')
+                dir_name=$(basename "$dir_path")
+                container_name=$(echo "$dir_name" | awk -F'.' '{if (NF>=5) print $5; else print "unknown"}')
+                [ -z "$container_name" ] && container_name="unknown"
+
+                container_dirs["$container_name"]+="${dir_name}"$'\n'
+                container_size_kb["$container_name"]=$(( ${container_size_kb["$container_name"]:-0} + size_kb ))
+                container_dir_count["$container_name"]=$(( ${container_dir_count["$container_name"]:-0} + 1 ))
             done <<< "$dirs_with_sizes"
-            
-            # Clean up namespace directory after all chunks uploaded
-            print_info "Cleaning up local directories for ${ns}..."
-            rm -rf "$ns_output_dir"
-            print_info "Deleted local directories (saved disk space)"
+
+            mapfile -t container_names < <(printf '%s\n' "${!container_dirs[@]}" | sort)
+            local total_groups=${#container_names[@]}
+            print_info "Container groups detected: ${total_groups}"
+
+            # Helper to create+upload one tar from provided dirs array.
+            local _emit_index=0
+            emit_tar_for_dirs() {
+                local tar_label="$1"; shift
+                local dirs=("$@")
+                [ ${#dirs[@]} -eq 0 ] && return 0
+                _emit_index=$((_emit_index + 1))
+                local filer_filename="${ns}__${tar_label}.tar.gz"
+                local local_tar="${output_dir}/${filer_filename}"
+
+                print_info ""
+                print_info "  📦 Group ${_emit_index}: ${filer_filename} (${#dirs[@]} dirs)"
+                print_info "  Creating tar locally..."
+                tar_chunk_output=$(tar -czf "$local_tar" -C "$ns_output_dir" "${dirs[@]}" 2>&1)
+                tar_chunk_exit=$?
+                if [ $tar_chunk_exit -eq 0 ] && [ -f "$local_tar" ]; then
+                    local tar_size
+                    tar_size=$(du -sh "$local_tar" 2>/dev/null | cut -f1)
+                    print_success "  Created tar (${tar_size})"
+                    print_info "  Uploading ${filer_filename}..."
+                    if upload_file_to_filer "$local_tar" "$ns_filer_target"; then
+                        print_success "  ✓ Uploaded ${filer_filename}"
+                        UPLOADED_FILES+=("${ns}/${filer_filename}")
+                        UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
+                        total_copied=$((total_copied + ${#dirs[@]}))
+                        rm -f "$local_tar"
+                    else
+                        print_error "  ✗ Upload failed"
+                        UPLOAD_FAILED_COUNT=$((UPLOAD_FAILED_COUNT + 1))
+                        total_failed=$((total_failed + 1))
+                        rm -f "$local_tar"
+                    fi
+                else
+                    print_error "  ✗ Tar creation failed"
+                    if [ -n "$tar_chunk_output" ]; then
+                        print_error "  Tar error: $tar_chunk_output"
+                    fi
+                    total_failed=$((total_failed + 1))
+                fi
+            }
+
+            # Pack small containers together up to chunk_size_mb.
+            local pack_size_kb=0
+            local pack_containers=""
+            local pack_dirs=()
+            local flush_pack=0
+
+            for container_name in "${container_names[@]}"; do
+                local c_size_kb=${container_size_kb["$container_name"]:-0}
+                local c_size_mb=$((c_size_kb / 1024))
+                local safe_container
+                safe_container=$(echo "$container_name" | tr -cs '[:alnum:]_-' '_')
+                [ -z "$safe_container" ] && safe_container="unknown"
+                local c_dirs=()
+                while IFS= read -r dir_entry; do
+                    [ -z "$dir_entry" ] && continue
+                    c_dirs+=("$dir_entry")
+                done < <(echo -e "${container_dirs["$container_name"]}" | grep -v '^$')
+                [ ${#c_dirs[@]} -eq 0 ] && continue
+
+                # If this container itself exceeds threshold, split it into parts.
+                if [ "$c_size_mb" -gt "$chunk_size_mb" ]; then
+                    if [ ${#pack_dirs[@]} -gt 0 ]; then
+                        local bundle_label
+                        bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
+                        emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
+                        pack_dirs=()
+                        pack_size_kb=0
+                        pack_containers=""
+                    fi
+
+                    local part_idx=1
+                    local part_size_kb=0
+                    local part_dirs=()
+                    for d in "${c_dirs[@]}"; do
+                        local d_kb
+                        d_kb=$(du -sk "${ns_output_dir}/${d}" 2>/dev/null | awk '{print $1}' || echo "0")
+                        if [ $(( (part_size_kb + d_kb) / 1024 )) -gt "$chunk_size_mb" ] && [ ${#part_dirs[@]} -gt 0 ]; then
+                            emit_tar_for_dirs "${safe_container}_${part_idx}" "${part_dirs[@]}"
+                            part_idx=$((part_idx + 1))
+                            part_dirs=()
+                            part_size_kb=0
+                        fi
+                        part_dirs+=("$d")
+                        part_size_kb=$((part_size_kb + d_kb))
+                    done
+                    if [ ${#part_dirs[@]} -gt 0 ]; then
+                        emit_tar_for_dirs "${safe_container}_${part_idx}" "${part_dirs[@]}"
+                    fi
+                    continue
+                fi
+
+                # Small/medium container: pack with other small ones.
+                if [ $(( (pack_size_kb + c_size_kb) / 1024 )) -gt "$chunk_size_mb" ] && [ ${#pack_dirs[@]} -gt 0 ]; then
+                    local bundle_label
+                    bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
+                    emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
+                    pack_dirs=()
+                    pack_size_kb=0
+                    pack_containers=""
+                fi
+                pack_size_kb=$((pack_size_kb + c_size_kb))
+                pack_containers="${pack_containers}_${safe_container}"
+                for d in "${c_dirs[@]}"; do
+                    pack_dirs+=("$d")
+                done
+            done
+
+            if [ ${#pack_dirs[@]} -gt 0 ]; then
+                local bundle_label
+                bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
+                emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
+            fi
             
         else
             # Single tar (small namespace)
@@ -558,10 +620,10 @@ done | sort"
                 local filer_filename="${ns}.tar.gz"
                 print_info "Uploading ${filer_filename} to filer..."
                 
-                if upload_file_to_filer "$local_tar" "$FILER_TARGET_PATH"; then
+                if upload_file_to_filer "$local_tar" "$ns_filer_target"; then
                     print_success "Uploaded ${filer_filename} to filer"
                     total_copied=$((total_copied + download_success_count))
-                    UPLOADED_FILES+=("$filer_filename")
+                    UPLOADED_FILES+=("${ns}/${filer_filename}")
                     UPLOAD_SUCCESS_COUNT=$((UPLOAD_SUCCESS_COUNT + 1))
                     rm -f "$local_tar"
                     print_info "Deleted local tar (saved disk space)"

@@ -1,0 +1,21 @@
+Defaulted container "ncm-epsilon" out of: ncm-epsilon, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+tail: inotify cannot be used, reverting to polling: Too many open files
+2026-06-22 06:23:44.64531Z INFO durga 137283 context.go:383 epsilon/durga/engine/context.(*DurgaContext).SendMessagesToWorker [[R:d766f30e-d266-46c0-ad38-ddae3cde4b7a][T:d766f30e-d266-46c0-ad38-ddae3cde4b7a][O:resume]][cr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][pr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][rr:245061c3-0203-4225-8b78-93c4aa4db6ba][logger:main] Sending Message /runlog/send_notifications, requestID=16ccd27b-dfaa-41b3-88ac-010b95e44a26, duplicate=false
+2026-06-22 06:23:44.64542Z INFO durga 137283 jove_interface.go:235 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).call [logger:interface] Sending "POST" request at /runlog/send_notifications?duplicate_check=false
+2026-06-22 06:23:44.65312Z INFO durga 137283 context.go:356 epsilon/durga/engine/context.(*DurgaContext).UpdateMilestoneAndData [[R:d766f30e-d266-46c0-ad38-ddae3cde4b7a][T:d766f30e-d266-46c0-ad38-ddae3cde4b7a][O:resume]][cr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][pr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][rr:245061c3-0203-4225-8b78-93c4aa4db6ba][logger:main] ************** Update to ergon started, updating to milestome SUCCESS
+2026-06-22 06:23:44.65491Z INFO durga 137283 ergon.go:629 github.com/ideadevice/gamma-libs/ergon.(*Ergon).sendMsg [logger:statutils] stats item: ergon.TaskGet with time: 1 msec
+2026-06-22 06:23:44.66225Z INFO durga 137283 ergon.go:629 github.com/ideadevice/gamma-libs/ergon.(*Ergon).sendMsg [logger:statutils] stats item: ergon.TaskUpdate with time: 7 msec
+2026-06-22 06:23:44.66232Z INFO durga 137283 ergon.go:870 github.com/ideadevice/gamma-libs/ergon.(*Ergon).SetStateAndMilestone [logger:ErgonClient] Updated 75eec9ee-0560-4e6f-b4fe-5c71b5367d9e ergon task to state: kSucceeded
+2026-06-22 06:23:44.66234Z INFO durga 137283 context.go:366 epsilon/durga/engine/context.(*DurgaContext).UpdateMilestoneAndData [[R:d766f30e-d266-46c0-ad38-ddae3cde4b7a][T:d766f30e-d266-46c0-ad38-ddae3cde4b7a][O:resume]][cr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][pr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][rr:245061c3-0203-4225-8b78-93c4aa4db6ba][logger:main] ************** Update to ergon done
+2026-06-22 06:23:44.66238Z INFO durga 137283 jove_interface.go:412 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).SetErgonTaskDone [logger:interface] No auth given
+2026-06-22 06:23:44.66241Z INFO durga 137283 jove_interface.go:235 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).call [logger:interface] Sending "POST" request at /worker/durga/ergon_task/75eec9ee-0560-4e6f-b4fe-5c71b5367d9e/done?duplicate_check=false
+2026-06-22 06:23:44.66316Z INFO durga 137283 context.go:512 epsilon/durga/engine/context.(*DurgaContext).Close.func1 [[R:d766f30e-d266-46c0-ad38-ddae3cde4b7a][T:d766f30e-d266-46c0-ad38-ddae3cde4b7a][O:resume]][cr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][pr:75eec9ee-0560-4e6f-b4fe-5c71b5367d9e][rr:245061c3-0203-4225-8b78-93c4aa4db6ba][logger:main] ctx close done!

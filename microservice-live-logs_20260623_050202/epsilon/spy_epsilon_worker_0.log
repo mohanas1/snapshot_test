@@ -1,0 +1,21 @@
+Defaulted container "ncm-epsilon" out of: ncm-epsilon, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+2026-06-13 14:03:24.00623Z INFO spy_epsilon_worker 135097 traceutil.go:188 github.com/ideadevice/gamma-libs/traceutils.NewTelemetryClient [logger:traceutils] Starting config monitor for service spy
+2026-06-13 14:03:24.01807Z INFO  135097 worker.go:44 epsilon/spy_epsilon_worker/src.(*SpyWorker).Run      [module:spy_epsilon_worker] Starting spy worker...
+2026-06-13 14:03:24.01826Z INFO  135097 worker.go:53 epsilon/spy_epsilon_worker/src.(*SpyWorker).Run      [module:spy_epsilon_worker] Spy worker is running
+2026-06-17 06:13:17.29935Z WARNING  135097 priority_consumer.go:66 github.com/ideadevice/epsilon-worker/consumer.DefaultPriorityGetterFunc [module:spy_epsilon_worker][worker:consumer] Failed to parse priority from headers: strconv.Atoi: parsing "": invalid syntax, using fallback default priority: 0
+2026-06-17 06:13:17.30320Z INFO  135097 service.go:40 epsilon/spy_epsilon_worker/src.(*spyService).RunTask [O:start][R:1b489204-8864-4c7e-b29f-16ba97f6a64b][T:b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209][cr:ee1d9a22-ebba-4177-a4c6-519102f7900a][module:spy_epsilon_worker][pr:60c5882d-43cb-4741-8efa-f542dd244d20][rr:3b0e9af8-a4c9-46c3-be6e-55a15f4c11a2] RunTask Service Method Started
+2026-06-17 06:13:17.30328Z INFO  135097 executor.go:43 epsilon/spy_epsilon_worker/src.(*SpyExecutor).Execute [O:start][R:1b489204-8864-4c7e-b29f-16ba97f6a64b][T:b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209][cr:ee1d9a22-ebba-4177-a4c6-519102f7900a][module:spy_epsilon_worker][pr:60c5882d-43cb-4741-8efa-f542dd244d20][rr:3b0e9af8-a4c9-46c3-be6e-55a15f4c11a2] CallbackBody: {b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209  SUCCESS  eyJlY29kZSI6MH0=}
+2026-06-17 06:13:17.30341Z INFO spy_epsilon_worker 135097 jove_interface.go:230 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).call [logger:interface] Sending "POST" request at /durga/run/1b489204-8864-4c7e-b29f-16ba97f6a64b/runtask/b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209/resume?duplicate_check=false
+2026-06-17 06:13:17.31561Z INFO  135097 executor.go:123 epsilon/spy_epsilon_worker/src.(*SpyExecutor).CallbackDurga [module:spy_epsilon_worker] Durga Callback Response: {"ergon_task_id":"ee1d9a22-ebba-4177-a4c6-519102f7900a","duplicate_request":false}
+2026-06-17 06:13:17.31575Z INFO  135097 executor.go:67 epsilon/spy_epsilon_worker/src.(*SpyExecutor).Execute [O:start][R:1b489204-8864-4c7e-b29f-16ba97f6a64b][T:b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209][cr:ee1d9a22-ebba-4177-a4c6-519102f7900a][module:spy_epsilon_worker][pr:60c5882d-43cb-4741-8efa-f542dd244d20][rr:3b0e9af8-a4c9-46c3-be6e-55a15f4c11a2] Acked message: &{0xc0003000e0 true 0xc00017f2c0 {{} {0 0}}}
+2026-06-17 06:13:17.31579Z INFO  135097 service.go:47 epsilon/spy_epsilon_worker/src.(*spyService).RunTask [O:start][R:1b489204-8864-4c7e-b29f-16ba97f6a64b][T:b4c42c0b-f7e3-4780-a78d-e3d4e1e7c209][cr:ee1d9a22-ebba-4177-a4c6-519102f7900a][module:spy_epsilon_worker][pr:60c5882d-43cb-4741-8efa-f542dd244d20][rr:3b0e9af8-a4c9-46c3-be6e-55a15f4c11a2] RunTask Service Method Finished
+tail: inotify cannot be used, reverting to polling: Too many open files

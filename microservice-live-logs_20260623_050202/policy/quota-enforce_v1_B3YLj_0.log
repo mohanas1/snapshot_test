@@ -1,0 +1,21 @@
+Defaulted container "ncm-policy" out of: ncm-policy, ncm-logging-sidecar
+*******************************************************************
+You are logged in policy container.
+Dont edit any files. this might corrupt Calm data.
+Commands for container:
+activate - activate's policy virtual env
+code - Changes directory to policy code
+home - Changes directory to policy home which has conf files
+status - Prints policy service status
+********************************************************************
+tail: inotify cannot be used, reverting to polling: Too many open files
+2026-06-17 06:13:30.91743Z INFO quota-enforce_v1 287   execute.go:181 quota-enforce/core.(*Handler).syncExecute          [cr:0b0a8b98-47a6-403e-bdfb-b3d4a517e8ac][pr:bb816210-7a9b-4fd1-88a4-cf0e67c8dfea][rr:3b0e9af8-a4c9-46c3-be6e-55a15f4c11a2][requestID:50497b2b-bec5-4192-97a7-c8021b83959e][logger:quota-enforce] {"execution_status":"SUCCESS","approval_status":"APPROVED","message_list":[],"detail_message_list":null}
+Bringing up Quota Enforce V1 on localhost:4259
+2026-06-20 17:23:31.80404Z INFO quota-enforce_v1 381   insights.go:63 github.com/ideadevice/gamma-libs/insights.init.0   [logger:insights] mode disabled
+2026-06-20 17:23:32.20501Z INFO quota-enforce_v1 381   transports.go:93 github.com/ideadevice/gamma-libs/data.InitializeTransports [logger:main] Initializing transport objects
+2026-06-20 17:23:33.70403Z DEBUG quota-enforce_v1 381   lock.go:39 quota-enforce/lib/lock.NewLock                         [logger:lock] DB: Creating a new Postgres client
+2026-06-20 17:23:33.70411Z DEBUG quota-enforce_v1 381   db.go:82 quota-enforce/lib/lock.NewPostgresClient                 [logger:lock] DB: Checking and creating Database
+2026-06-20 17:23:33.90586Z INFO quota-enforce_v1 381   db.go:56 quota-enforce/lib/lock.createDatabase                    [logger:lock] Database lock already exists
+2026-06-20 17:23:33.90593Z DEBUG quota-enforce_v1 381   db.go:57 quota-enforce/lib/lock.createDatabase                    [logger:lock] DB: Closing Postgres client
+2026-06-20 17:23:34.00414Z ERROR quota-enforce_v1 381   db.go:98 quota-enforce/lib/lock.NewPostgresClient                 [logger:lock] DB: Ping err: <nil>
+2026-06-20 17:23:34.00464Z INFO quota-enforce_v1 381   proc.go:283 runtime.main                                          [logger:main] Quota-Enforce Plugin Serving at localhost:4259

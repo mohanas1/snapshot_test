@@ -1,0 +1,24 @@
+Defaulted container "ncm-policy" out of: ncm-policy, ncm-logging-sidecar
+*******************************************************************
+You are logged in policy container.
+Dont edit any files. this might corrupt Calm data.
+Commands for container:
+activate - activate's policy virtual env
+code - Changes directory to policy code
+home - Changes directory to policy home which has conf files
+status - Prints policy service status
+********************************************************************
+2026-06-23 03:23:35.20453Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 03:33:35.20377Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 03:43:35.20397Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 03:53:35.20703Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:03:35.20409Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:13:35.20415Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:23:35.20397Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:33:35.20395Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:43:35.20393Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 04:53:35.20414Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+tail: inotify cannot be used, reverting to polling: Too many open files
+2026-06-23 05:03:35.31216Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 05:13:35.20394Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests
+2026-06-23 05:23:35.20396Z INFO approval_v1 376   asm_amd64.s:1700 runtime.goexit                                   [logger:state-updater] Checking and updating state for EXPIRED approval requests

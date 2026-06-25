@@ -1,0 +1,30 @@
+Service: epsilon
+Namespace: ntnx-ncm-common
+Pod: ncm-epsilon-0
+Collected at: Tue Jun 23 05:02:02 UTC 2026
+------------------------------------------------------------
+Defaulted container "ncm-epsilon" out of: ncm-epsilon, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+db:postgresql                         RUNNING   pid 942, uptime 23 days, 0:59:13
+db:redis                              RUNNING   pid 435, uptime 23 days, 1:03:15
+epsilon-app:gozaffi_0                 RUNNING   pid 137389, uptime 5 days, 22:30:50
+epsilon-app:proxy_service             RUNNING   pid 879, uptime 23 days, 1:01:41
+epsilon-engine:arjun_0                RUNNING   pid 137285, uptime 5 days, 22:54:52
+epsilon-engine:durga_0                RUNNING   pid 137283, uptime 5 days, 22:54:52
+epsilon-engine:indra_0                RUNNING   pid 152549, uptime 16:01:14
+epsilon-engine:jove                   RUNNING   pid 137284, uptime 5 days, 22:54:52
+epsilon-engine:karan_0                RUNNING   pid 137287, uptime 5 days, 22:54:52
+epsilon-engine:narad                  RUNNING   pid 137357, uptime 5 days, 22:54:50
+epsilon-engine:opensearch             RUNNING   pid 501, uptime 23 days, 1:02:21
+epsilon-engine:spy_0                  RUNNING   pid 135158, uptime 9 days, 14:58:39
+epsilon-engine:spy_epsilon_worker_0   RUNNING   pid 135097, uptime 9 days, 14:58:40
+epsilon-engine:vajra_0                RUNNING   pid 500, uptime 23 days, 1:02:21
+superevents                           RUNNING   pid 433, uptime 23 days, 1:03:15

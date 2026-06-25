@@ -1,0 +1,21 @@
+Defaulted container "ncm-epsilon" out of: ncm-epsilon, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+2026-06-22 06:43:22.31845Z INFO arjun 137285 ergon.go:870 github.com/ideadevice/gamma-libs/ergon.(*Ergon).SetStateAndMilestone [logger:ErgonClient] Updated 4d375962-8a45-44f8-a180-d3a9ec65755a ergon task to state: kRunning
+2026-06-22 06:43:22.31847Z INFO arjun 137285 worker.go:296 github.com/ideadevice/gamma-libs/server/protobase.(*Worker).HandleExecutedTask [cr:4d375962-8a45-44f8-a180-d3a9ec65755a][pr:4d375962-8a45-44f8-a180-d3a9ec65755a][rr:c6b7badc-0242-98b1-8599-8138edf322de][logger:main][run_id:8333c5d1-6c26-4df8-bccb-4722f0f043b4][trl_id:c024352d-3c3b-4a24-b9db-bb82cb38877f] Sending callback to durga with callback body {"passthru_args":"eyJlY29kZSI6MCwicmVtb3RlX2Vjb2RlIjowfQ==","request_id":"88c8602e-e54a-486d-ad7b-43f9d849245b"} requestid 88c8602e-e54a-486d-ad7b-43f9d849245b duplicate resume check false
+2026-06-22 06:43:22.31849Z INFO arjun 137285 worker.go:121 github.com/ideadevice/gamma-libs/server/base.CallbackDurga [cr:4d375962-8a45-44f8-a180-d3a9ec65755a][pr:4d375962-8a45-44f8-a180-d3a9ec65755a][rr:c6b7badc-0242-98b1-8599-8138edf322de][logger:main][run_id:8333c5d1-6c26-4df8-bccb-4722f0f043b4][trl_id:c024352d-3c3b-4a24-b9db-bb82cb38877f] Not sending a callback to durga, return URL empty
+2026-06-22 06:43:22.31850Z INFO arjun 137285 ergonutil.go:87 github.com/ideadevice/gamma-libs/ergonutils.SetErgonTaskStateAndMilestone [cr:4d375962-8a45-44f8-a180-d3a9ec65755a][pr:4d375962-8a45-44f8-a180-d3a9ec65755a][rr:c6b7badc-0242-98b1-8599-8138edf322de][logger:main][run_id:8333c5d1-6c26-4df8-bccb-4722f0f043b4][trl_id:c024352d-3c3b-4a24-b9db-bb82cb38877f] Setting ergon task_id (4d375962-8a45-44f8-a180-d3a9ec65755a) milestone as 'SUCCESS' with milestonedata: {"passthru_args":"eyJlY29kZSI6MCwicmVtb3RlX2Vjb2RlIjowfQ==","request_id":"88c8602e-e54a-486d-ad7b-43f9d849245b"}
+2026-06-22 06:43:22.32008Z INFO arjun 137285 ergon.go:629 github.com/ideadevice/gamma-libs/ergon.(*Ergon).sendMsg [logger:statutils] stats item: ergon.TaskGet with time: 1 msec
+2026-06-22 06:43:22.33046Z INFO arjun 137285 ergon.go:629 github.com/ideadevice/gamma-libs/ergon.(*Ergon).sendMsg [logger:statutils] stats item: ergon.TaskUpdate with time: 10 msec
+2026-06-22 06:43:22.33052Z INFO arjun 137285 ergon.go:870 github.com/ideadevice/gamma-libs/ergon.(*Ergon).SetStateAndMilestone [logger:ErgonClient] Updated 4d375962-8a45-44f8-a180-d3a9ec65755a ergon task to state: kSucceeded
+2026-06-22 06:43:22.33054Z INFO arjun 137285 worker.go:91 github.com/ideadevice/gamma-libs/server/base.(*Worker).NotifyMasterDone [cr:4d375962-8a45-44f8-a180-d3a9ec65755a][pr:4d375962-8a45-44f8-a180-d3a9ec65755a][rr:c6b7badc-0242-98b1-8599-8138edf322de][logger:main][run_id:8333c5d1-6c26-4df8-bccb-4722f0f043b4][trl_id:c024352d-3c3b-4a24-b9db-bb82cb38877f] Notifying master for ergon task 4d375962-8a45-44f8-a180-d3a9ec65755a done
+2026-06-22 06:43:22.33059Z INFO arjun 137285 jove_interface.go:412 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).SetErgonTaskDone [logger:interface] No auth given
+2026-06-22 06:43:22.33061Z INFO arjun 137285 jove_interface.go:235 github.com/ideadevice/gamma-libs/interface.(*JoveInterface).call [logger:interface] Sending "POST" request at /worker/arjun-0-ncm-epsilon-0/ergon_task/4d375962-8a45-44f8-a180-d3a9ec65755a/done?duplicate_check=false
+tail: inotify cannot be used, reverting to polling: Too many open files

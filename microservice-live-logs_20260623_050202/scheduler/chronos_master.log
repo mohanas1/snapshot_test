@@ -1,0 +1,75 @@
+Defaulted container "ncm-scheduler" out of: ncm-scheduler, ncm-logging-sidecar
+*******************************************************************
+You are logged in epsilon container.
+Dont edit any files. this might corrupt CALM/DRAAS data.
+Commands for container:
+activate - activate's epsilon virtual env
+code - Changes directory to epsilon code
+home - Changes directory to epsilon home which has conf files
+status - Prints epsilon service status
+********************************************************************
+tail: inotify cannot be used, reverting to polling: Too many open files
+2026-06-23 04:59:06.54726Z INFO jove 179   jobexpander.go:438 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander waking up through timer channel
+2026-06-23 04:59:06.54732Z INFO jove 179   jobexpander.go:357 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Processing jobs
+2026-06-23 04:59:06.54733Z INFO jove 179   jobexpander.go:74 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Checking job schedules upto: 2026-06-23 05:11:06.547311332 +0000 UTC
+2026-06-23 04:59:06.54842Z INFO jove 179   jobexpander.go:81 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] No schedules for dispatch
+2026-06-23 04:59:06.54846Z INFO jove 179   jobexpander.go:83 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Schedules for dispatch: []
+2026-06-23 04:59:06.54888Z INFO jove 179   jobexpander.go:402 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander will sleep for 9m59.99843229s
+2026-06-23 04:59:06.54891Z INFO jove 179   jobexpander.go:408 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander entered event loop, sleeping until update or timer fires
+2026-06-23 04:59:06.54895Z INFO jove 179   jobexpander.go:198 ces/jove/scheduler/expander.(*JobExpander).send [logger:jobexpander.jobexpander] Emptying dispatch queue, there are 0 items
+2026-06-23 05:01:04.20919Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 5 msec
+2026-06-23 05:01:04.25071Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 41 msec
+2026-06-23 05:03:04.21028Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 6 msec
+2026-06-23 05:03:04.21945Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 9 msec
+2026-06-23 05:05:04.20927Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 6 msec
+2026-06-23 05:05:04.21999Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 10 msec
+2026-06-23 05:07:04.21003Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 6 msec
+2026-06-23 05:07:04.21601Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 5 msec
+2026-06-23 05:09:04.20700Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 3 msec
+2026-06-23 05:09:04.21235Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 5 msec
+2026-06-23 05:09:06.54788Z INFO jove 179   jobexpander.go:438 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander waking up through timer channel
+2026-06-23 05:09:06.54795Z INFO jove 179   jobexpander.go:357 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Processing jobs
+2026-06-23 05:09:06.54797Z INFO jove 179   jobexpander.go:74 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Checking job schedules upto: 2026-06-23 05:21:06.547942848 +0000 UTC
+2026-06-23 05:09:06.54886Z INFO jove 179   jobexpander.go:81 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] No schedules for dispatch
+2026-06-23 05:09:06.54888Z INFO jove 179   jobexpander.go:83 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Schedules for dispatch: []
+2026-06-23 05:09:06.54930Z INFO jove 179   jobexpander.go:402 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander will sleep for 9m59.998652917s
+2026-06-23 05:09:06.54934Z INFO jove 179   jobexpander.go:408 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander entered event loop, sleeping until update or timer fires
+2026-06-23 05:09:06.54936Z INFO jove 179   jobexpander.go:198 ces/jove/scheduler/expander.(*JobExpander).send [logger:jobexpander.jobexpander] Emptying dispatch queue, there are 0 items
+2026-06-23 05:11:04.20803Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 4 msec
+2026-06-23 05:11:04.22893Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 20 msec
+2026-06-23 05:13:04.20710Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 3 msec
+2026-06-23 05:13:04.23499Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 27 msec
+2026-06-23 05:15:04.20711Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 4 msec
+2026-06-23 05:15:04.22549Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 18 msec
+2026-06-23 05:17:04.20893Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 6 msec
+2026-06-23 05:17:04.22459Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 15 msec
+2026-06-23 05:19:04.20842Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 5 msec
+2026-06-23 05:19:04.22275Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 14 msec
+2026-06-23 05:19:06.54874Z INFO jove 179   jobexpander.go:438 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander waking up through timer channel
+2026-06-23 05:19:06.54883Z INFO jove 179   jobexpander.go:357 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Processing jobs
+2026-06-23 05:19:06.54885Z INFO jove 179   jobexpander.go:74 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Checking job schedules upto: 2026-06-23 05:31:06.548809193 +0000 UTC
+2026-06-23 05:19:06.54990Z INFO jove 179   jobexpander.go:81 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] No schedules for dispatch
+2026-06-23 05:19:06.54994Z INFO jove 179   jobexpander.go:83 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Schedules for dispatch: []
+2026-06-23 05:19:06.55042Z INFO jove 179   jobexpander.go:402 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander will sleep for 9m59.998384467s
+2026-06-23 05:19:06.55044Z INFO jove 179   jobexpander.go:408 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander entered event loop, sleeping until update or timer fires
+2026-06-23 05:19:06.55046Z INFO jove 179   jobexpander.go:198 ces/jove/scheduler/expander.(*JobExpander).send [logger:jobexpander.jobexpander] Emptying dispatch queue, there are 0 items
+2026-06-23 05:21:04.20868Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 6 msec
+2026-06-23 05:21:04.22860Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 19 msec
+2026-06-23 05:23:04.20698Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 4 msec
+2026-06-23 05:23:04.22946Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 22 msec
+2026-06-23 05:25:04.20754Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 4 msec
+2026-06-23 05:25:04.23929Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 31 msec
+2026-06-23 05:27:04.20897Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 5 msec
+2026-06-23 05:27:04.22610Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 17 msec
+2026-06-23 05:29:04.20733Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 4 msec
+2026-06-23 05:29:04.21757Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 10 msec
+2026-06-23 05:29:06.54891Z INFO jove 179   jobexpander.go:438 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander waking up through timer channel
+2026-06-23 05:29:06.54899Z INFO jove 179   jobexpander.go:357 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Processing jobs
+2026-06-23 05:29:06.54901Z INFO jove 179   jobexpander.go:74 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Checking job schedules upto: 2026-06-23 05:41:06.548981624 +0000 UTC
+2026-06-23 05:29:06.55011Z INFO jove 179   jobexpander.go:81 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] No schedules for dispatch
+2026-06-23 05:29:06.55013Z INFO jove 179   jobexpander.go:83 ces/jove/scheduler/expander.(*JobExpander).processJobs [logger:jobexpander.jobexpander] Schedules for dispatch: []
+2026-06-23 05:29:06.55062Z INFO jove 179   jobexpander.go:402 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander will sleep for 9m59.998364132s
+2026-06-23 05:29:06.55066Z INFO jove 179   jobexpander.go:408 ces/jove/scheduler/expander.(*JobExpander).start [logger:jobexpander.jobexpander] Job expander entered event loop, sleeping until update or timer fires
+2026-06-23 05:29:06.55068Z INFO jove 179   jobexpander.go:198 ces/jove/scheduler/expander.(*JobExpander).send [logger:jobexpander.jobexpander] Emptying dispatch queue, there are 0 items
+2026-06-23 05:31:04.21597Z INFO jove 179   worker.go:328 ces/jove/worker.(*Worker).GetStateEntity            [logger:statutils] stats item: db.GetWorkerStateWithWorkerID with time: 12 msec
+2026-06-23 05:31:04.22511Z INFO jove 179   worker.go:698 ces/jove/worker.(*Worker).stateEntityUpdater        [logger:statutils] stats item: db.Save.WorkerState with time: 9 msec

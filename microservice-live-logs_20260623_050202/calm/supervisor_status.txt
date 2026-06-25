@@ -1,0 +1,30 @@
+Service: calm
+Namespace: ntnx-ncm-self-service
+Pod: ncm-calm-0
+Collected at: Tue Jun 23 05:02:03 UTC 2026
+------------------------------------------------------------
+Defaulted container "ncm-calm" out of: ncm-calm, ncm-logging-sidecar
+*******************************************************************
+You are logged in to the calm container
+
+DO NOT EDIT ANY FILES: THIS MIGHT CORRUPT CALM DATA OR SERVICES
+
+Commands for container:
+activate - Activates calm virtual env
+code     - Changes directory to calm code directory
+home     - Changes directory to calm home, containing conf files
+status   - Prints calm service status
+********************************************************************
+
+Have Fun!
+
+calm:algalon                     RUNNING   pid 378, uptime 23 days, 0:57:12
+calm:eos                         RUNNING   pid 377, uptime 23 days, 0:57:12
+calm:goiris                      RUNNING   pid 942755, uptime 10 days, 21:38:15
+calm:grpc_server                 RUNNING   pid 381, uptime 23 days, 0:57:12
+calm:helios                      RUNNING   pid 376, uptime 23 days, 0:57:12
+calm:hercules_0                  RUNNING   pid 262980, uptime 18 days, 16:13:35
+calm:jove                        RUNNING   pid 262965, uptime 18 days, 16:13:37
+calm:ss_epsilon_worker           RUNNING   pid 380, uptime 23 days, 0:57:12
+calm:styx                        RUNNING   pid 210197, uptime 19 days, 13:25:58
+superevents                      RUNNING   pid 262732, uptime 18 days, 16:17:40

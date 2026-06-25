@@ -4691,6 +4691,18 @@
               </p>
             </div>
           </div>
+          <div id="schedule-for-loop-interval-section" style="display: none; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start;">
+            <label for="for_loop_interval_minutes" style="font-weight: 500; color: var(--text-dark); text-align: right; padding-top: 0.65rem;">Recurring interval</label>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <input id="for_loop_interval_minutes" type="number" min="1" value="60" style="width: 140px; padding: 0.65rem; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 0.95rem;" />
+                <span style="color: var(--text-muted); font-weight: 500;">minutes</span>
+              </div>
+              <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                ⏱️ Delay between loop runs.
+              </p>
+            </div>
+          </div>
           
           <!-- Info Box -->
           <div style="padding: 1rem 1.25rem; background: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 6px;">
@@ -4767,9 +4779,11 @@
         const cronSection = document.getElementById('schedule-cron-section');
         const recurringSection = document.getElementById('schedule-recurring-section');
         const forLoopSection = document.getElementById('schedule-for-loop-section');
+        const forLoopIntervalSection = document.getElementById('schedule-for-loop-interval-section');
         const datetimePicker = document.getElementById('schedule_datetime_picker');
         const hiddenUtcField = document.getElementById('schedule_one_time_utc');
         const recurringInput = document.getElementById('recurring_interval_minutes');
+        const forLoopIntervalInput = document.getElementById('for_loop_interval_minutes');
         const cronInput = document.getElementById('schedule_cron_expr');
         const loopCountInput = document.getElementById('schedule_loop_count');
         const presetButtons = document.querySelectorAll('.schedule-preset-btn');
@@ -4812,16 +4826,22 @@
             cronSection.style.display = 'none';
             recurringSection.style.display = 'none';
             forLoopSection.style.display = 'none';
+            if (forLoopIntervalSection) forLoopIntervalSection.style.display = 'none';
           } else if (kind === 'for_loop') {
             oneTimeSection.style.display = 'none';
             cronSection.style.display = 'none';
             recurringSection.style.display = 'none';
             forLoopSection.style.display = 'grid';
+            if (forLoopIntervalSection) forLoopIntervalSection.style.display = 'grid';
+            if (forLoopIntervalInput && recurringInput) {
+              forLoopIntervalInput.value = recurringInput.value || '60';
+            }
           } else {
             oneTimeSection.style.display = 'none';
             cronSection.style.display = 'grid';
             recurringSection.style.display = 'none';
             forLoopSection.style.display = 'none';
+            if (forLoopIntervalSection) forLoopIntervalSection.style.display = 'none';
           }
           updateScheduleSummary();
         }
@@ -5073,6 +5093,23 @@
         scheduleSummaryReady = true;
         updateScheduleSummary();
         if (loopCountInput) loopCountInput.addEventListener('input', updateScheduleSummary);
+        if (forLoopIntervalInput && recurringInput) {
+          const syncForLoopToRecurring = () => {
+            const val = String(forLoopIntervalInput.value || '').trim();
+            recurringInput.value = val || '60';
+            updateScheduleSummary();
+          };
+          forLoopIntervalInput.addEventListener('input', syncForLoopToRecurring);
+          forLoopIntervalInput.addEventListener('change', syncForLoopToRecurring);
+        }
+        if (recurringInput && forLoopIntervalInput) {
+          const syncRecurringToForLoop = () => {
+            forLoopIntervalInput.value = recurringInput.value || '60';
+            updateScheduleSummary();
+          };
+          recurringInput.addEventListener('input', syncRecurringToForLoop);
+          recurringInput.addEventListener('change', syncRecurringToForLoop);
+        }
         if (cronInput) cronInput.addEventListener('input', updateScheduleSummary);
         
       })();
