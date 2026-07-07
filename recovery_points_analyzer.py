@@ -135,6 +135,23 @@ def make_auth_header(username: str, password: str) -> str:
     return f"Basic {b64_credentials}"
 
 
+def _normalize_recovery_point_type(rp: Dict) -> str:
+    """Best-effort normalize recovery point consistency type."""
+    raw = (
+        rp.get("recoveryPointType")
+        or rp.get("recovery_point_type")
+        or rp.get("consistencyType")
+        or rp.get("consistency_type")
+        or ((rp.get("status") or {}).get("recoveryPointType"))
+        or ((rp.get("status") or {}).get("recovery_point_type"))
+        or ""
+    )
+    s = str(raw).strip().upper()
+    if s in {"CRASH_CONSISTENT", "APPLICATION_CONSISTENT"}:
+        return s
+    return "UNKNOWN"
+
+
 def get_all_vms_with_recovery_points(
     session: requests.Session,
     base_url: str,
@@ -461,6 +478,10 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
     vm_details = []
     total_reclaimable_bytes = 0
     total_recovery_points = 0
+    rp_type_counts = {
+        "CRASH_CONSISTENT": 0,
+        "APPLICATION_CONSISTENT": 0,
+    }
     lock = threading.Lock()
     processed_count = [0]  # Use list for mutable counter
     
@@ -506,12 +527,14 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             formatted_recovery_points = []
             for rp in recovery_points:
                 size_bytes = rp.get('totalExclusiveUsageBytes', 0)
+                rp_type = _normalize_recovery_point_type(rp)
                 formatted_recovery_points.append({
                     'ext_id': rp.get('extId', ''),  # UUID for delete operations
                     'name': rp.get('name', 'Unnamed'),
                     'created_time': rp.get('creationTime', 'Unknown'),
                     'size_bytes': size_bytes,
                     'size_formatted': format_bytes(size_bytes),
+                    'recovery_point_type': rp_type,
                     'expiration_time': rp.get('expirationTime', 'N/A'),
                     'status': rp.get('status', 'UNKNOWN'),
                     'cluster_name': vm_meta.get('cluster_name') or 'Unknown',
@@ -522,6 +545,10 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
             with lock:
                 total_reclaimable_bytes += vm_reclaimable
                 total_recovery_points += len(recovery_points)
+                for rp in formatted_recovery_points:
+                    tp = str(rp.get("recovery_point_type") or "").upper()
+                    if tp in rp_type_counts:
+                        rp_type_counts[tp] += 1
                 processed_count[0] += 1
                 
                 vm_details.append({
@@ -628,6 +655,8 @@ def analyze_recovery_points(pc_ip: str, pc_user: str, pc_password: str,
         'duration_seconds': analysis_duration,
         'total_vms': len(vms),
         'total_recovery_points': total_recovery_points,
+        'crash_consistent_count': int(rp_type_counts.get("CRASH_CONSISTENT", 0)),
+        'application_consistent_count': int(rp_type_counts.get("APPLICATION_CONSISTENT", 0)),
         'total_reclaimable_bytes': total_reclaimable_bytes,
         'total_reclaimable_formatted': format_bytes(total_reclaimable_bytes),
         'vms': vm_details,

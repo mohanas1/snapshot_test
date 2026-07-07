@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Additional | Nutanix Operations</title>
+  <style>
+    :root {
+      --bg-main: #f6f8fb;
+      --card-bg: #ffffff;
+      --text-primary: #1f2937;
+      --text-muted: #6b7280;
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --border-gray: #e5e7eb;
+      --primary-blue: #3b82f6;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --neutral: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-primary); }
+    .body-content { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; padding: 1rem 0; }
+    .sidebar-brand { padding: 0 1.2rem 1rem; font-weight: 700; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .sidebar-nav { padding: 1rem 0.6rem; }
+    .nav-group-title { color: #9ca3af; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; padding: 0 0.7rem 0.5rem; }
+    .nav-item { display: block; color: #d1d5db; text-decoration: none; padding: 0.68rem 0.7rem; border-radius: 8px; margin-bottom: 0.3rem; }
+    .nav-item:hover { background: #23234a; color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .main-content { flex: 1; padding: 1.5rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-gray); border-radius: 12px; padding: 1.2rem; }
+    h1 { margin: 0 0 0.3rem; font-size: 1.7rem; }
+    .sub { color: var(--text-muted); margin: 0 0 1rem; }
+    .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    th, td { border: 1px solid var(--border-gray); padding: 0.62rem; text-align: left; vertical-align: top; font-size: 0.92rem; }
+    th { background: #f3f4f6; }
+    .pill { display: inline-block; font-size: 0.75rem; padding: 0.16rem 0.5rem; background: #dbeafe; color: #1d4ed8; border-radius: 999px; font-weight: 600; }
+    .toolbar { display: flex; gap: 0.5rem; align-items: center; }
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-edit { background: #f3f4f6; color: #111827; border-color: #d1d5db; }
+    .btn-save { background: var(--success); color: white; }
+    .btn-cancel { background: white; color: #111827; border-color: #d1d5db; }
+    .btn-delete { background: var(--danger); color: white; }
+    .row-actions { display: flex; gap: 0.4rem; }
+    .edit-input {
+      width: 100%;
+      padding: 0.4rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: #111827;
+    }
+  </style>
+</head>
+<body>
+  <div class="body-content">
+    <div class="sidebar">
+      <div class="sidebar-brand">Nutanix Operations</div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="nav-item">Bulk Snapshots</a>
+        <a href="#" class="nav-item">Snapshot History</a>
+        <a href="#" class="nav-item">Disk Operations</a>
+        <a href="#" class="nav-item">VM Power Ops</a>
+        <a href="{{ url_for('recovery_points') }}" class="nav-item">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('additional') }}" class="nav-item active">Additional</a>
+      </nav>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h1>Additional</h1>
+        <p class="sub">Reference data and supplementary details.</p>
+
+        <div class="section-header">
+          <h2 class="section-title">Expiry Details <span class="pill">NCM 2.1 Notes Included</span></h2>
+          <div class="toolbar">
+            <button type="button" class="btn btn-primary" id="add-row-btn">+ Add New Row</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Component / Feature</th>
+                <th>Entity / Data Type</th>
+                <th>Retention / Expiry Limit</th>
+                <th>Details &amp; NCM 2.1 Updates</th>
+                <th style="width: 220px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expiry-table-body">
+              <tr><td>AIOps (Signals &amp; Monitoring)</td><td>Audits &amp; Events</td><td>90 days (Default)</td><td>Configurable via SIGNALS_SERVER_GFLAGS. Deletion also triggers if total count exceeds 250k (single-node) or 500k (3-node PC).</td><td class="row-actions"></td></tr>
+              <tr><td>AIOps (Signals &amp; Monitoring)</td><td>Alerts</td><td>90 days (Default)</td><td>Standard alert retention.</td><td class="row-actions"></td></tr>
+              <tr><td>AIOps (Signals &amp; Monitoring)</td><td>Noisy Alerts/Audits/Events</td><td>21 days</td><td>Specific limitation applied to high-volume noisy signals.</td><td class="row-actions"></td></tr>
+              <tr><td>Cost Governance</td><td>Standard Billing Data</td><td>365 days</td><td>Standard retention for standard resource billing data.</td><td class="row-actions"></td></tr>
+              <tr><td>Cost Governance</td><td>Low Cardinality Reports</td><td>365 days</td><td>Standard historical reporting data.</td><td class="row-actions"></td></tr>
+              <tr><td>Cost Governance</td><td>High Cardinality Reports</td><td>3 months</td><td>Limits reporting window for highly granular reports (e.g., Name/VM Group By) to ensure stability.</td><td class="row-actions"></td></tr>
+              <tr><td>Cost Governance (NCM 2.1)</td><td>Recovery Points (RPs)</td><td>Top 10 by size per VM</td><td><strong>[New in 2.1]</strong> Only the top 10 snapshots by size are retained individually. All others are aggregated into a single line item.</td><td class="row-actions"></td></tr>
+              <tr><td>Security Planning (NCM 2.1)</td><td>IPFIX &amp; Policy Hit Logs</td><td>90+ days</td><td><strong>[New in 2.1]</strong> Brought to on-prem environments. Supports archiving logs to customer-chosen storage (e.g., S3 bucket in CSV format).</td><td class="row-actions"></td></tr>
+              <tr><td>Self-Service (Calm/Apps)</td><td>Archived Data</td><td>15 days (Max)</td><td>Applies to App Runlogs, Day-2 Actions, and Runbook Executions.</td><td class="row-actions"></td></tr>
+              <tr><td>Self-Service (Calm/Apps)</td><td>App Creation / Deletion</td><td>37 days</td><td>The system allows a maximum of 10,000 app creations/deletions. After 37 days, this capacity limit resets.</td><td class="row-actions"></td></tr>
+              <tr><td>Self-Service (Calm/Apps)</td><td>Soft-Deleted Entities</td><td>T + 37 days</td><td>Entities are marked as deleted and physically purged from the IDF 37 days later.</td><td class="row-actions"></td></tr>
+              <tr><td>Infrastructure Data Fabric</td><td>Entity Expiry / TTL</td><td>Evaluated every 24 hours</td><td>IDF updates expiry daily. Overall expiry is calculated as the maximum of all metric TTLs combined with the current time.</td><td class="row-actions"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function buildActionButtons() {
+      return `
+        <button type="button" class="btn btn-edit" data-action="edit">Edit</button>
+        <button type="button" class="btn btn-save" data-action="save" style="display:none;">Save</button>
+        <button type="button" class="btn btn-cancel" data-action="cancel" style="display:none;">Cancel</button>
+        <button type="button" class="btn btn-delete" data-action="delete">Delete</button>
+      `;
+    }
+
+    function setRowNormalMode(row, original = null) {
+      const cells = Array.from(row.querySelectorAll('td')).slice(0, 4);
+      cells.forEach((cell, idx) => {
+        const input = cell.querySelector('textarea, input');
+        if (!input) return;
+        cell.innerHTML = original ? original[idx] : input.value;
+      });
+      row.removeAttribute('data-editing');
+      delete row.dataset.original;
+      toggleButtons(row, false);
+    }
+
+    function setRowEditMode(row) {
+      const cells = Array.from(row.querySelectorAll('td')).slice(0, 4);
+      const original = cells.map((c) => c.innerHTML);
+      row.dataset.original = JSON.stringify(original);
+      row.setAttribute('data-editing', '1');
+      cells.forEach((cell) => {
+        const text = cell.textContent.trim();
+        cell.innerHTML = `<textarea class="edit-input" rows="3">${text}</textarea>`;
+      });
+      toggleButtons(row, true);
+    }
+
+    function toggleButtons(row, editing) {
+      const edit = row.querySelector('[data-action="edit"]');
+      const save = row.querySelector('[data-action="save"]');
+      const cancel = row.querySelector('[data-action="cancel"]');
+      const del = row.querySelector('[data-action="delete"]');
+      if (edit) edit.style.display = editing ? 'none' : 'inline-block';
+      if (save) save.style.display = editing ? 'inline-block' : 'none';
+      if (cancel) cancel.style.display = editing ? 'inline-block' : 'none';
+      if (del) del.style.display = editing ? 'none' : 'inline-block';
+    }
+
+    function wireRow(row) {
+      let actionsCell = row.querySelector('.row-actions');
+      if (!actionsCell) {
+        actionsCell = document.createElement('td');
+        actionsCell.className = 'row-actions';
+        row.appendChild(actionsCell);
+      }
+      actionsCell.innerHTML = buildActionButtons();
+
+      actionsCell.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+
+        if (action === 'edit') {
+          setRowEditMode(row);
+          return;
+        }
+        if (action === 'save') {
+          setRowNormalMode(row);
+          return;
+        }
+        if (action === 'cancel') {
+          const original = row.dataset.original ? JSON.parse(row.dataset.original) : null;
+          setRowNormalMode(row, original);
+          return;
+        }
+        if (action === 'delete') {
+          row.remove();
+        }
+      });
+    }
+
+    function addRow() {
+      const tbody = document.getElementById('expiry-table-body');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>New Component</td>
+        <td>New Entity</td>
+        <td>Retention</td>
+        <td>Details</td>
+        <td class="row-actions"></td>
+      `;
+      tbody.appendChild(row);
+      wireRow(row);
+      setRowEditMode(row);
+    }
+
+    document.querySelectorAll('#expiry-table-body tr').forEach(wireRow);
+    document.getElementById('add-row-btn').addEventListener('click', addRow);
+  </script>
+</body>
+</html>

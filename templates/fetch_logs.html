@@ -1119,6 +1119,7 @@
         <a href="#" class="sidebar-link">Disk Operations</a>
         <a href="{{ url_for('recovery_points') }}" class="sidebar-link">Recovery Points Analysis</a>
         <a href="{{ url_for('fetch_logs') }}" class="sidebar-link active">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('additional') }}" class="sidebar-link">Additional</a>
       </div>
     </aside>
     
@@ -1145,6 +1146,17 @@
               📍 Enter the IP address or hostname of your Prism Central
             </div>
             <div class="field-error-message" id="pcIpError">Prism Central IP / Hostname is required.</div>
+          </div>
+          
+          <div class="form-group" id="pcTargetTypeGroup">
+            <label class="form-label" for="pcTargetType">Target Type *</label>
+            <select id="pcTargetType" name="pcTargetType" class="form-input" required>
+              <option value="pc" selected>PC (Prism Central)</option>
+              <option value="pe">PE (Prism Element)</option>
+            </select>
+            <div class="form-help-text">
+              PE mode disables Fluentd and Microservice collection; only supported Logbay services remain.
+            </div>
           </div>
           
           <div class="form-group" id="filerServerGroup">
@@ -1315,7 +1327,7 @@
               </div>
 
               <!-- Fluentd Section -->
-              <div style="margin-bottom: 1.5rem;">
+              <div id="fluentdSection" style="margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
                   <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
                     <span style="color: #3B82F6;">📦</span>
@@ -1467,6 +1479,30 @@
                            style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
                     <span style="font-size: 0.875rem;">nginx</span>
                   </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="cerebro" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">cerebro</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="magneto" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">magneto</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="ergon" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">ergon</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; transition: all 0.2s;" 
+                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" class="filter-checkbox" data-type="logbay" value="uhura" 
+                           style="width: 16px; height: 16px; cursor: pointer; accent-color: #10B981;">
+                    <span style="font-size: 0.875rem;">uhura</span>
+                  </label>
                 </div>
                 
                 <!-- Global historical duration options (Fluentd + Logbay) -->
@@ -1531,13 +1567,13 @@
                     <span style="font-size: 0.8125rem; color: #6B7280;">(streams current logs only)</span>
                   </div>
                   <div class="logbay-live-note" style="display:block; margin-bottom: 0;">
-                    Live mode streams current logs from PC and microservice pods. Unsupported in live mode: <strong>epsilon</strong>, <strong>nucalm</strong>, <strong>domain_manager</strong>.
+                    Live mode streams current logs from PC and microservice pods. Unsupported in live mode: <strong>epsilon</strong>, <strong>nucalm</strong>, <strong>domain_manager</strong>, <strong>magneto</strong>, <strong>ergon</strong>, <strong>uhura</strong>.
                   </div>
                 </div>
               </div>
 
               <!-- Microservice Logs Section -->
-              <div style="padding-top: 1.5rem; border-top: 1px solid #E5E7EB; margin-top: 1.5rem;">
+              <div id="microserviceSection" style="padding-top: 1.5rem; border-top: 1px solid #E5E7EB; margin-top: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
                   <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
                     <span style="color: #8B5CF6;">🧩</span>
@@ -1796,6 +1832,13 @@
       document.querySelectorAll('input[name="globalCollectionMode"]').forEach((radio) => {
         radio.addEventListener('change', updateGlobalCollectionModeUI);
       });
+      const pcTargetTypeEl = document.getElementById('pcTargetType');
+      if (pcTargetTypeEl) {
+        pcTargetTypeEl.addEventListener('change', () => {
+          updatePcTargetTypeUI();
+          updateGlobalCollectionModeUI();
+        });
+      }
       document.querySelectorAll('.filter-checkbox[data-type="fluentd"]').forEach((cb) => {
         cb.addEventListener('change', updateMspByFluentdSelection);
       });
@@ -1821,6 +1864,7 @@
       }
       updateMicroserviceLiveOnlyUI();
       updateGlobalCollectionModeUI();
+      updatePcTargetTypeUI();
       updateMspByFluentdSelection();
     });
     
@@ -1929,18 +1973,70 @@
 
       updateLogbaySectionByMode(mode);
       updateMspByFluentdSelection();
+      updatePcTargetTypeUI();
       updateMicroserviceLiveOnlyUI();
       lastGlobalCollectionMode = mode;
     }
 
-    function updateLogbaySectionByMode(mode) {
-      const unavailableInLive = new Set(['epsilon', 'nucalm', 'domain_manager']);
+    function updatePcTargetTypeUI() {
+      const targetType = (document.getElementById('pcTargetType')?.value || 'pc').toLowerCase();
+      const isPe = targetType === 'pe';
+      const peBlockedLogbay = new Set(['epsilon', 'nucalm', 'domain_manager', 'iam', 'aplos']);
+      const fluentdSection = document.getElementById('fluentdSection');
+      const microserviceSection = document.getElementById('microserviceSection');
+      if (fluentdSection) {
+        fluentdSection.style.opacity = isPe ? '0.55' : '1';
+      }
+      if (microserviceSection) {
+        microserviceSection.style.opacity = isPe ? '0.55' : '1';
+      }
+
+      const fluentdChecks = Array.from(document.querySelectorAll('.filter-checkbox[data-type="fluentd"]'));
+      fluentdChecks.forEach((cb) => {
+        const label = cb.closest('label');
+        cb.disabled = isPe;
+        if (isPe) cb.checked = false;
+        if (label) label.classList.toggle('service-unavailable-live', isPe);
+      });
+
+      const microChecks = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]'));
+      microChecks.forEach((cb) => {
+        const label = cb.closest('label');
+        cb.disabled = isPe;
+        if (isPe) cb.checked = false;
+        if (label) label.classList.toggle('service-unavailable-live', isPe);
+      });
+
+      const microLiveContainer = document.getElementById('microserviceLiveOnlyContainer');
+      if (microLiveContainer) {
+        microLiveContainer.style.display = isPe ? 'none' : '';
+      }
+
+      const mode = document.querySelector('input[name="globalCollectionMode"]:checked')?.value || 'historical';
       const logbayChecks = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]'));
+      logbayChecks.forEach((cb) => {
+        const label = cb.closest('label');
+        if (!label) return;
+        const notAllowed = isPe && peBlockedLogbay.has(cb.value);
+        cb.disabled = !!notAllowed;
+        if (notAllowed) cb.checked = false;
+        label.classList.toggle('service-unavailable-live', !!notAllowed);
+      });
+      updateLogbaySectionByMode(mode);
+      validateFormAndUpdateButton();
+    }
+
+    function updateLogbaySectionByMode(mode) {
+      const unavailableInLive = new Set(['epsilon', 'nucalm', 'domain_manager', 'magneto', 'ergon', 'uhura']);
+      const logbayChecks = Array.from(document.querySelectorAll('.filter-checkbox[data-type="logbay"]'));
+      const targetType = (document.getElementById('pcTargetType')?.value || 'pc').toLowerCase();
+      const isPe = targetType === 'pe';
+      const unavailableInPe = new Set(['epsilon', 'nucalm', 'domain_manager', 'iam', 'aplos']);
 
       logbayChecks.forEach((cb) => {
         const label = cb.closest('label');
         if (!label) return;
-        const notAllowed = mode === 'live' && unavailableInLive.has(cb.value);
+        const notAllowed = (mode === 'live' && unavailableInLive.has(cb.value)) || (isPe && unavailableInPe.has(cb.value));
         cb.disabled = !!notAllowed;
         if (notAllowed) cb.checked = false;
         label.classList.toggle('service-unavailable-live', !!notAllowed);
@@ -2966,6 +3062,10 @@
       updatePathPreview();
       validateFormAndUpdateButton();
     });
+    document.getElementById('pcTargetType').addEventListener('change', function() {
+      updatePcTargetTypeUI();
+      validateFormAndUpdateButton();
+    });
     document.getElementById('filerServer').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('folderLevel1').addEventListener('change', validateFormAndUpdateButton);
     document.getElementById('folderLevel2').addEventListener('change', validateFormAndUpdateButton);
@@ -3296,6 +3396,8 @@
           .map(cb => cb.value);
         const microserviceServices = Array.from(document.querySelectorAll('.filter-checkbox[data-type="microservice"]:checked'))
           .map(cb => cb.value);
+        const pcTargetType = (document.getElementById('pcTargetType')?.value || 'pc').toLowerCase();
+        const pcPassword = pcTargetType === 'pe' ? 'RDMCluster.123' : 'nutanix/4u';
         const globalCollectionMode = document.querySelector('input[name="globalCollectionMode"]:checked')?.value || 'historical';
         const microserviceLiveOnly = globalCollectionMode === 'live' && microserviceServices.length > 0;
         const microserviceLiveDurationMinutes = parseInt(
@@ -3451,8 +3553,9 @@
         },
         body: JSON.stringify({
           pc_ip: pcIp,
+          pc_target_type: pcTargetType,
           bug_folder: bugFolderOverride,
-          pc_password: 'nutanix/4u',
+          pc_password: pcPassword,
           filer_password: filerPassword,
           filer_ip: currentFilerConfig.ip,
           filer_user: currentFilerConfig.user,

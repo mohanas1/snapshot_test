@@ -3624,6 +3624,7 @@
       <a href="#" class="nav-item">VM Power Ops</a>
       <a href="{{ url_for('recovery_points') }}" class="nav-item">Recovery Points Analysis</a>
       <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+      <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
     </nav>
     
     <div class="sidebar-footer">
@@ -3735,8 +3736,8 @@
         <div class="form-grid-row">
           <label for="batch_size">Batch Size</label>
           <div class="segmented-control">
-            <input type="radio" id="batch_10" name="batch_size_preset" value="10" checked>
-            <label for="batch_10">10</label>
+            <input type="radio" id="batch_10" name="batch_size_preset" value="5" checked>
+            <label for="batch_10">5</label>
             <input type="radio" id="batch_25" name="batch_size_preset" value="25">
             <label for="batch_25">25</label>
             <input type="radio" id="batch_50" name="batch_size_preset" value="50">
@@ -3744,7 +3745,7 @@
             <input type="radio" id="batch_100" name="batch_size_preset" value="100">
             <label for="batch_100">100</label>
           </div>
-          <input type="hidden" id="batch_size" name="batch_size" value="10" />
+          <input type="hidden" id="batch_size" name="batch_size" value="5" />
         </div>
         
         <div class="form-grid-row">
@@ -3755,6 +3756,10 @@
         <div class="form-grid-row">
           <label for="task_timeout_sec">Timeout (seconds)</label>
           <input id="task_timeout_sec" name="task_timeout_sec" type="number" min="1" value="300" />
+        </div>
+        <div class="form-grid-row">
+          <label for="task_soft_timeout_sec">Soft timeout (seconds)</label>
+          <input id="task_soft_timeout_sec" name="task_soft_timeout_sec" type="number" min="1" value="120" />
         </div>
       </div>
         </form>
@@ -4052,8 +4057,8 @@
           <div>
             <label for="batch_size_grid">Batch Size</label>
             <div class="segmented-control">
-              <input type="radio" id="batch_10_grid" name="batch_preset_grid" value="10" checked>
-              <label for="batch_10_grid">10</label>
+              <input type="radio" id="batch_10_grid" name="batch_preset_grid" value="5" checked>
+              <label for="batch_10_grid">5</label>
               <input type="radio" id="batch_25_grid" name="batch_preset_grid" value="25">
               <label for="batch_25_grid">25</label>
               <input type="radio" id="batch_50_grid" name="batch_preset_grid" value="50">
@@ -4061,7 +4066,7 @@
               <input type="radio" id="batch_100_grid" name="batch_preset_grid" value="100">
               <label for="batch_100_grid">100</label>
             </div>
-            <input type="hidden" id="batch_size_grid_value" value="10" />
+            <input type="hidden" id="batch_size_grid_value" value="5" />
           </div>
           <div style="margin-top: 1.5rem;">
             <label for="expiration_days_grid">Expiration (days)</label>
@@ -4070,6 +4075,10 @@
           <div style="margin-top: 1.5rem;">
             <label for="task_timeout_sec_grid">Timeout (seconds)</label>
             <input id="task_timeout_sec_grid" name="task_timeout_sec_grid" type="number" min="1" value="300" />
+          </div>
+          <div style="margin-top: 1.5rem;">
+            <label for="task_soft_timeout_sec_grid">Soft timeout (seconds)</label>
+            <input id="task_soft_timeout_sec_grid" name="task_soft_timeout_sec_grid" type="number" min="1" value="120" />
           </div>
         </div>
       </section>
@@ -4404,7 +4413,10 @@
         <div>
           <label for="batch_size">Batch size</label>
           <div class="segmented-control" style="margin-bottom:0.75rem;">
-            <input type="radio" id="batch_10" name="batch_preset" value="10" checked>
+            <input type="radio" id="batch_5" name="batch_preset" value="5" checked>
+            <label for="batch_5">5</label>
+            
+            <input type="radio" id="batch_10" name="batch_preset" value="10">
             <label for="batch_10">10</label>
             
             <input type="radio" id="batch_25" name="batch_preset" value="25">
@@ -4423,7 +4435,7 @@
             <label for="batch_custom">Custom</label>
           </div>
           <div class="input-with-suffix" id="batch_size_custom_input" style="display:none;">
-            <input id="batch_size" name="batch_size" type="number" min="1" value="10" />
+            <input id="batch_size" name="batch_size" type="number" min="1" value="5" />
             <span class="input-suffix">VMs</span>
           </div>
         </div>
@@ -5832,15 +5844,18 @@
       if (!inp) return;
       const n = parseInt(inp.value, 10);
       const v = Number.isFinite(n) && n > 0 ? String(n) : "";
-      let matched = "";
-      for (let i = 0; i < sel.options.length; i++) {
-        const o = sel.options[i];
-        if (o.value && o.value === v) {
-          matched = o.value;
-          break;
+      let matched = false;
+      radios.forEach((r) => {
+        if (r.value && r.value === v) {
+          r.checked = true;
+          matched = true;
         }
+      });
+      if (!matched) {
+        const customRadio = document.querySelector('input[name="batch_size_preset"][value="custom"]');
+        if (customRadio) customRadio.checked = true;
+        if (customInput) customInput.style.display = 'flex';
       }
-      sel.value = matched;
     }
 
     function clearJobConsole() {
@@ -6776,9 +6791,10 @@
         pc_password: c.pc_password,
         skip_substrings: $("skip_substrings").value,
         skip_regexes: $("skip_regexes").value,
-        batch_size: parseInt($("batch_size").value, 10) || 10,
+        batch_size: parseInt($("batch_size").value, 10) || 5,
         expiration_days: parseInt($("expiration_days").value, 10) || 30,
         task_timeout_sec: parseInt($("task_timeout_sec").value, 10) || 300,
+        task_soft_timeout_sec: parseInt($("task_soft_timeout_sec").value, 10) || 120,
         group_member_page: parseInt($("group_member_page").value, 10) || 500,
         poll_interval: parseFloat($("poll_interval").value) || 4,
         sleep_before_task_poll_sec: parseFloat($("sleep_before_task_poll_sec").value) || 0,
@@ -7909,6 +7925,7 @@
         ["SSH parallel", fieldValue("guest_ssh_parallel")],
         ["Batch size", fieldValue("batch_size")],
         ["Task timeout", fieldValue("task_timeout_sec") + " sec"],
+        ["Task soft timeout", fieldValue("task_soft_timeout_sec") + " sec"],
         ["Poll interval", fieldValue("poll_interval") + " sec"],
         ["Expiration", fieldValue("expiration_days") + " day(s)"],
         ["VMs per cluster", fieldValue("vm_per_cluster")],
@@ -8014,6 +8031,37 @@
     }
     const mainFormEl = $("main-form");
     if (mainFormEl) {
+      function mirrorInventoryTargetVmUuids() {
+        // Prefer exact eligible VM set from disk preview status.
+        const previewUuids = Array.isArray(lastDiskPreviewNorm?.target_vm_uuids)
+          ? lastDiskPreviewNorm.target_vm_uuids
+          : [];
+        // Fallback to currently visible rows if preview UUID list is unavailable.
+        const sourceRows = Array.isArray(inventoryCurrentRows) ? inventoryCurrentRows : [];
+        mainFormEl
+          .querySelectorAll('input[name="target_vm_uuids"][data-mirrored-input="1"]')
+          .forEach((n) => n.remove());
+        const seen = new Set();
+        const emit = (uuid) => {
+          const id = String(uuid || "").trim();
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          const h = document.createElement("input");
+          h.type = "hidden";
+          h.name = "target_vm_uuids";
+          h.value = id;
+          h.setAttribute("data-mirrored-input", "1");
+          mainFormEl.appendChild(h);
+        };
+        if (previewUuids.length > 0) {
+          previewUuids.forEach(emit);
+          return;
+        }
+        for (const row of sourceRows) {
+          emit(row && row.uuid);
+        }
+      }
+
       function syncDetachedControlsIntoMainForm() {
         // Mirror named controls that live outside #main-form into hidden inputs
         // so POST /start receives the actual user-selected values.
@@ -8049,6 +8097,7 @@
           h.setAttribute("data-mirrored-input", "1");
           mainFormEl.appendChild(h);
         });
+        mirrorInventoryTargetVmUuids();
       }
 
       const inlineSaveBtn = $("btn-save-schedule-inline");
@@ -8064,11 +8113,12 @@
         });
       }
       mainFormEl.addEventListener("submit", (ev) => {
+        if (snapshotConfirmBypass || scheduleConfirmBypass) return;
+        // Must block default synchronously; otherwise browser submits before async work.
+        ev.preventDefault();
         syncDetachedControlsIntoMainForm();
         const se = $("schedule_enabled");
         if (se && se.checked) {
-          if (scheduleConfirmBypass) return;
-          ev.preventDefault();
           openDiskConfirmModal(
             "Save schedule?",
             formatScheduleSaveConfirmHtml(),
@@ -8087,8 +8137,6 @@
           );
           return;
         }
-        if (snapshotConfirmBypass) return;
-        ev.preventDefault();
         openDiskConfirmModal(
           "Start snapshot run?",
           formatStartSnapshotConfirmHtml(),
@@ -8535,6 +8583,15 @@
       if (timeoutGrid && timeoutMain) {
         timeoutGrid.addEventListener('input', () => {
           timeoutMain.value = timeoutGrid.value;
+        });
+      }
+      
+      // Sync Soft Timeout
+      const softTimeoutGrid = $("task_soft_timeout_sec_grid");
+      const softTimeoutMain = $("task_soft_timeout_sec");
+      if (softTimeoutGrid && softTimeoutMain) {
+        softTimeoutGrid.addEventListener('input', () => {
+          softTimeoutMain.value = softTimeoutGrid.value;
         });
       }
       

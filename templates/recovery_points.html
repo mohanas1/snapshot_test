@@ -347,6 +347,52 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
+
+    .ms-wrap { position: relative; max-width: 320px; }
+    .ms-trigger {
+      width: 100%;
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border: 2px solid var(--border-gray);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+      cursor: pointer;
+    }
+    .ms-panel {
+      position: absolute;
+      z-index: 50;
+      top: calc(100% + 6px);
+      left: 0;
+      width: min(360px, 90vw);
+      max-height: 280px;
+      overflow: auto;
+      padding: 0.5rem;
+      border: 1px solid var(--border-gray);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+    }
+    .ms-search {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid var(--border-gray);
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .ms-options { display: grid; gap: 0.2rem; }
+    .ms-opt {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.25rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .ms-opt:hover { background: #F3F4F6; }
     
     .summary-label {
       color: var(--text-muted);
@@ -728,6 +774,42 @@
     .recovery-health-label {
       color: #9CA3AF;
     }
+
+    .top-sections-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .top-sections-grid > div {
+      min-width: 0;
+    }
+
+    .top-sections-grid .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .delete-config-section {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+      padding-left: 1rem;
+      border-left: 1px solid var(--border-gray);
+    }
+
+    @media (max-width: 1200px) {
+      .top-sections-grid {
+        grid-template-columns: 1fr;
+      }
+      .delete-config-section {
+        padding-left: 0;
+        border-left: none;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-gray);
+      }
+    }
   </style>
 </head>
 <body>
@@ -768,6 +850,7 @@
         <a href="#" class="nav-item">Disk Operations</a>
         <a href="{{ url_for('recovery_points') }}" class="nav-item active">Recovery Points Analysis</a>
         <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
       </nav>
     </div>
 
@@ -789,43 +872,46 @@
             </div>
           </div>
           <div class="card-body">
-            <form id="analysisForm">
-              <div class="form-group">
-                <label for="pc_ip">Prism Central IP / Hostname</label>
-                <input type="text" id="pc_ip" name="pc_ip" required placeholder="10.0.0.1">
+            <div class="top-sections-grid">
+              <div>
+                <form id="analysisForm">
+                  <div class="form-group">
+                    <label for="pc_ip">Prism Central IP / Hostname</label>
+                    <input type="text" id="pc_ip" name="pc_ip" required placeholder="10.0.0.1">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="pc_user">Username</label>
+                    <input type="text" id="pc_user" name="pc_user" required placeholder="admin" value="admin">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="pc_password">Password</label>
+                    <input type="text" id="pc_password" name="pc_password" required value="Nutanix.123">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="concurrency">Concurrent Workers (1-20)</label>
+                    <input type="number" id="concurrency" name="concurrency" min="1" max="20" value="5" required style="max-width: 120px;">
+                  </div>
+                  
+                  <div id="cacheInfo" style="font-size: 0.875rem; color: var(--text-muted); padding: 0.75rem; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; margin-bottom: 1rem; display: none;">
+                    <strong>ℹ️ Cache Available:</strong> <span id="cacheTimestamp"></span>
+                  </div>
+                  
+                  <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button type="button" class="btn" style="background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); color: white;" id="loadCachedBtn" disabled>
+                      💾 Load Cached Apps
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                      🔄 Fetch Latest Apps Data
+                    </button>
+                  </div>
+                </form>
               </div>
               
-              <div class="form-group">
-                <label for="pc_user">Username</label>
-                <input type="text" id="pc_user" name="pc_user" required placeholder="admin" value="admin">
-              </div>
-              
-              <div class="form-group">
-                <label for="pc_password">Password</label>
-                <input type="text" id="pc_password" name="pc_password" required value="Nutanix.123">
-              </div>
-              
-              <div class="form-group">
-                <label for="concurrency">Concurrent Workers (1-20)</label>
-                <input type="number" id="concurrency" name="concurrency" min="1" max="20" value="5" required style="max-width: 120px;">
-              </div>
-              
-              <div id="cacheInfo" style="font-size: 0.875rem; color: var(--text-muted); padding: 0.75rem; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; margin-bottom: 1rem; display: none;">
-                <strong>ℹ️ Cache Available:</strong> <span id="cacheTimestamp"></span>
-              </div>
-              
-              <div style="display: flex; gap: 1rem; align-items: center;">
-                <button type="button" class="btn" style="background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); color: white;" id="loadCachedBtn" disabled>
-                  💾 Load Cached Apps
-                </button>
-                <button type="submit" class="btn btn-primary" id="analyzeBtn">
-                  🔄 Fetch Latest Apps Data
-                </button>
-              </div>
-            </form>
-            
-            <!-- Delete Configuration Section -->
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border-gray);">
+              <!-- Delete Configuration Section -->
+              <div class="delete-config-section">
               <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary);">🗑️ Delete Configuration</h3>
               
               <div class="form-group">
@@ -847,10 +933,28 @@
                 </select>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Filter recovery points by size for bulk delete operations</div>
               </div>
+
+              <div class="form-group">
+                <label for="vm_name_patterns">VM Name Patterns (optional, one per line)</label>
+                <textarea id="vm_name_patterns" name="vm_name_patterns" rows="3" placeholder="prod-*\n*-db-*\ncritical-vm-01" style="width: 100%; max-width: 420px; padding: 0.5rem; border: 1px solid var(--border-gray); border-radius: 4px; font-family: var(--font-mono);"></textarea>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Use wildcard patterns (`*`, `?`). Leave empty to include all VMs.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="min_vm_recovery_points">Minimum Recovery Points per VM (optional)</label>
+                <input type="number" id="min_vm_recovery_points" name="min_vm_recovery_points" min="0" max="10000" value="0" style="max-width: 160px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Example: set to <strong>50</strong> to only delete from VMs having 50+ recovery points.</div>
+              </div>
+              <div class="form-group">
+                <label for="max_vm_recovery_points">Maximum Recovery Points per VM (optional)</label>
+                <input type="number" id="max_vm_recovery_points" name="max_vm_recovery_points" min="0" max="10000" value="0" style="max-width: 160px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Example: set to <strong>49</strong> to delete only from VMs having fewer than 50 recovery points (set to 0 to disable).</div>
+              </div>
               
               <button id="bulkDeleteAllBtn" type="button" class="btn" style="background: #DC2626; color: white; margin-top: 1rem;" onclick="openBulkDeleteAllModal()">
                 🗑️ Bulk Delete All Recovery Points
               </button>
+              </div>
             </div>
           </div>
         </div>
@@ -928,6 +1032,62 @@
               </div>
             </div>
             <div class="card-body">
+              <div style="margin-bottom: 1.25rem; padding: 0.9rem; border: 1px solid var(--border-gray); border-radius: 10px; background: #F9FAFB;">
+                <div style="font-weight: 600; margin-bottom: 0.75rem;">Filters</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; align-items: end;">
+                  <div>
+                    <label style="margin-bottom: 0.35rem;">PE / Cluster</label>
+                    <div class="ms-wrap" data-ms-group="cluster">
+                      <button type="button" class="ms-trigger" id="clusterMsTrigger">All PEs / Clusters</button>
+                      <div class="ms-panel" id="clusterMsPanel" hidden>
+                        <input type="text" id="clusterSearch" class="ms-search" placeholder="Type to filter clusters...">
+                        <div class="ms-options" id="clusterMsOptions"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="margin-bottom: 0.35rem;">Recovery point size</label>
+                    <div class="ms-wrap" data-ms-group="rpSize">
+                      <button type="button" class="ms-trigger" id="rpSizeMsTrigger">All sizes</button>
+                      <div class="ms-panel" id="rpSizeMsPanel" hidden>
+                        <div class="ms-options" id="rpSizeMsOptions">
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="gt500mb"> &gt; 500 MB</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="0"> 0 B only</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="1b-100kb"> 1 B - 100 KB</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="100kb-1mb"> 100 KB - 1 MB</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="1mb-50mb"> 1 MB - 50 MB</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpSize" value="50mb-500mb"> 50 MB - 500 MB</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="margin-bottom: 0.35rem;">Snapshot type</label>
+                    <div class="ms-wrap" data-ms-group="rpType">
+                      <button type="button" class="ms-trigger" id="rpTypeMsTrigger">All types</button>
+                      <div class="ms-panel" id="rpTypeMsPanel" hidden>
+                        <div class="ms-options" id="rpTypeMsOptions">
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpType" value="CRASH_CONSISTENT"> CRASH_CONSISTENT</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpType" value="APPLICATION_CONSISTENT"> APPLICATION_CONSISTENT</label>
+                          <label class="ms-opt"><input type="checkbox" class="ms-check" data-ms-group="rpType" value="UNKNOWN"> UNKNOWN</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label for="filterVmName" style="margin-bottom: 0.35rem;">VM name contains</label>
+                    <input type="text" id="filterVmName" placeholder="optional">
+                  </div>
+                  <div>
+                    <label for="filterMinVmRps" style="margin-bottom: 0.35rem;">Min VM RPs</label>
+                    <input type="number" id="filterMinVmRps" min="0" value="0" style="max-width: 160px;">
+                  </div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" class="btn" id="clearFiltersBtn" style="padding: 0.65rem 1rem; background: #E5E7EB; color: #111827;">Clear</button>
+                  </div>
+                </div>
+              </div>
+
               <div class="summary-grid">
                 <div class="summary-card">
                   <div class="summary-label">Total VMs</div>
@@ -953,6 +1113,16 @@
                   <div class="summary-label">Total Time Taken</div>
                   <div class="summary-value" id="totalTimeTaken">-</div>
                 </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">CRASH_CONSISTENT</div>
+                  <div class="summary-value" id="crashConsistentCount">-</div>
+                </div>
+                
+                <div class="summary-card">
+                  <div class="summary-label">APP_CONSISTENT</div>
+                  <div class="summary-value" id="appConsistentCount">-</div>
+                </div>
               </div>
 
               <h3>Recovery Points by Size Range</h3>
@@ -960,6 +1130,7 @@
                 <thead>
                   <tr>
                     <th>Size Range</th>
+                    <th>VMs</th>
                     <th>Recovery Points</th>
                     <th>Total Size</th>
                   </tr>
@@ -1011,7 +1182,7 @@
                 <thead>
                   <tr>
                     <th class="sortable-th" onclick="setSort('vm_name')">VM Name <span id="sort-vm_name" class="sort-indicator">↕</span></th>
-                    <th>VM UUID</th>
+                    <th>Cluster Name</th>
                     <th class="sortable-th" onclick="setSort('recovery_point_count')">Recovery Points <span id="sort-recovery_point_count" class="sort-indicator">↕</span></th>
                     <th class="sortable-th" onclick="setSort('reclaimable_bytes')">Reclaimable Space <span id="sort-reclaimable_bytes" class="sort-indicator">↕</span></th>
                     <th>Actions</th>
@@ -1058,6 +1229,7 @@
     
     // Pagination variables
     let allVMs = [];
+    let rawVMs = [];
     let currentPage = 1;
     let perPage = 20;
     let totalPages = 1;
@@ -1183,9 +1355,17 @@
     }
     
     function displayResults(summary, fromCache = false) {
-      document.getElementById('totalVms').textContent = summary.total_vms;
-      document.getElementById('totalRecoveryPoints').textContent = summary.total_recovery_points;
-      document.getElementById('totalReclaimable').textContent = summary.total_reclaimable_formatted;
+      const deriveTypeCountsFromVms = (vms) => {
+        const out = { crash: 0, app: 0 };
+        (vms || []).forEach((vm) => {
+          (vm.recovery_points || []).forEach((rp) => {
+            const t = String(rp.recovery_point_type || '').trim().toUpperCase();
+            if (t === 'CRASH_CONSISTENT') out.crash += 1;
+            else if (t === 'APPLICATION_CONSISTENT') out.app += 1;
+          });
+        });
+        return out;
+      };
       document.getElementById('analysisTime').textContent = `${summary.duration_seconds.toFixed(1)}s`;
       
       // Calculate and display total time from stats
@@ -1207,16 +1387,124 @@
         cacheBadge.style.display = 'none';
       }
       
-      // Store all VMs for pagination
-      allVMs = summary.vms || [];
-      renderSizeRangeTable(allVMs);
-      renderClusterGroupTable(allVMs);
-      currentPage = 1;
-      
-      // Display first page
-      renderPage();
+      rawVMs = summary.vms || [];
+      refreshClusterMultiOptions();
+      applyFiltersAndRender();
       
       results.classList.add('active');
+    }
+
+    function rpMatchesSizeFilter(size, selected) {
+      if (selected === 'all') return true;
+      const n = Number(size || 0);
+      if (selected === 'gt500mb') return n > 500 * 1024 * 1024;
+      if (selected === '0') return n === 0;
+      if (selected === '1b-100kb') return n >= 1 && n <= 100 * 1024;
+      if (selected === '100kb-1mb') return n > 100 * 1024 && n <= 1024 * 1024;
+      if (selected === '1mb-50mb') return n > 1024 * 1024 && n <= 50 * 1024 * 1024;
+      if (selected === '50mb-500mb') return n > 50 * 1024 * 1024 && n <= 500 * 1024 * 1024;
+      return true;
+    }
+
+    function getMsSelected(group) {
+      return Array.from(document.querySelectorAll(`.ms-check[data-ms-group="${group}"]:checked`))
+        .map((el) => String(el.value || '').trim())
+        .filter(Boolean);
+    }
+
+    function setMsTriggerText(triggerId, selectedCount, defaultText) {
+      const el = document.getElementById(triggerId);
+      if (!el) return;
+      el.textContent = selectedCount > 0 ? `${selectedCount} selected` : defaultText;
+    }
+
+    function refreshMsLabels() {
+      setMsTriggerText('clusterMsTrigger', getMsSelected('cluster').length, 'All PEs / Clusters');
+      setMsTriggerText('rpSizeMsTrigger', getMsSelected('rpSize').length, 'All sizes');
+      setMsTriggerText('rpTypeMsTrigger', getMsSelected('rpType').length, 'All types');
+    }
+
+    function applyFiltersAndRender() {
+      const selectedClusters = getMsSelected('cluster');
+      const vmText = (document.getElementById('filterVmName')?.value || '').trim().toLowerCase();
+      const selectedRpSizes = getMsSelected('rpSize');
+      const selectedRpTypes = getMsSelected('rpType').map((v) => v.toUpperCase());
+      const minVmRps = Math.max(0, parseInt(document.getElementById('filterMinVmRps')?.value || '0', 10) || 0);
+
+      const filtered = [];
+      (rawVMs || []).forEach((vm) => {
+        const clusterName = ((vm.cluster_name || vm.pe_cluster || 'Unknown') + '').trim();
+        const vmName = (vm.vm_name || '').toString();
+        if (selectedClusters.length > 0 && !selectedClusters.includes(clusterName)) return;
+        if (vmText && !vmName.toLowerCase().includes(vmText)) return;
+
+        const rps = (vm.recovery_points || []).filter((rp) => {
+          const size = Number(rp.size_bytes || 0);
+          if (selectedRpSizes.length > 0 && !selectedRpSizes.some((sz) => rpMatchesSizeFilter(size, sz))) {
+            return false;
+          }
+          if (selectedRpTypes.length === 0) return true;
+          const t = String(rp.recovery_point_type || 'UNKNOWN').trim().toUpperCase() || 'UNKNOWN';
+          return selectedRpTypes.includes(t);
+        });
+        if (rps.length < minVmRps) return;
+        if (rps.length === 0) return;
+
+        const bytes = rps.reduce((s, rp) => s + Number(rp.size_bytes || 0), 0);
+        filtered.push({
+          ...vm,
+          recovery_points: rps,
+          recovery_point_count: rps.length,
+          reclaimable_bytes: bytes,
+          reclaimable_formatted: formatBytes(bytes),
+        });
+      });
+
+      allVMs = filtered;
+      const totalVms = filtered.length;
+      const totalRps = filtered.reduce((s, vm) => s + Number(vm.recovery_point_count || 0), 0);
+      const totalBytes = filtered.reduce((s, vm) => s + Number(vm.reclaimable_bytes || 0), 0);
+      let crashCount = 0;
+      let appCount = 0;
+      filtered.forEach((vm) => {
+        (vm.recovery_points || []).forEach((rp) => {
+          const t = String(rp.recovery_point_type || 'UNKNOWN').trim().toUpperCase();
+          if (t === 'CRASH_CONSISTENT') crashCount += 1;
+          else if (t === 'APPLICATION_CONSISTENT') appCount += 1;
+        });
+      });
+
+      document.getElementById('totalVms').textContent = String(totalVms);
+      document.getElementById('totalRecoveryPoints').textContent = String(totalRps);
+      document.getElementById('totalReclaimable').textContent = formatBytes(totalBytes);
+      document.getElementById('crashConsistentCount').textContent = String(crashCount);
+      document.getElementById('appConsistentCount').textContent = String(appCount);
+
+      renderSizeRangeTable(filtered);
+      renderClusterGroupTable(filtered);
+      currentPage = 1;
+      refreshMsLabels();
+      updateSortIndicators();
+      renderPage();
+    }
+
+    function refreshClusterMultiOptions() {
+      const container = document.getElementById('clusterMsOptions');
+      if (!container) return;
+      const previouslySelected = new Set(getMsSelected('cluster'));
+      const clusterNames = Array.from(
+        new Set((rawVMs || []).map((vm) => ((vm.cluster_name || vm.pe_cluster || 'Unknown') + '').trim() || 'Unknown'))
+      ).sort((a, b) => a.localeCompare(b));
+      container.innerHTML = '';
+      clusterNames.forEach((name) => {
+        const lbl = document.createElement('label');
+        lbl.className = 'ms-opt';
+        lbl.innerHTML = `<input type="checkbox" class="ms-check" data-ms-group="cluster" value="${name.replace(/"/g, '&quot;')}"> ${name}`;
+        const cb = lbl.querySelector('input');
+        if (cb && previouslySelected.has(name)) cb.checked = true;
+        container.appendChild(lbl);
+      });
+      refreshMsLabels();
     }
 
     function renderSizeRangeTable(vms) {
@@ -1228,22 +1516,29 @@
         { label: '0 B', min: 0, max: 0 },
         { label: '1 B - 100 KB', min: 1, max: 100 * 1024 },
         { label: '100 KB - 1 MB', min: 100 * 1024 + 1, max: 1024 * 1024 },
-        { label: '1 MB - 50 MB', min: 1024 * 1024 + 1, max: 50 * 1024 * 1024 },
+        { label: '1 MB - 10 MB', min: 1024 * 1024 + 1, max: 10 * 1024 * 1024 },
+        { label: '10 MB - 50 MB', min: 10 * 1024 * 1024 + 1, max: 50 * 1024 * 1024 },
         { label: '50 MB - 500 MB', min: 50 * 1024 * 1024 + 1, max: 500 * 1024 * 1024 },
         { label: '500 MB+', min: 500 * 1024 * 1024 + 1, max: Number.MAX_SAFE_INTEGER },
       ];
 
-      const stats = ranges.map(r => ({ label: r.label, count: 0, bytes: 0 }));
+      const stats = ranges.map(r => ({ label: r.label, count: 0, bytes: 0, vmIds: new Set() }));
       let totalCount = 0;
       let totalBytes = 0;
+      const totalVmIds = new Set();
 
       (vms || []).forEach(vm => {
+        const vmId = String(vm.vm_uuid || vm.vm_name || '').trim();
         (vm.recovery_points || []).forEach(rp => {
           const size = Number(rp.size_bytes || 0);
           const idx = ranges.findIndex(r => size >= r.min && size <= r.max);
           if (idx >= 0) {
             stats[idx].count += 1;
             stats[idx].bytes += size;
+            if (vmId) {
+              stats[idx].vmIds.add(vmId);
+              totalVmIds.add(vmId);
+            }
             totalCount += 1;
             totalBytes += size;
           }
@@ -1254,6 +1549,7 @@
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${s.label}</td>
+          <td>${s.vmIds.size}</td>
           <td>${s.count}</td>
           <td>${formatBytes(s.bytes)}</td>
         `;
@@ -1264,6 +1560,7 @@
       totalRow.style.fontWeight = '700';
       totalRow.innerHTML = `
         <td>Total</td>
+        <td>${totalVmIds.size}</td>
         <td>${totalCount}</td>
         <td>${formatBytes(totalBytes)}</td>
       `;
@@ -1342,7 +1639,7 @@
 
       // Calculate pagination
       const perPageSelect = document.getElementById('perPageSelect');
-      perPage = perPageSelect.value === 'all' ? sortedVMs.length : parseInt(perPageSelect.value);
+      perPage = perPageSelect.value === 'all' ? Math.max(1, sortedVMs.length) : parseInt(perPageSelect.value);
       totalPages = Math.ceil(sortedVMs.length / perPage);
       
       // Ensure current page is valid
@@ -1372,7 +1669,7 @@
               <span>${vm.vm_name}</span>
             </div>
           </td>
-          <td><code style="font-size: 0.75rem; color: var(--text-muted);">${vm.vm_uuid || 'N/A'}</code></td>
+          <td>${(vm.cluster_name || vm.pe_cluster || 'Unknown').toString().trim() || 'Unknown'}</td>
           <td>${vm.recovery_point_count}</td>
           <td>${vm.reclaimable_formatted}</td>
           <td>
@@ -1587,6 +1884,75 @@
       updateSortIndicators();
       refreshRecoveryHealthWidget();
       recoveryHealthInterval = window.setInterval(refreshRecoveryHealthWidget, 5000);
+
+      const wireFilter = (id, evt = 'input') => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener(evt, () => applyFiltersAndRender());
+      };
+      wireFilter('filterVmName', 'input');
+      wireFilter('filterMinVmRps', 'input');
+
+      const msTriggers = [
+        ['clusterMsTrigger', 'clusterMsPanel'],
+        ['rpSizeMsTrigger', 'rpSizeMsPanel'],
+        ['rpTypeMsTrigger', 'rpTypeMsPanel'],
+      ];
+      msTriggers.forEach(([triggerId, panelId]) => {
+        const trigger = document.getElementById(triggerId);
+        const panel = document.getElementById(panelId);
+        if (!trigger || !panel) return;
+        trigger.addEventListener('click', (e) => {
+          e.preventDefault();
+          const isHidden = panel.hidden;
+          msTriggers.forEach(([_, pid]) => {
+            const p = document.getElementById(pid);
+            if (p) p.hidden = true;
+          });
+          panel.hidden = !isHidden;
+        });
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ms-wrap')) {
+          msTriggers.forEach(([_, panelId]) => {
+            const panel = document.getElementById(panelId);
+            if (panel) panel.hidden = true;
+          });
+        }
+      });
+      document.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t && t.classList && t.classList.contains('ms-check')) {
+          applyFiltersAndRender();
+        }
+      });
+      const clusterSearch = document.getElementById('clusterSearch');
+      if (clusterSearch) {
+        clusterSearch.addEventListener('input', () => {
+          const q = clusterSearch.value.trim().toLowerCase();
+          document.querySelectorAll('#clusterMsOptions .ms-opt').forEach((row) => {
+            const txt = row.textContent.toLowerCase();
+            row.style.display = txt.includes(q) ? '' : 'none';
+          });
+        });
+      }
+
+      const clearBtn = document.getElementById('clearFiltersBtn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          const reset = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+          };
+          document.querySelectorAll('.ms-check').forEach((cb) => { cb.checked = false; });
+          const clusterSearchEl = document.getElementById('clusterSearch');
+          if (clusterSearchEl) clusterSearchEl.value = '';
+          document.querySelectorAll('#clusterMsOptions .ms-opt').forEach((row) => { row.style.display = ''; });
+          reset('filterVmName', '');
+          reset('filterMinVmRps', '0');
+          applyFiltersAndRender();
+        });
+      }
     });
     
     async function checkCacheAvailability() {
@@ -2246,6 +2612,66 @@
       });
     }
 
+    function readDeleteVmPatterns() {
+      const raw = (document.getElementById('vm_name_patterns')?.value || '').trim();
+      if (!raw) return [];
+      return raw
+        .split(/\r?\n|,/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    function readMinVmRecoveryPoints() {
+      const value = parseInt(document.getElementById('min_vm_recovery_points')?.value || '0', 10);
+      if (!Number.isFinite(value) || value < 0) return 0;
+      return value;
+    }
+
+    function readMaxVmRecoveryPoints() {
+      const value = parseInt(document.getElementById('max_vm_recovery_points')?.value || '0', 10);
+      if (!Number.isFinite(value) || value < 0) return 0;
+      return value;
+    }
+
+    function vmMatchesPattern(vmName, pattern) {
+      const escaped = String(pattern)
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.');
+      const re = new RegExp(`^${escaped}$`, 'i');
+      return re.test(String(vmName || ''));
+    }
+
+    function filterRecoveryPointsClient(recoveryPoints, sizeFilter, vmNamePatterns = [], minVmRecoveryPoints = 0, maxVmRecoveryPoints = 0) {
+      const bySize = filterRecoveryPointsBySizeClient(recoveryPoints, sizeFilter);
+      const patterns = (Array.isArray(vmNamePatterns) ? vmNamePatterns : []).map((p) => String(p || '').trim()).filter(Boolean);
+      const threshold = Number.isFinite(Number(minVmRecoveryPoints)) ? Math.max(0, Number(minVmRecoveryPoints)) : 0;
+      const maxThreshold = Number.isFinite(Number(maxVmRecoveryPoints)) ? Math.max(0, Number(maxVmRecoveryPoints)) : 0;
+      if (!patterns.length && threshold <= 0 && maxThreshold <= 0) return bySize;
+
+      const vmCounts = new Map();
+      bySize.forEach((rp) => {
+        const key = (rp?.vm_uuid || rp?.vm_name || '').toString().trim().toLowerCase();
+        if (!key) return;
+        vmCounts.set(key, (vmCounts.get(key) || 0) + 1);
+      });
+
+      return bySize.filter((rp) => {
+        const vmName = (rp?.vm_name || '').toString().trim();
+        const vmKey = (rp?.vm_uuid || vmName || '').toString().trim().toLowerCase();
+        if (patterns.length && !patterns.some((pattern) => vmMatchesPattern(vmName, pattern))) {
+          return false;
+        }
+        if (threshold > 0 && (vmCounts.get(vmKey) || 0) < threshold) {
+          return false;
+        }
+        if (maxThreshold > 0 && (vmCounts.get(vmKey) || 0) > maxThreshold) {
+          return false;
+        }
+        return true;
+      });
+    }
+
     // Bulk delete all recovery points for a VM
     async function bulkDeleteVmRecoveryPoints(vmIndex) {
       const vm = allVMs[vmIndex];
@@ -2255,18 +2681,27 @@
       }
       
       const sizeFilter = document.getElementById('size_filter').value;
+      const vmNamePatterns = readDeleteVmPatterns();
+      const minVmRecoveryPoints = readMinVmRecoveryPoints();
+      const maxVmRecoveryPoints = readMaxVmRecoveryPoints();
       const concurrency = parseInt(document.getElementById('delete_concurrency').value);
-      const filteredRecoveryPoints = filterRecoveryPointsBySizeClient(vm.recovery_points, sizeFilter);
+      const filteredRecoveryPoints = filterRecoveryPointsClient(
+        vm.recovery_points,
+        sizeFilter,
+        vmNamePatterns,
+        minVmRecoveryPoints,
+        maxVmRecoveryPoints
+      );
       if (!filteredRecoveryPoints.length) {
-        alert(`No recovery points match selected filter (${sizeFilter}) for VM ${vm.vm_name}.`);
+        alert(`No recovery points match selected filters for VM ${vm.vm_name}.`);
         return;
       }
       
       const message = `Are you sure you want to delete all recovery points for VM <strong>"${vm.vm_name}"</strong>?<br><br>This action cannot be undone.`;
-      const stats = `<div>• <strong>VM:</strong> ${vm.vm_name}</div><div>• <strong>Total Recovery Points:</strong> ${vm.recovery_points.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div>`;
+      const stats = `<div>• <strong>VM:</strong> ${vm.vm_name}</div><div>• <strong>Total Recovery Points:</strong> ${vm.recovery_points.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>VM Name Patterns:</strong> ${vmNamePatterns.length ? vmNamePatterns.join(', ') : 'None'}</div><div>• <strong>Min VM Recovery Points:</strong> ${minVmRecoveryPoints}</div><div>• <strong>Max VM Recovery Points:</strong> ${maxVmRecoveryPoints}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div>`;
       
       openConfirmModal('🗑️ Bulk Delete VM Recovery Points', message, stats, async () => {
-        await executeBulkDelete(filteredRecoveryPoints, `VM: ${vm.vm_name}`, sizeFilter, concurrency, vm.vm_uuid || null);
+        await executeBulkDelete(filteredRecoveryPoints, `VM: ${vm.vm_name}`, sizeFilter, concurrency, vm.vm_uuid || null, vmNamePatterns, minVmRecoveryPoints, maxVmRecoveryPoints);
       });
     }
     
@@ -2293,24 +2728,48 @@
       }
       
       const sizeFilter = document.getElementById('size_filter').value;
+      const vmNamePatterns = readDeleteVmPatterns();
+      const minVmRecoveryPoints = readMinVmRecoveryPoints();
+      const maxVmRecoveryPoints = readMaxVmRecoveryPoints();
       const concurrency = parseInt(document.getElementById('delete_concurrency').value);
-      const filteredRecoveryPoints = filterRecoveryPointsBySizeClient(allRecoveryPoints, sizeFilter);
-      const vmsWithFilteredRps = allVMs.filter(vm => filterRecoveryPointsBySizeClient(vm.recovery_points || [], sizeFilter).length > 0).length;
+      const filteredRecoveryPoints = filterRecoveryPointsClient(
+        allRecoveryPoints,
+        sizeFilter,
+        vmNamePatterns,
+        minVmRecoveryPoints,
+        maxVmRecoveryPoints
+      );
+      const vmsWithFilteredRps = allVMs.filter(vm => filterRecoveryPointsClient(
+        vm.recovery_points || [],
+        sizeFilter,
+        vmNamePatterns,
+        minVmRecoveryPoints,
+        maxVmRecoveryPoints
+      ).length > 0).length;
       if (!filteredRecoveryPoints.length) {
-        alert(`No recovery points match selected filter (${sizeFilter}).`);
+        alert('No recovery points match selected filters.');
         return;
       }
       
       const message = `<strong style="color: #DC2626;">⚠️ WARNING:</strong> You are about to delete <strong>ALL recovery points</strong> across <strong>ALL VMs</strong>!<br><br>This action cannot be undone.`;
-      const stats = `<div>• <strong>Total VMs with Recovery Points:</strong> ${vmsWithRPs}</div><div>• <strong>Total Recovery Points:</strong> ${allRecoveryPoints.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Selected Size Filter:</strong> ${sizeFilter}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div><br><div style="color: #DC2626; font-weight: 600;">⚠️ THIS WILL DELETE ${filteredRecoveryPoints.length} FILTERED RECOVERY POINTS FROM ${vmsWithFilteredRps} VMs!</div>`;
+      const stats = `<div>• <strong>Total VMs with Recovery Points:</strong> ${vmsWithRPs}</div><div>• <strong>Total Recovery Points:</strong> ${allRecoveryPoints.length}</div><div>• <strong>Matching Filter:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Selected Size Filter:</strong> ${sizeFilter}</div><div>• <strong>VM Name Patterns:</strong> ${vmNamePatterns.length ? vmNamePatterns.join(', ') : 'None'}</div><div>• <strong>Min VM Recovery Points:</strong> ${minVmRecoveryPoints}</div><div>• <strong>Max VM Recovery Points:</strong> ${maxVmRecoveryPoints}</div><div>• <strong>Concurrency:</strong> ${concurrency}</div><br><div style="color: #DC2626; font-weight: 600;">⚠️ THIS WILL DELETE ${filteredRecoveryPoints.length} FILTERED RECOVERY POINTS FROM ${vmsWithFilteredRps} VMs!</div>`;
       
       openConfirmModal('🗑️ Bulk Delete All Recovery Points', message, stats, async () => {
-        await executeBulkDelete(filteredRecoveryPoints, 'All VMs', sizeFilter, concurrency, null);
+        await executeBulkDelete(filteredRecoveryPoints, 'All VMs', sizeFilter, concurrency, null, vmNamePatterns, minVmRecoveryPoints, maxVmRecoveryPoints);
       });
     }
     
     // Execute bulk delete as background job and open job page
-    async function executeBulkDelete(recoveryPoints, scope, sizeFilter, concurrency, scopeVmUuid = null) {
+    async function executeBulkDelete(
+      recoveryPoints,
+      scope,
+      sizeFilter,
+      concurrency,
+      scopeVmUuid = null,
+      vmNamePatterns = [],
+      minVmRecoveryPoints = 0,
+      maxVmRecoveryPoints = 0
+    ) {
       const pcIp = document.getElementById('pc_ip').value;
       const pcUser = document.getElementById('pc_user').value;
       const pcPassword = document.getElementById('pc_password').value;
@@ -2328,6 +2787,9 @@
             recovery_points: shouldSendFullList ? payloadPoints : [],
             scope_vm_uuid: scopeVmUuid || '',
             size_filter: sizeFilter,
+            vm_name_patterns: vmNamePatterns,
+            min_vm_recovery_points: minVmRecoveryPoints,
+            max_vm_recovery_points: maxVmRecoveryPoints,
             concurrency: concurrency
           })
         });

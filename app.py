@@ -912,6 +912,7 @@ def _cfg_to_dict(cfg: SnapshotConfig) -> dict:
         "expiration_days": cfg.expiration_days,
         "poll_interval": cfg.poll_interval,
         "task_timeout_sec": cfg.task_timeout_sec,
+        "task_soft_timeout_sec": cfg.task_soft_timeout_sec,
         "group_member_page": cfg.group_member_page,
         "sleep_before_task_poll_sec": cfg.sleep_before_task_poll_sec,
         "snapshot_trigger_mode": cfg.snapshot_trigger_mode,
@@ -931,6 +932,7 @@ def _cfg_from_dict(d: dict) -> SnapshotConfig:
         expiration_days=int(d["expiration_days"]),
         poll_interval=float(d["poll_interval"]),
         task_timeout_sec=int(d["task_timeout_sec"]),
+        task_soft_timeout_sec=int(d.get("task_soft_timeout_sec") or 120),
         group_member_page=int(d["group_member_page"]),
         sleep_before_task_poll_sec=float(d["sleep_before_task_poll_sec"]),
         snapshot_trigger_mode=d["snapshot_trigger_mode"],
@@ -1956,29 +1958,64 @@ def _summary_from_history_rec(rec: dict) -> dict:
 
 def _index_recent_runs(limit: int = 10) -> list[dict[str, Any]]:
     """Newest-first rows for the index status dashboard (no secrets)."""
-    # Load snapshot and disk jobs
+    # Load completed snapshot/disk/pipeline/recovery-delete/etc jobs from history.
     rows = load_records(HISTORY_FILE, max_lines=400)
     
-    # Load log collection jobs
+    # Load completed log collection jobs.
     log_jobs = load_records(LOG_JOBS_HISTORY_FILE, max_lines=100)
     
-    # Merge with in-memory log jobs (for currently running jobs)
+    # Merge with in-memory log jobs (for currently running jobs).
     with _log_jobs_lock:
         for job_id, job_info in _log_jobs.items():
-            # Add to history if not already there
+            # Add to history view if not already present on disk.
             if not any(r.get("job_id") == job_id for r in log_jobs):
                 log_jobs.append(job_info.copy())
     
     # Combine all jobs
     all_jobs = []
+    seen_run_ids: set[str] = set()
+
+    # Include currently active non-log jobs from in-memory runs.
+    with runs_lock:
+        active_runs = list(runs.items())
+    for run_id, info in active_runs:
+        status = str(info.get("status") or "").strip().lower()
+        if status not in ("queued", "running"):
+            continue
+        started_at = str(
+            info.get("running_started_at")
+            or info.get("queued_at")
+            or ""
+        )
+        pc_host = str(info.get("pc_host") or "")
+        job_kind = str(info.get("job_kind") or "snapshot").strip() or "snapshot"
+        all_jobs.append(
+            {
+                "run_id": str(run_id),
+                "job_kind": job_kind,
+                "at": started_at,
+                "started_at_utc": started_at,
+                "finished_at_utc": "",
+                "pc_host": pc_host,
+                "succeeded": None,
+                "failed": None,
+                "duration_sec": None,
+                "status": status,
+                "sort_time": started_at,
+            }
+        )
+        seen_run_ids.add(str(run_id))
     
-    # Process snapshot/disk jobs
+    # Process completed non-log jobs from run history.
     for r in rows:
+        rid = str(r.get("run_id") or "")
+        if rid and rid in seen_run_ids:
+            continue
         jk = str(r.get("job_kind") or "").strip() or "snapshot"
         finished_at = str(r.get("at") or "")
         all_jobs.append(
             {
-                "run_id": str(r.get("run_id") or ""),
+                "run_id": rid,
                 "job_kind": jk,
                 "at": finished_at,
                 "started_at_utc": "",
@@ -1992,7 +2029,7 @@ def _index_recent_runs(limit: int = 10) -> list[dict[str, Any]]:
             }
         )
     
-    # Process log collection jobs
+    # Process log collection jobs (completed + active from _log_jobs merge above).
     for job in log_jobs:
         status = job.get("status", "running")
         started_at = str(job.get("start_time") or "")
@@ -2134,14 +2171,15 @@ def start():
         return render_template("index.html", error=err), 400
 
     try:
-        batch_size = int(request.form.get("batch_size") or 10)
+        batch_size = int(request.form.get("batch_size") or 5)
         expiration_days = int(request.form.get("expiration_days") or 30)
         task_timeout_sec = int(request.form.get("task_timeout_sec") or 300)
+        task_soft_timeout_sec = int(request.form.get("task_soft_timeout_sec") or 120)
         group_member_page = int(request.form.get("group_member_page") or 500)
     except ValueError:
         return render_template(
             "index.html",
-            error="Batch size, expiration days, task timeout, and group page must be integers.",
+            error="Batch size, expiration days, task timeout, task soft timeout, and group page must be integers.",
         ), 400
 
     try:
@@ -2181,11 +2219,17 @@ def start():
         expiration_days=max(1, expiration_days),
         poll_interval=max(0.5, poll_interval),
         task_timeout_sec=max(60, task_timeout_sec),
+        task_soft_timeout_sec=max(1, task_soft_timeout_sec),
         group_member_page=max(1, group_member_page),
         sleep_before_task_poll_sec=max(0.0, sleep_before),
         skip_substrings=skip_subs,
         skip_regex_patterns=skip_rx,
     )
+    target_vm_uuids = tuple(
+        u.strip() for u in request.form.getlist("target_vm_uuids") if str(u).strip()
+    )
+    if target_vm_uuids:
+        cfg.target_vm_uuids = target_vm_uuids
 
     if request.form.get("schedule_enabled") == "1":
         host_key = _pc_host_key(pc_ip)
@@ -2200,6 +2244,7 @@ def start():
         utc = dt.timezone.utc
         now = dt.datetime.now(utc)
         stale_schedule_removed = False
+        existing_schedule_conflict = False
         with schedules_lock:
             existing = schedules.get(host_key)
             if existing:
@@ -2224,22 +2269,24 @@ def start():
                 elif kind == "recurring" and not next_run_raw:
                     schedules.pop(host_key, None)
                     stale_schedule_removed = True
-            conflict = host_key in schedules
+            existing_schedule_conflict = host_key in schedules
         if stale_schedule_removed:
             _persist_schedules()
-        # Only block when a run is actually active for this PC.
-        # Existing schedule records alone should not prevent saving a new schedule.
-        if _in_progress_runs_for_pc(host_key):
-            conflict = True
-        else:
-            conflict = False
-        if conflict:
+        active_runs = _in_progress_runs_for_pc(host_key)
+        active_run_conflict = bool(active_runs)
+        # Keep behavior: existing schedule records alone do not block; active run does.
+        if active_run_conflict:
+            run_hint = ""
+            if active_runs:
+                first = active_runs[0]
+                run_hint = f" Active run: {first.get('run_id', '')}."
             return (
                 render_template(
                     "index.html",
                     error=(
-                        "An active schedule already exists for this Prism Central host. "
-                        "Cancel it in the list below before adding another."
+                        "An active run is already in progress for this Prism Central host."
+                        + run_hint
+                        + " Wait for it to finish or abort it from the job page, then save schedule."
                     ),
                     error_schedule_conflict=True,
                 ),
@@ -2481,12 +2528,13 @@ def api_start_snapshot_run():
         return jsonify({"ok": False, "message": err}), 400
 
     try:
-        batch_size = int(p.get("batch_size") or 10)
+        batch_size = int(p.get("batch_size") or 5)
         expiration_days = int(p.get("expiration_days") or 30)
         task_timeout_sec = int(p.get("task_timeout_sec") or 300)
+        task_soft_timeout_sec = int(p.get("task_soft_timeout_sec") or 120)
         group_member_page = int(p.get("group_member_page") or 500)
     except (TypeError, ValueError):
-        return jsonify({"ok": False, "message": "batch_size, expiration_days, task_timeout_sec, group_member_page must be integers."}), 400
+        return jsonify({"ok": False, "message": "batch_size, expiration_days, task_timeout_sec, task_soft_timeout_sec, group_member_page must be integers."}), 400
 
     try:
         poll_interval = float(p.get("poll_interval") or 4)
@@ -2512,6 +2560,7 @@ def api_start_snapshot_run():
         expiration_days=max(1, expiration_days),
         poll_interval=max(0.5, poll_interval),
         task_timeout_sec=max(60, task_timeout_sec),
+        task_soft_timeout_sec=max(1, task_soft_timeout_sec),
         group_member_page=max(1, group_member_page),
         sleep_before_task_poll_sec=max(0.0, sleep_before),
         skip_substrings=skip_subs,
@@ -2780,9 +2829,9 @@ def api_estimate():
     if mode not in ("series", "parallel"):
         mode = "series"
     try:
-        batch_size = int(request.args.get("batch_size") or 10)
+        batch_size = int(request.args.get("batch_size") or 5)
     except ValueError:
-        batch_size = 10
+        batch_size = 5
     rpt = (request.args.get("recovery_point_type") or "CRASH_CONSISTENT").strip()
     if rpt not in (
         "CRASH_CONSISTENT",
@@ -3853,6 +3902,12 @@ def fetch_logs():
     return render_template("fetch_logs.html")
 
 
+@app.route("/additional")
+def additional():
+    """Render additional reference details page."""
+    return render_template("additional.html")
+
+
 @app.route("/api/list_filer_folders", methods=["GET"])
 def api_list_filer_folders():
     """List folders on filer."""
@@ -4287,6 +4342,24 @@ def api_bulk_delete_recovery_points():
     recovery_points = data.get('recovery_points', [])
     scope_vm_uuid = str(data.get('scope_vm_uuid', '') or '').strip()
     size_filter = data.get('size_filter', 'all')
+    vm_name_patterns_raw = data.get('vm_name_patterns', [])
+    if isinstance(vm_name_patterns_raw, str):
+        vm_name_patterns_raw = [vm_name_patterns_raw]
+    vm_name_patterns = [
+        str(p).strip()
+        for p in (vm_name_patterns_raw if isinstance(vm_name_patterns_raw, list) else [])
+        if str(p).strip()
+    ]
+    try:
+        min_vm_recovery_points = int(data.get('min_vm_recovery_points', 0) or 0)
+    except (TypeError, ValueError):
+        min_vm_recovery_points = 0
+    min_vm_recovery_points = max(0, min_vm_recovery_points)
+    try:
+        max_vm_recovery_points = int(data.get('max_vm_recovery_points', 0) or 0)
+    except (TypeError, ValueError):
+        max_vm_recovery_points = 0
+    max_vm_recovery_points = max(0, max_vm_recovery_points)
     concurrency = min(int(data.get('concurrency', 5)), 5)  # Max 5
     
     if not all([pc_ip, pc_user, pc_password]):
@@ -4334,17 +4407,31 @@ def api_bulk_delete_recovery_points():
             )
         }), 400
 
-    # Preview the effective set after size filtering so job cards show accurate targets immediately.
-    filtered_preview = recovery_points_deleter.filter_recovery_points_by_size(
-        recovery_points, size_filter
+    # Preview the effective set after applying filters so job cards show accurate targets immediately.
+    filtered_preview = recovery_points_deleter.filter_recovery_points(
+        recovery_points,
+        size_filter=size_filter,
+        vm_name_patterns=vm_name_patterns,
+        min_vm_recovery_points=min_vm_recovery_points,
+        max_vm_recovery_points=max_vm_recovery_points,
     )
-    cluster_preview: dict[str, dict[str, int]] = {}
+    cluster_preview: dict[str, dict[str, object]] = {}
+    target_vm_ids_all: set[str] = set()
     for rp in filtered_preview:
         if not isinstance(rp, dict):
             continue
         c = str(rp.get("cluster_name") or rp.get("pe_cluster") or "Unknown").strip() or "Unknown"
-        row = cluster_preview.setdefault(c, {"target_total": 0, "deleted": 0, "failed": 0})
+        row = cluster_preview.setdefault(
+            c,
+            {"target_total": 0, "deleted": 0, "failed": 0, "vm_ids": set()},
+        )
         row["target_total"] += 1
+        vm_id = str(rp.get("vm_uuid") or "").strip()
+        if vm_id:
+            target_vm_ids_all.add(vm_id)
+            vm_ids = row.get("vm_ids")
+            if isinstance(vm_ids, set):
+                vm_ids.add(vm_id)
     
     run_id, log_path = _allocate_run_id_and_path(f"{pc_ip}_rpdel")
     queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -4363,15 +4450,20 @@ def api_bulk_delete_recovery_points():
             "job_kind": "recovery_delete",
             "summary": {
                 "target_total": int(len(filtered_preview)),
+                "target_vms": int(len(target_vm_ids_all)),
                 "processed": 0,
                 "deleted": 0,
                 "failed": 0,
                 "size_filter": size_filter,
+                "vm_name_patterns": vm_name_patterns,
+                "min_vm_recovery_points": min_vm_recovery_points,
+                "max_vm_recovery_points": max_vm_recovery_points,
                 "concurrency": concurrency,
                 "cluster_breakdown": [
                     {
                         "cluster": c,
                         "target_total": int(v.get("target_total", 0)),
+                        "target_vms": int(len(v.get("vm_ids", set()) if isinstance(v.get("vm_ids"), set) else set())),
                         "deleted": 0,
                         "failed": 0,
                     }
@@ -4399,9 +4491,12 @@ def api_bulk_delete_recovery_points():
             runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
 
         logger.info(
-            "Starting recovery bulk delete: pc=%s, size_filter=%s, concurrency=%s, requested=%s",
+            "Starting recovery bulk delete: pc=%s, size_filter=%s, vm_name_patterns=%s, min_vm_recovery_points=%s, max_vm_recovery_points=%s, concurrency=%s, requested=%s",
             pc_ip,
             size_filter,
+            vm_name_patterns,
+            min_vm_recovery_points,
+            max_vm_recovery_points,
             concurrency,
             len(filtered_preview),
         )
@@ -4415,15 +4510,40 @@ def api_bulk_delete_recovery_points():
                 row["total"] += 1
 
             live_counts = {"deleted": 0, "failed": 0}
+            last_summary_push_mono = {"t": 0.0}
+            cluster_live_counts: dict[str, dict[str, int]] = {
+                c: {"deleted": 0, "failed": 0} for c in cluster_stats.keys()
+            }
 
             def _on_progress(message: str) -> None:
                 logger.info("%s", message)
+                cluster_name = ""
+                m_cluster = re.search(r"\(cluster=([^)]+)\)", message)
+                if m_cluster:
+                    cluster_name = str(m_cluster.group(1) or "").strip() or "Unknown"
                 if message.startswith("  ✓ Deleted:"):
                     live_counts["deleted"] += 1
+                    if cluster_name:
+                        row = cluster_live_counts.setdefault(cluster_name, {"deleted": 0, "failed": 0})
+                        row["deleted"] += 1
                 elif message.startswith("  ✗ Failed:"):
                     live_counts["failed"] += 1
+                    if cluster_name:
+                        row = cluster_live_counts.setdefault(cluster_name, {"deleted": 0, "failed": 0})
+                        row["failed"] += 1
                 else:
                     return
+                processed_now = int(live_counts["deleted"] + live_counts["failed"])
+                now_m = time.monotonic()
+                # Throttle lock-heavy summary updates to improve UI responsiveness.
+                should_push = (
+                    processed_now <= 10
+                    or (processed_now % 25 == 0)
+                    or (now_m - float(last_summary_push_mono["t"])) >= 1.5
+                )
+                if not should_push:
+                    return
+                last_summary_push_mono["t"] = now_m
                 with runs_lock:
                     rr = runs.get(run_id)
                     if not rr:
@@ -4432,6 +4552,24 @@ def api_bulk_delete_recovery_points():
                     sm["deleted"] = int(live_counts["deleted"])
                     sm["failed"] = int(live_counts["failed"])
                     sm["processed"] = int(live_counts["deleted"] + live_counts["failed"])
+                    existing_rows = sm.get("cluster_breakdown") or []
+                    if isinstance(existing_rows, list):
+                        refreshed = []
+                        for row in existing_rows:
+                            if not isinstance(row, dict):
+                                continue
+                            cname = str(row.get("cluster") or "Unknown")
+                            lr = cluster_live_counts.get(cname, {"deleted": 0, "failed": 0})
+                            refreshed.append(
+                                {
+                                    "cluster": cname,
+                                    "target_total": int(row.get("target_total", 0)),
+                                    "target_vms": int(row.get("target_vms", 0)),
+                                    "deleted": int(lr.get("deleted", 0)),
+                                    "failed": int(lr.get("failed", 0)),
+                                }
+                            )
+                        sm["cluster_breakdown"] = refreshed
                     rr["summary"] = sm
 
             result = recovery_points_deleter.bulk_delete_recovery_points(
@@ -4440,6 +4578,9 @@ def api_bulk_delete_recovery_points():
                 pc_password=pc_password,
                 recovery_points=recovery_points,
                 size_filter=size_filter,
+                vm_name_patterns=vm_name_patterns,
+                min_vm_recovery_points=min_vm_recovery_points,
+                max_vm_recovery_points=max_vm_recovery_points,
                 concurrency=concurrency,
                 progress_callback=_on_progress,
                 cancel_event=cancel_ev,
@@ -4461,6 +4602,9 @@ def api_bulk_delete_recovery_points():
                 "deleted": int(result.get("deleted", 0)),
                 "failed": int(result.get("failed", 0)),
                 "size_filter": size_filter,
+                "vm_name_patterns": vm_name_patterns,
+                "min_vm_recovery_points": min_vm_recovery_points,
+                "max_vm_recovery_points": max_vm_recovery_points,
                 "concurrency": concurrency,
                 "cluster_breakdown": [
                     {
@@ -4539,7 +4683,7 @@ def api_fetch_fluentd_logs():
     data = request.get_json()
     pc_ip = data.get("pc_ip", "").strip()
     bug_folder = data.get("bug_folder", "").strip()
-    pc_password = data.get("pc_password", "nutanix/4u").strip()
+    pc_password = str(data.get("pc_password", "") or "").strip()
     filer_password = data.get("filer_password", "nutanix/4u").strip()
     if not filer_password:
         filer_password = "nutanix/4u"
@@ -4563,6 +4707,22 @@ def api_fetch_fluentd_logs():
     fluentd_namespaces = _unique_ordered(data.get("fluentd_namespaces", []))
     microservice_services = _unique_ordered(data.get("microservice_services", []))
     logbay_services = _unique_ordered(data.get("logbay_services", []))
+    pc_target_type = str(data.get("pc_target_type", "pc") or "pc").strip().lower()
+    if pc_target_type not in {"pc", "pe"}:
+        pc_target_type = "pc"
+    # Defensive defaults so older/stale clients do not send wrong credentials.
+    if pc_target_type == "pe":
+        if not pc_password or pc_password == "nutanix/4u":
+            pc_password = "RDMCluster.123"
+    else:
+        if not pc_password:
+            pc_password = "nutanix/4u"
+    if pc_target_type == "pe":
+        # PE mode restrictions: disable Fluentd + Microservice and drop unsupported Logbay services.
+        pe_blocked_logbay = {"epsilon", "nucalm", "domain_manager", "iam", "aplos"}
+        fluentd_namespaces = []
+        microservice_services = []
+        logbay_services = [s for s in logbay_services if s not in pe_blocked_logbay]
     logbay_duration = data.get("logbay_duration", {})
     microservice_live_only = bool(data.get("microservice_live_only", False))
     logbay_collection_mode = str(data.get("logbay_collection_mode", "historical") or "historical").strip().lower()
@@ -4904,6 +5064,9 @@ def api_fetch_fluentd_logs():
             "aplos": [
                 {"type": "pc_file", "path": "/home/nutanix/data/logs/aplos.out"},
             ],
+            "cerebro": [
+                {"type": "pc_file", "path": "/home/nutanix/data/logs/cerebro.out"},
+            ],
             "idf": [
                 {"type": "pc_file", "path": "/home/nutanix/data/logs/insights_data_interface.out"},
                 {"type": "pc_file", "path": "/home/nutanix/data/logs/insights_server.out"},
@@ -4928,7 +5091,7 @@ def api_fetch_fluentd_logs():
                 {"type": "pc_file", "path": "/home/nutanix/data/logs/prism_gateway.log"},
             ],
         }
-        unsupported_live = {"epsilon", "nucalm", "domain_manager"}
+        unsupported_live = {"epsilon", "nucalm", "domain_manager", "magneto", "ergon", "uhura"}
         selected = [s for s in logbay_services if s in service_sources or s in unsupported_live]
         if not selected:
             send_log("No valid logbay services selected for live collection", "ERROR")
@@ -5434,6 +5597,37 @@ def api_fetch_fluentd_logs():
                             "aborted" if abort_event.is_set() else ("completed" if combined_live_ok else "failed")
                         )
                         _log_jobs[log_job_id]["end_time"] = dt.datetime.now().isoformat()
+                return
+
+            # Historical mode shortcut:
+            # If no Fluentd namespaces are selected, skip the Fluentd script entirely
+            # (which requires kubeconfig bootstrap) and run optional collectors directly.
+            if not fluentd_namespaces:
+                send_log(f"Starting log fetch for PC: {pc_ip}", "INFO")
+                send_log(f"Bug folder: {bug_folder}", "INFO")
+                send_log("=" * 80, "INFO")
+                send_log(
+                    "No fluentd namespaces selected - skipping Fluentd script and kubeconfig bootstrap.",
+                    "INFO",
+                )
+
+                if microservice_services and not abort_event.is_set():
+                    send_log("=" * 80, "INFO")
+                    send_log("Starting microservice-level log collection...", "INFO")
+                    run_microservice_collection()
+
+                if logbay_services and not abort_event.is_set():
+                    send_log("=" * 80, "INFO")
+                    send_log("Starting Logbay collection...", "INFO")
+                    run_logbay_collection()
+                else:
+                    # No logbay path invoked: mark completion here.
+                    with _log_jobs_lock:
+                        if log_job_id in _log_jobs:
+                            _log_jobs[log_job_id]["status"] = (
+                                "aborted" if abort_event.is_set() else "completed"
+                            )
+                            _log_jobs[log_job_id]["end_time"] = dt.datetime.now().isoformat()
                 return
 
             script_path = PROJECT_DIR / "fetch_and_upload_fluentd_logs.sh"

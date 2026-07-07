@@ -1584,6 +1584,9 @@ def preview_guest_disk_targets(
         "ok": True,
         "inventory_distinct_vms": counts["inventory_distinct_vms"],
         "eligible_for_guest_ssh": eligible,
+        # Expose exact eligible VM UUID set so snapshot submit can
+        # target the same source/count shown in "Disk Preview Status".
+        "target_vm_uuids": [str(uid) for uid, _name, _ip, _cname in worklist],
         "skipped_by_name_rules": counts["ignored_name"],
         "no_ip_in_pc_inventory": counts["skipped_no_ip"],
         "skipped_powered_off": counts["skipped_power_off"],
@@ -1921,17 +1924,10 @@ def run_disk_ops(
     _vm_activity_completed_cap = 8000
     _metrics_timeline: List[Dict[str, Any]] = []
     _tl_state: Dict[str, Any] = {"last_mono": 0.0, "last_done": -1}
-    if cfg.parallel_clusters:
-        for ck in shard_keys_sorted:
-            progress_by_cluster[ck] = {
-                "total": len(jobs_by_cluster[ck]),
-                "done": 0,
-                "ok": 0,
-                "fail": 0,
-            }
-    else:
-        progress_by_cluster["_all"] = {
-            "total": n_run,
+    cluster_totals = Counter(str(cname or "—").strip() or "—" for _uid, _name, _ip, cname in candidates)
+    for ck in sorted(cluster_totals.keys(), key=lambda x: (x == "—", x)):
+        progress_by_cluster[ck] = {
+            "total": int(cluster_totals[ck]),
             "done": 0,
             "ok": 0,
             "fail": 0,
@@ -1997,64 +1993,6 @@ def run_disk_ops(
                 row["guest_ssh_parallel_effective"] = cap_pf
                 row["guest_ssh_parallel_baseline"] = cap_pf
             by_c[k] = row
-        if not cfg.parallel_clusters and "_all" in by_c and pe_metrics_by_cluster:
-            ra = by_c["_all"]
-            cpus: List[float] = []
-            paused_any = False
-            reasons: List[str] = []
-            for _pk, pm in pe_metrics_by_cluster.items():
-                v = pm.get("pe_cpu_pct")
-                if v is not None:
-                    try:
-                        cpus.append(float(v))
-                    except (TypeError, ValueError):
-                        pass
-                if pm.get("cluster_paused"):
-                    paused_any = True
-                    pr = pm.get("cluster_pause_reason")
-                    if pr:
-                        reasons.append(str(pr))
-            if cpus:
-                ra["pe_cpu_pct"] = round(max(cpus), 1)
-            for _mk in (
-                "pe_cvm_cpu_us_pct",
-                "pe_cvm_cpu_wa_pct",
-                "pe_stargate_cpu_pct",
-                "pe_stargate_mem_pct",
-            ):
-                acc: List[float] = []
-                for _pk, pm in pe_metrics_by_cluster.items():
-                    v = pm.get(_mk)
-                    if v is not None:
-                        try:
-                            acc.append(float(v))
-                        except (TypeError, ValueError):
-                            pass
-                if acc:
-                    ra[_mk] = round(max(acc), 1)
-            acc_r: List[float] = []
-            for _pk, pm in pe_metrics_by_cluster.items():
-                v = pm.get("pe_stargate_res_kib")
-                if v is not None:
-                    try:
-                        acc_r.append(float(v))
-                    except (TypeError, ValueError):
-                        pass
-            if acc_r:
-                ra["pe_stargate_res_kib"] = int(round(max(acc_r)))
-            for _pk, pm in pe_metrics_by_cluster.items():
-                te = pm.get("pe_cvm_top_err")
-                if te:
-                    ra["pe_cvm_top_err"] = str(te)
-                    break
-            if paused_any:
-                ra["cluster_paused"] = True
-                ra["cluster_pause_reason"] = reasons[0] if reasons else "Paused"
-            if cluster_gates:
-                ra["guest_ssh_parallel_effective"] = max(g.current for g in cluster_gates.values())
-                ra["guest_ssh_parallel_baseline"] = min(g.baseline for g in cluster_gates.values())
-                ra["guest_ssh_parallel_ceiling"] = max(g.ceiling for g in cluster_gates.values())
-                ra["cluster_adaptive_ssh_parallel"] = adaptive_ssh
         with vm_activity_lock:
             running: List[Dict[str, Any]] = []
             for rec in vm_inflight.values():
@@ -2113,9 +2051,11 @@ def run_disk_ops(
                 else (round(max(etas_nonneg), 1) if etas_nonneg else None)
             )
         else:
-            pred["eta_rem_sec_total"] = pred["eta_rem_sec_by_cluster"].get("_all")
-            if any_pending_no_eta:
-                pred["eta_rem_sec_total"] = None
+            pred["eta_rem_sec_total"] = (
+                None
+                if any_pending_no_eta
+                else (round(max(etas_nonneg), 1) if etas_nonneg else None)
+            )
 
         now_m = time.monotonic()
         if (
@@ -2328,7 +2268,7 @@ def run_disk_ops(
             while len(vm_completed) > _vm_activity_completed_cap:
                 del vm_completed[0]
 
-        prog_key = "_all" if not cfg.parallel_clusters else tag
+        prog_key = tag
         with progress_lock:
             st = progress_by_cluster.get(prog_key)
             if st is not None:

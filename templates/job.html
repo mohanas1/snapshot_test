@@ -1241,6 +1241,10 @@
   <div id="rpdel-summary-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Recovery Delete Progress</strong>
     <div id="rpdel-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1rem 0;">
+      <div style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); padding: 1rem; border-radius: 8px; border: 1px solid #14b8a6;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Target VMs</div>
+        <div id="rpdel-stat-target-vms" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
+      </div>
       <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 1rem; border-radius: 8px; border: 1px solid #3b82f6;">
         <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); text-transform: uppercase;">Target RPs</div>
         <div id="rpdel-stat-target" style="font-size: 2rem; font-weight: 700; color: #fff;">0</div>
@@ -1267,13 +1271,14 @@
         <thead>
           <tr>
             <th>Cluster</th>
+            <th>Target VMs</th>
             <th>Target RPs</th>
             <th>Deleted</th>
             <th>Failed</th>
           </tr>
         </thead>
         <tbody id="rpdel-cluster-tbody">
-          <tr><td colspan="4" class="meta">No cluster data yet.</td></tr>
+          <tr><td colspan="5" class="meta">No cluster data yet.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1320,6 +1325,7 @@
     const diskMetricsPre = document.getElementById('disk-metrics-timeline');
     const diskSummary = document.getElementById('disk-summary-line');
     const rpdelTarget = document.getElementById('rpdel-stat-target');
+    const rpdelTargetVms = document.getElementById('rpdel-stat-target-vms');
     const rpdelDeleted = document.getElementById('rpdel-stat-deleted');
     const rpdelFailed = document.getElementById('rpdel-stat-failed');
     const rpdelPending = document.getElementById('rpdel-stat-pending');
@@ -2163,11 +2169,13 @@
     function renderRecoveryDeleteSummary(s) {
       if (!s || !rpdelTarget) return;
       const total = Number(s.target_total || 0);
+      const totalVms = Number(s.target_vms || 0);
       const deleted = Number(s.deleted || 0);
       const failed = Number(s.failed || 0);
       const processed = Number(s.processed || (deleted + failed));
       const pending = Math.max(0, total - processed);
       rpdelTarget.textContent = String(total);
+      if (rpdelTargetVms) rpdelTargetVms.textContent = String(totalVms);
       if (rpdelDeleted) rpdelDeleted.textContent = String(deleted);
       if (rpdelFailed) rpdelFailed.textContent = String(failed);
       if (rpdelPending) rpdelPending.textContent = String(pending);
@@ -2182,10 +2190,11 @@
       if (rpdelClusterTbody) {
         const rows = Array.isArray(s.cluster_breakdown) ? s.cluster_breakdown : [];
         if (!rows.length) {
-          rpdelClusterTbody.innerHTML = '<tr><td colspan="4" class="meta">No cluster data yet.</td></tr>';
+          rpdelClusterTbody.innerHTML = '<tr><td colspan="5" class="meta">No cluster data yet.</td></tr>';
         } else {
           rpdelClusterTbody.innerHTML = rows.map((r) => (
             '<tr><td>' + escapeHtml(String(r.cluster || 'Unknown')) + '</td>' +
+            '<td>' + Number(r.target_vms || 0) + '</td>' +
             '<td>' + Number(r.target_total || 0) + '</td>' +
             '<td>' + Number(r.deleted || 0) + '</td>' +
             '<td>' + Number(r.failed || 0) + '</td></tr>'
@@ -2321,8 +2330,16 @@
           renderSnapshotInfo(j);
         }
         if (j.status === 'running' && (j.elapsed_running_sec != null)) {
+          const sp = (j && j.snapshot_progress) || {};
+          let waitBit = '';
+          if ((j.job_kind === 'snapshot' || isSnapshotJob) && Number(sp.waiting_pending || 0) > 0) {
+            const wSec = Number(sp.waiting_elapsed_sec || 0);
+            waitBit =
+              ' | Waiting on Prism tasks: ' + Number(sp.waiting_pending) + ' pending' +
+              (wSec > 0 ? ' (' + formatElapsed(wSec) + ')' : '');
+          }
           hint.textContent =
-            'Running for ' + formatElapsed(j.elapsed_running_sec) + '… (updates every 2s)';
+            'Running for ' + formatElapsed(j.elapsed_running_sec) + '… (updates every 2s)' + waitBit;
         }
         if (j.running_started_at) {
           setJobStartedAtDisplay(j.running_started_at);

@@ -20,7 +20,7 @@ import requests
 from pc_api_auth import COOKIE_REFRESH_SEC, get_cookie
 
 GROUPS_PATH = "/api/nutanix/v3/groups"
-TASKS_LIST_PATH = "/api/prism/v4.1/config/tasks"
+TASKS_LIST_PATH = "/api/prism/v4.3/config/tasks"
 VERSIONS_PATH = "/api/nutanix/v3/versions"
 ERGON_PREFIX = base64.b64encode(b"ergon").decode("ascii")
 TERMINAL = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "CANCELED", "CANCELLED"})
@@ -96,11 +96,13 @@ class SnapshotConfig:
     base_url: str
     pc_user: str
     pc_password: str
-    batch_size: int = 10
+    batch_size: int = 5
     recovery_point_type: str = "CRASH_CONSISTENT"
     expiration_days: int = 1
     poll_interval: float = 2.0
     task_timeout_sec: int = 30
+    # Mark straggler tasks as "other" after this many seconds and continue.
+    task_soft_timeout_sec: int = 120
     group_member_page: int = 500
     sleep_before_task_poll_sec: float = 4.0
     # "series" = one snapshot POST at a time; "parallel" = all POSTs in a batch concurrently.
@@ -342,17 +344,49 @@ def wait_batch(
     cfg: SnapshotConfig,
     log: logging.Logger,
     cancel_event: Optional[threading.Event] = None,
+    progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> None:
     pending = {f"{ERGON_PREFIX}:{t['task_uuid'].strip()}": t for t in tasks}
     tasks_url = base + TASKS_LIST_PATH
     deadline = time.monotonic() + cfg.task_timeout_sec
+    first_seen_mono = {ext: time.monotonic() for ext in pending}
 
     while pending:
+        now_m = time.monotonic()
+        if progress_callback is not None:
+            try:
+                progress_callback(
+                    {
+                        "waiting_phase": "polling_tasks",
+                        "waiting_pending": int(len(pending)),
+                        "waiting_elapsed_sec": int(max(0.0, now_m - (deadline - cfg.task_timeout_sec))),
+                    }
+                )
+            except Exception:
+                pass
         if cancel_event is not None and cancel_event.is_set():
             tally["other"] += len(pending)
             log.warning("Cancelled while waiting: %d task(s) left pending.", len(pending))
             raise RunCancelled()
-        if time.monotonic() > deadline:
+        stale: List[str] = []
+        for ext in list(pending.keys()):
+            t0 = first_seen_mono.get(ext, now_m)
+            if now_m - t0 >= float(cfg.task_soft_timeout_sec):
+                stale.append(ext)
+        for ext in stale:
+            meta = pending.pop(ext, None)
+            first_seen_mono.pop(ext, None)
+            if not meta:
+                continue
+            tally["other"] += 1
+            log.warning(
+                "  task %s… VM %s… (%s) long-pending >%ss; marking OTHER and continuing.",
+                str(meta.get("task_uuid", ""))[:8],
+                str(meta.get("vm_uuid", ""))[:8],
+                str(meta.get("vm_name") or "?"),
+                int(cfg.task_soft_timeout_sec),
+            )
+        if now_m > deadline:
             tally["other"] += len(pending)
             raise TimeoutError(
                 f"{len(pending)} task(s) still pending after {cfg.task_timeout_sec}s"
@@ -388,6 +422,7 @@ def wait_batch(
             if st not in TERMINAL:
                 continue
             meta = pending.pop(ext)
+            first_seen_mono.pop(ext, None)
             tu, vm = meta["task_uuid"], meta["vm_uuid"]
             nm = meta.get("vm_name") or ""
             if st == "SUCCEEDED":
@@ -508,11 +543,12 @@ def run_snapshots(
     vms = eligible_vms
     n_vms = len(vms)
 
-    def _emit_sp() -> None:
+    def _emit_sp(waiting: Optional[Dict[str, Any]] = None) -> None:
         if progress_callback is None:
             return
         done = int(tally["succeeded"]) + int(tally["failed"]) + int(tally["other"])
         done = max(0, min(done, n_vms))
+        waiting = waiting or {}
         try:
             progress_callback(
                 {
@@ -524,6 +560,9 @@ def run_snapshots(
                     "ignored": int(tally["ignored"]),
                     "snapshot_trigger_mode": str(mode),
                     "batch_size": int(cfg.batch_size),
+                    "waiting_phase": str(waiting.get("waiting_phase") or ""),
+                    "waiting_pending": int(waiting.get("waiting_pending") or 0),
+                    "waiting_elapsed_sec": int(waiting.get("waiting_elapsed_sec") or 0),
                 }
             )
         except Exception:
@@ -550,7 +589,16 @@ def run_snapshots(
                 )
                 time.sleep(cfg.sleep_before_task_poll_sec)
                 _abort_if_needed()
-            wait_batch(session, base, batch, tally, cfg, log, cancel_event)
+            wait_batch(
+                session,
+                base,
+                batch,
+                tally,
+                cfg,
+                log,
+                cancel_event,
+                progress_callback=_emit_sp,
+            )
         except TimeoutError as e:
             log.error("  %s", e)
             timed_out = True
