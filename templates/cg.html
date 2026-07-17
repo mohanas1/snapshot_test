@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CG Reports | Nutanix Operations</title>
+  <style>
+    :root {
+      --bg-main: #f6f8fb;
+      --card-bg: #ffffff;
+      --text-primary: #1f2937;
+      --text-muted: #6b7280;
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --border-gray: #e5e7eb;
+      --primary-blue: #3b82f6;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-primary); }
+    .body-content { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; padding: 1rem 0; }
+    .sidebar-brand { padding: 0 1.2rem 1rem; font-weight: 700; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .sidebar-nav { padding: 1rem 0.6rem; }
+    .nav-group-title { color: #9ca3af; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; padding: 0 0.7rem 0.5rem; }
+    .nav-item { display: block; color: #d1d5db; text-decoration: none; padding: 0.68rem 0.7rem; border-radius: 8px; margin-bottom: 0.3rem; }
+    .nav-item:hover { background: #23234a; color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .main-content { flex: 1; padding: 1.5rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-gray); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
+    h1 { margin: 0 0 0.3rem; font-size: 1.7rem; }
+    .sub { color: var(--text-muted); margin: 0 0 1rem; }
+    .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.9rem; }
+    input, select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.5rem 0.62rem;
+      font-size: 0.92rem;
+      background: #fff;
+    }
+    .actions { margin-top: 1rem; display: flex; gap: 0.65rem; align-items: center; }
+    .btn { border: 1px solid transparent; border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration:none; }
+    .btn-primary { background: var(--primary-blue); color: #fff; }
+    .btn-secondary { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
+    .msg { font-size: 0.88rem; color: var(--text-muted); }
+    .msg.error { color: var(--danger); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border-gray); padding: 0.55rem; text-align: left; font-size: 0.88rem; }
+    th { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+  <div class="body-content">
+    <div class="sidebar">
+      <div class="sidebar-brand">Nutanix Operations</div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="nav-item">Bulk Snapshots</a>
+        <a href="{{ url_for('recovery_points') }}" class="nav-item">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('cg_reports') }}" class="nav-item active">CG</a>
+        <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
+      </nav>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h1>CG</h1>
+        <p class="sub">Run Cost Governance random reports downloader as a managed job.</p>
+
+        <h2 class="section-title">Reports Downloader</h2>
+        <div class="grid">
+          <div>
+            <label for="pc-ip">PC IP</label>
+            <input id="pc-ip" type="text" placeholder="10.114.55.128" />
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="parallel" selected>Parallel</option>
+              <option value="sequential">Sequential</option>
+            </select>
+          </div>
+          <div>
+            <label for="batch-size">Batch size (parallel)</label>
+            <input id="batch-size" type="number" min="1" max="20" value="3" />
+          </div>
+          <div>
+            <label for="retry-sleep">Retry sleep sec (parallel)</label>
+            <input id="retry-sleep" type="number" min="1" max="3600" value="180" />
+          </div>
+          <div>
+            <label for="max-retries">Max retries (parallel)</label>
+            <input id="max-retries" type="number" min="0" max="1000" value="0" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="start-btn" class="btn btn-primary" type="button">Start CG Job</button>
+          <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Snapshot Project</a>
+          <span id="status-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Recent CG Jobs</h2>
+        {% if cg_recent_jobs %}
+        <table>
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Status</th>
+              <th>Started/At</th>
+              <th>Mode</th>
+              <th>Success</th>
+              <th>Failed</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in cg_recent_jobs %}
+            <tr>
+              <td><code>{{ row.run_id[:22] }}{% if row.run_id|length > 22 %}…{% endif %}</code></td>
+              <td>{{ row.status }}</td>
+              <td>{{ row.started_at or row.at or "-" }}</td>
+              <td>{{ (row.summary or {}).get('mode', '-') }}</td>
+              <td>{{ (row.summary or {}).get('successful_downloads', '-') }}</td>
+              <td>{{ (row.summary or {}).get('failed_downloads', '-') }}</td>
+              <td><a href="{{ row.job_url }}">Open Job</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="sub">No CG jobs yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modeEl = document.getElementById('mode');
+    const pcIpEl = document.getElementById('pc-ip');
+    const batchEl = document.getElementById('batch-size');
+    const retryEl = document.getElementById('retry-sleep');
+    const maxRetriesEl = document.getElementById('max-retries');
+    const statusMsg = document.getElementById('status-msg');
+    const startBtn = document.getElementById('start-btn');
+
+    function syncModeUi() {
+      const parallel = modeEl.value === 'parallel';
+      batchEl.disabled = !parallel;
+      retryEl.disabled = !parallel;
+      maxRetriesEl.disabled = !parallel;
+    }
+    modeEl.addEventListener('change', syncModeUi);
+    syncModeUi();
+
+    startBtn.addEventListener('click', async () => {
+      statusMsg.className = 'msg';
+      statusMsg.textContent = 'Starting CG reports job...';
+      startBtn.disabled = true;
+      try {
+        const payload = {
+          pc_ip: String(pcIpEl.value || '').trim(),
+          mode: modeEl.value,
+          batch_size: Number(batchEl.value || 3),
+          retry_sleep: Number(retryEl.value || 180),
+          max_retries: Number(maxRetriesEl.value || 0),
+        };
+        if (!payload.pc_ip) throw new Error('pc_ip is required');
+        const resp = await fetch('{{ url_for("api_cg_start") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start job');
+        window.location.href = data.job_url;
+      } catch (err) {
+        statusMsg.className = 'msg error';
+        statusMsg.textContent = String(err);
+        startBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

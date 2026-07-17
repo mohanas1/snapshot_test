@@ -198,7 +198,9 @@ def filter_recovery_points_by_size(recovery_points: List[Dict], size_filter: str
     - "zero": Only 0 bytes
     - "0-100KB": 0 to 100KB
     - "100KB-1MB": 100KB to 1MB  
-    - "1MB-50MB": 1MB to 50MB
+    - "1MB-10MB": 1MB to 10MB
+    - "10MB-50MB": 10MB to 50MB
+    - "1MB-50MB": 1MB to 50MB (legacy alias)
     - "50MB-500MB": 50MB to 500MB
     - "500MB+": 500MB and above
     """
@@ -219,6 +221,12 @@ def filter_recovery_points_by_size(recovery_points: List[Dict], size_filter: str
         elif size_filter == "100KB-1MB":
             if 100 * 1024 < size_bytes <= 1024 * 1024:
                 filtered.append(rp)
+        elif size_filter == "1MB-10MB":
+            if 1024 * 1024 < size_bytes <= 10 * 1024 * 1024:
+                filtered.append(rp)
+        elif size_filter == "10MB-50MB":
+            if 10 * 1024 * 1024 < size_bytes <= 50 * 1024 * 1024:
+                filtered.append(rp)
         elif size_filter == "1MB-50MB":
             if 1024 * 1024 < size_bytes <= 50 * 1024 * 1024:
                 filtered.append(rp)
@@ -235,6 +243,7 @@ def filter_recovery_points_by_size(recovery_points: List[Dict], size_filter: str
 def filter_recovery_points(
     recovery_points: List[Dict],
     size_filter: str = "all",
+    cluster_names: Optional[List[str]] = None,
     vm_name_patterns: Optional[List[str]] = None,
     min_vm_recovery_points: int = 0,
     max_vm_recovery_points: int = 0,
@@ -245,12 +254,18 @@ def filter_recovery_points(
     Args:
         recovery_points: Recovery point records.
         size_filter: Size bucket selector.
+        cluster_names: Optional list of cluster names to include.
         vm_name_patterns: Optional list of case-insensitive glob patterns for VM names.
         min_vm_recovery_points: Optional minimum number of recovery points the VM must have.
         max_vm_recovery_points: Optional maximum number of recovery points the VM must have.
     """
     filtered = filter_recovery_points_by_size(recovery_points, size_filter)
 
+    clusters = {
+        str(c).strip().lower()
+        for c in (cluster_names or [])
+        if str(c).strip()
+    }
     patterns = [
         str(p).strip().lower()
         for p in (vm_name_patterns or [])
@@ -259,7 +274,7 @@ def filter_recovery_points(
     threshold = max(0, int(min_vm_recovery_points or 0))
     max_threshold = max(0, int(max_vm_recovery_points or 0))
 
-    if not patterns and threshold <= 0 and max_threshold <= 0:
+    if not clusters and not patterns and threshold <= 0 and max_threshold <= 0:
         return filtered
 
     vm_counts: Dict[str, int] = {}
@@ -273,6 +288,9 @@ def filter_recovery_points(
 
     out: List[Dict] = []
     for rp in filtered:
+        cluster_norm = str(rp.get("cluster_name") or rp.get("pe_cluster") or "Unknown").strip().lower()
+        if clusters and cluster_norm not in clusters:
+            continue
         vm_name_raw = str(rp.get("vm_name") or "").strip()
         vm_name_norm = vm_name_raw.lower()
         vm_uuid = str(rp.get("vm_uuid") or "").strip().lower()
@@ -300,6 +318,7 @@ def bulk_delete_recovery_points(
     pc_password: str,
     recovery_points: List[Dict],
     size_filter: str = "all",
+    cluster_names: Optional[List[str]] = None,
     vm_name_patterns: Optional[List[str]] = None,
     min_vm_recovery_points: int = 0,
     max_vm_recovery_points: int = 0,
@@ -316,6 +335,7 @@ def bulk_delete_recovery_points(
         pc_password: PC password
         recovery_points: List of recovery point dicts with 'ext_id', 'name', 'size_bytes'
         size_filter: Size filter criteria
+        cluster_names: Optional cluster names to include
         vm_name_patterns: Optional VM name glob patterns (e.g. ["prod-*", "*db*"])
         min_vm_recovery_points: Delete only from VMs with at least this many RPs
         max_vm_recovery_points: Delete only from VMs with at most this many RPs
@@ -331,18 +351,20 @@ def bulk_delete_recovery_points(
     filtered_rps = filter_recovery_points(
         recovery_points,
         size_filter=size_filter,
+        cluster_names=cluster_names,
         vm_name_patterns=vm_name_patterns,
         min_vm_recovery_points=min_vm_recovery_points,
         max_vm_recovery_points=max_vm_recovery_points,
     )
     
     if not filtered_rps:
+        cluster_filter_summary = ", ".join([c for c in (cluster_names or []) if str(c).strip()]) or "all"
         vm_filter_summary = ", ".join([p for p in (vm_name_patterns or []) if str(p).strip()]) or "none"
         return {
             'ok': True,
             'message': (
                 "No recovery points match selected filters: "
-                f"size={size_filter}, vm_patterns={vm_filter_summary}, "
+                f"size={size_filter}, clusters={cluster_filter_summary}, vm_patterns={vm_filter_summary}, "
                 f"min_vm_recovery_points={int(min_vm_recovery_points or 0)}, "
                 f"max_vm_recovery_points={int(max_vm_recovery_points or 0)}"
             ),
@@ -353,11 +375,12 @@ def bulk_delete_recovery_points(
         }
     
     if progress_callback:
+        cluster_text = ", ".join([c for c in (cluster_names or []) if str(c).strip()]) or "all"
         pattern_text = ", ".join([p for p in (vm_name_patterns or []) if str(p).strip()]) or "none"
         progress_callback(
             "Starting bulk delete: "
             f"{len(filtered_rps)} recovery points "
-            f"(size filter: {size_filter}, vm patterns: {pattern_text}, "
+            f"(size filter: {size_filter}, clusters: {cluster_text}, vm patterns: {pattern_text}, "
             f"min VM recovery points: {int(min_vm_recovery_points or 0)}, "
             f"max VM recovery points: {int(max_vm_recovery_points or 0)})"
         )
@@ -632,13 +655,14 @@ def bulk_delete_recovery_points(
     # Create bounded number of threads only.
     threads = []
     for _ in range(concurrency):
-        t = threading.Thread(target=worker_loop, daemon=True)
+        # Non-daemon workers + full join so we never report completion early.
+        t = threading.Thread(target=worker_loop, daemon=False)
         t.start()
         threads.append(t)
     
     # Wait for all threads to complete
     for t in threads:
-        t.join(timeout=300)  # 5 minute timeout per thread
+        t.join()
     
     # Calculate statistics
     deleted_count = sum(1 for r in results if r['success'])

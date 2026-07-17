@@ -14,6 +14,7 @@ set -euo pipefail
 # - user presses Ctrl+C (abort)
 
 KUBECONFIG_PATH="${HOME}/kube/ss_kube"
+KUBECONFIG_EXPLICIT=0
 SELECTED_SERVICES="epsilon,calm,policy,scheduler"
 DURATION_SEC=$((30 * 60))
 OUT_BASE="microservice-live-logs"
@@ -26,7 +27,7 @@ usage() {
 Usage: collect_microservice_live_logs.sh [options]
 
 Options:
-  -k <kubeconfig>   Kubeconfig path (default: ../kube/ss_kube)
+  -k <kubeconfig>   Kubeconfig path (optional; auto-falls back to latest known kubeconfig)
   -s <services>     Comma-separated services (default: epsilon,calm,policy,scheduler)
   -d <seconds>      Stream duration in seconds (default: 1800)
   -o <output_base>  Output base directory prefix (default: microservice-live-logs)
@@ -43,7 +44,10 @@ EOF
 
 while getopts ":k:s:d:o:r:w:h" opt; do
   case "${opt}" in
-    k) KUBECONFIG_PATH="${OPTARG}" ;;
+    k)
+      KUBECONFIG_PATH="${OPTARG}"
+      KUBECONFIG_EXPLICIT=1
+      ;;
     s) SELECTED_SERVICES="${OPTARG}" ;;
     d) DURATION_SEC="${OPTARG}" ;;
     o) OUT_BASE="${OPTARG}" ;;
@@ -143,8 +147,45 @@ run_kexec() {
   run_kubectl_retry kubectl --kubeconfig="${KUBECONFIG_PATH}" --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" exec -n "${ns}" "${pod}" -- bash -lc "${cmd}"
 }
 
+resolve_kubeconfig_path() {
+  # 1) explicit/user-provided or default path if present
+  if [[ -n "${KUBECONFIG_PATH:-}" && -f "${KUBECONFIG_PATH}" ]]; then
+    echo "${KUBECONFIG_PATH}"
+    return 0
+  fi
+
+  # If user explicitly passed -k and file is missing, fail fast.
+  if [[ "${KUBECONFIG_EXPLICIT}" -eq 1 ]]; then
+    echo "[ERROR] kubeconfig not found at explicit path: ${KUBECONFIG_PATH}" >&2
+    return 1
+  fi
+
+  # 2) Try project kubeconfigs latest symlink/files
+  local candidate=""
+  local d
+  for d in "${PWD}/kubeconfigs" "${HOME}/mohan_helpers/bulk_snapshots_ui/kubeconfigs" "${HOME}/kubeconfigs"; do
+    [[ -d "${d}" ]] || continue
+    candidate="$(ls -1t "${d}"/*_kubeconfig_latest 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${candidate}" && -e "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
+    fi
+    candidate="$(ls -1t "${d}"/*_kubeconfig_* 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${candidate}" && -f "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+
+  echo "[ERROR] No kubeconfig found. Checked: ${KUBECONFIG_PATH}, ./kubeconfigs, ~/mohan_helpers/bulk_snapshots_ui/kubeconfigs, ~/kubeconfigs" >&2
+  return 1
+}
+
+KUBECONFIG_PATH="$(resolve_kubeconfig_path)"
+echo "[INFO] Using kubeconfig: ${KUBECONFIG_PATH}"
+
 echo "[INFO] Preflight: checking cluster connectivity..."
-if ! run_kubectl_retry kubectl --kubeconfig="${KUBECONFIG_PATH}" --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" version --short >/dev/null; then
+if ! run_kubectl_retry kubectl --kubeconfig="${KUBECONFIG_PATH}" --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" cluster-info >/dev/null; then
   echo "[ERROR] Kubernetes API not reachable. Check kubeconfig/context/network."
   exit 1
 fi

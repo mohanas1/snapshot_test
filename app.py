@@ -11,6 +11,7 @@ import shutil
 import socket
 import statistics
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -64,6 +65,9 @@ LOG_FILES = {
     'recovery': OPS_LOG_DIR / "recovery_points.log",  # Recovery points operations
     'logs_fetch': OPS_LOG_DIR / "logs_fetch.log",     # Fluentd/Logbay log collection
 }
+
+CG_REPORTS_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "cg_random_reports_download.py"
+CG_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "trigger_data_loader.sh"
 
 
 def _run_log_path(run_id: str) -> Path:
@@ -900,6 +904,369 @@ def _allocate_run_id_and_path(pc_label: str) -> tuple[str, Path]:
         if rid not in runs and not path.is_file() and not legacy.is_file():
             return rid, path
     raise RuntimeError("Could not allocate a unique run_id for log file.")
+
+
+def _nc_fqdn_from_pc_ip(pc_ip: str) -> str:
+    """Build NC FQDN from PC IP using nconprem-<ip>.ccpnx.com."""
+    ip = str(pc_ip or "").strip()
+    if not ip:
+        return ""
+    try:
+        socket.inet_aton(ip)
+    except OSError:
+        return ""
+    return f"nconprem-{ip.replace('.', '-')}.ccpnx.com"
+
+
+def _update_cg_summary_from_line(summary: dict, line: str) -> dict:
+    """Best-effort parser for live CG downloader logs."""
+    s = dict(summary or {})
+    if not isinstance(s.get("download_status_codes"), dict):
+        s["download_status_codes"] = {}
+    if not isinstance(s.get("status_status_codes"), dict):
+        s["status_status_codes"] = {}
+    if not isinstance(s.get("_download_ms_samples"), list):
+        s["_download_ms_samples"] = []
+    if not isinstance(s.get("_status_ms_samples"), list):
+        s["_status_ms_samples"] = []
+    if not isinstance(s.get("_download_duration_sec_samples"), list):
+        s["_download_duration_sec_samples"] = []
+
+    def _push_sample(key: str, value: float, max_items: int = 5000) -> None:
+        arr = s.get(key)
+        if not isinstance(arr, list):
+            arr = []
+        arr.append(float(value))
+        if len(arr) > max_items:
+            arr = arr[-max_items:]
+        s[key] = arr
+
+    def _avg(arr: list[float]) -> float:
+        return float(sum(arr) / len(arr)) if arr else 0.0
+
+    def _p90(arr: list[float]) -> float:
+        if not arr:
+            return 0.0
+        xs = sorted(float(x) for x in arr)
+        idx = int(0.9 * (len(xs) - 1))
+        return float(xs[idx])
+    cur_section = str(s.get("_parse_section") or "")
+
+    m = re.search(r"Fetched cluster list:\s*(\d+)\s+clusters", line)
+    if m:
+        s["cluster_count"] = int(m.group(1))
+    m = re.search(r"Total tasks to process:\s*(\d+)", line)
+    if m:
+        s["total_tasks"] = int(m.group(1))
+    m = re.search(r"Total reports to process:\s*(\d+)", line)
+    if m:
+        s["total_tasks"] = int(m.group(1))
+    m = re.search(r"BATCH\s+(\d+)\s+-\s+Processing\s+(\d+)\s+reports\s+\(Completed:\s*(\d+)/(\d+)\)", line)
+    if m:
+        s["current_batch"] = int(m.group(1))
+        s["current_batch_size"] = int(m.group(2))
+        s["completed_count"] = int(m.group(3))
+        s["total_tasks"] = int(m.group(4))
+    m = re.search(r"\[REPORT\s+(\d+)/(\d+)\]", line)
+    if m:
+        s["current_report"] = int(m.group(1))
+        s["total_tasks"] = int(m.group(2))
+    m = re.search(r"Downloaded:\s*(\d+)", line)
+    if m:
+        s["successful_downloads"] = max(int(s.get("successful_downloads") or 0), int(m.group(1)))
+    m = re.search(r"Total Completed:\s*(\d+)", line)
+    if m:
+        s["completed_count"] = int(m.group(1))
+    m = re.search(r"Total Successful Downloads:\s*(\d+)", line)
+    if m:
+        s["successful_downloads"] = int(m.group(1))
+    m = re.search(r"Total Batches:\s*(\d+)", line)
+    if m:
+        s["total_batches"] = int(m.group(1))
+    m = re.search(r"Batch Retries:\s*(\d+)", line)
+    if m:
+        s["batch_retries"] = int(m.group(1))
+    m = re.search(r"Rate Limit Hits\s*\(429\):\s*(\d+)", line)
+    if m:
+        s["rate_limit_hits"] = int(m.group(1))
+    m = re.search(r"Total Download Attempts:\s*(\d+)", line)
+    if m:
+        s["total_attempts"] = int(m.group(1))
+    m = re.search(r"✓\s*Successful:\s*(\d+)", line)
+    if m:
+        s["successful_downloads"] = int(m.group(1))
+    m = re.search(r"✗\s*Failed:\s*(\d+)", line)
+    if m:
+        s["failed_downloads"] = int(m.group(1))
+    m = re.search(r"Download API Calls:\s*(\d+)", line)
+    if m:
+        s["download_api_calls"] = int(m.group(1))
+    m = re.search(r"Status (?:Check )?API Calls:\s*(\d+)", line)
+    if m:
+        s["status_api_calls"] = int(m.group(1))
+
+    if "DOWNLOAD API METRICS" in line:
+        cur_section = "download_api"
+    elif "STATUS CHECK API METRICS" in line:
+        cur_section = "status_api"
+    elif "DOWNLOAD DURATION METRICS" in line:
+        cur_section = "download_duration"
+    elif "Download API Status Codes:" in line:
+        cur_section = "download_codes"
+    elif "Status Check API Status Codes:" in line:
+        cur_section = "status_codes"
+
+    m = re.search(r"^\s*Count:\s*(\d+)\s*\|\s*Avg:\s*([0-9.]+)\s*\|\s*P90:\s*([0-9.]+)", line)
+    if m:
+        if cur_section == "download_api":
+            s["download_api_calls"] = int(m.group(1))
+            s["download_api_avg_ms"] = float(m.group(2))
+            s["download_api_p90_ms"] = float(m.group(3))
+        elif cur_section == "status_api":
+            s["status_api_calls"] = int(m.group(1))
+            s["status_api_avg_ms"] = float(m.group(2))
+            s["status_api_p90_ms"] = float(m.group(3))
+
+    if cur_section == "download_duration":
+        m = re.search(r"^\s*Avg:\s*([0-9.]+)", line)
+        if m:
+            s["download_duration_avg_sec"] = float(m.group(1))
+        m = re.search(r"^\s*P90:\s*([0-9.]+)", line)
+        if m:
+            s["download_duration_p90_sec"] = float(m.group(1))
+
+    m = re.search(r"^\s*[✓✗⚠]?\s*(\d+):\s*(\d+)", line)
+    if m and cur_section in ("download_codes", "status_codes"):
+        code = str(m.group(1))
+        count = int(m.group(2))
+        if cur_section == "download_codes":
+            dsc = dict(s.get("download_status_codes") or {})
+            dsc[code] = count
+            s["download_status_codes"] = dsc
+        else:
+            ssc = dict(s.get("status_status_codes") or {})
+            ssc[code] = count
+            s["status_status_codes"] = ssc
+
+    m = re.search(r"\[DOWNLOAD\].*Response:\s*(\d+)", line)
+    if m:
+        code = str(m.group(1))
+        s["download_api_calls"] = int(s.get("download_api_calls") or 0) + 1
+        dsc = dict(s.get("download_status_codes") or {})
+        dsc[code] = int(dsc.get(code) or 0) + 1
+        s["download_status_codes"] = dsc
+        mt = re.search(r"Time:\s*([0-9.]+)ms", line)
+        if mt:
+            _push_sample("_download_ms_samples", float(mt.group(1)))
+            d_arr = s.get("_download_ms_samples") or []
+            s["download_api_avg_ms"] = _avg(d_arr)
+            s["download_api_p90_ms"] = _p90(d_arr)
+    m = re.search(r"\[STATUS\].*Response:\s*(\d+)", line)
+    if m:
+        code = str(m.group(1))
+        s["status_api_calls"] = int(s.get("status_api_calls") or 0) + 1
+        ssc = dict(s.get("status_status_codes") or {})
+        ssc[code] = int(ssc.get(code) or 0) + 1
+        s["status_status_codes"] = ssc
+        mt = re.search(r"Time:\s*([0-9.]+)ms", line)
+        if mt:
+            _push_sample("_status_ms_samples", float(mt.group(1)))
+            st_arr = s.get("_status_ms_samples") or []
+            s["status_api_avg_ms"] = _avg(st_arr)
+            s["status_api_p90_ms"] = _p90(st_arr)
+
+    m = re.search(r"download took\s*([0-9.]+)s", line)
+    if m:
+        _push_sample("_download_duration_sec_samples", float(m.group(1)))
+        dur_arr = s.get("_download_duration_sec_samples") or []
+        s["download_duration_avg_sec"] = _avg(dur_arr)
+        s["download_duration_p90_sec"] = _p90(dur_arr)
+
+    s["last_log_line"] = line[-500:]
+    s["last_update_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    s["_parse_section"] = cur_section
+    return s
+
+
+def _enqueue_cg_reports_run(mode: str, batch_size: int, retry_sleep: int, max_retries: int, pc_ip: str) -> str:
+    """Start Cost Governance reports downloader as a background run."""
+    if not CG_REPORTS_SCRIPT_PATH.is_file():
+        raise FileNotFoundError(f"CG script not found: {CG_REPORTS_SCRIPT_PATH}")
+
+    run_id, log_path = _allocate_run_id_and_path(pc_ip or "cg-reports")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    nc_fqdn = _nc_fqdn_from_pc_ip(pc_ip)
+    if not nc_fqdn:
+        raise ValueError("Invalid pc_ip; could not derive NC FQDN.")
+    ncm_base_url = f"https://ncm.services.{nc_fqdn}"
+    job_details = {
+        "pc_ip": pc_ip,
+        "nc_fqdn": nc_fqdn,
+        "ncm_base_url": ncm_base_url,
+        "mode": mode,
+        "batch_size": int(batch_size),
+        "retry_sleep": int(retry_sleep),
+        "max_retries": int(max_retries),
+        "script_path": str(CG_REPORTS_SCRIPT_PATH),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "cg_reports",
+            "job_details": job_details,
+            "summary": {
+                "mode": mode,
+                "pc_ip": pc_ip,
+                "nc_fqdn": nc_fqdn,
+                "total_tasks": 0,
+                "completed_count": 0,
+                "successful_downloads": 0,
+                "failed_downloads": 0,
+                "rate_limit_hits": 0,
+                "total_batches": 0,
+                "batch_retries": 0,
+                "download_api_calls": 0,
+                "status_api_calls": 0,
+                "download_api_avg_ms": 0.0,
+                "download_api_p90_ms": 0.0,
+                "status_api_avg_ms": 0.0,
+                "status_api_p90_ms": 0.0,
+                "download_duration_avg_sec": 0.0,
+                "download_duration_p90_sec": 0.0,
+                "download_status_codes": {},
+                "status_status_codes": {},
+            },
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        cmd = [sys.executable, str(CG_REPORTS_SCRIPT_PATH), "--pc-ip", pc_ip, "--nc-fqdn", nc_fqdn, "--ncm-base-url", ncm_base_url]
+        if mode == "parallel":
+            cmd.extend(
+                [
+                    "--parallel",
+                    "--batch-size",
+                    str(int(batch_size)),
+                    "--retry-sleep",
+                    str(int(retry_sleep)),
+                    "--max-retries",
+                    str(int(max_retries)),
+                ]
+            )
+
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+        try:
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(f"{start_ts.isoformat()} [INFO] Starting CG reports job: {' '.join(cmd)}\n")
+                log_fh.flush()
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(CG_REPORTS_SCRIPT_PATH.parent),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+
+                if proc.stdout is not None:
+                    while True:
+                        line = proc.stdout.readline()
+                        if line:
+                            line = line.rstrip("\n")
+                            log_fh.write(f"{line}\n")
+                            log_fh.flush()
+                            with runs_lock:
+                                row = runs.get(run_id)
+                                if row is not None:
+                                    row["summary"] = _update_cg_summary_from_line(row.get("summary") or {}, line)
+                        elif proc.poll() is not None:
+                            break
+
+                        if cancel_ev.is_set() and proc.poll() is None:
+                            log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Cancel requested; stopping process\n")
+                            log_fh.flush()
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=8)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                            break
+                exit_code = proc.wait(timeout=5)
+        except Exception as e:
+            APP_LOGGER.exception("CG reports job failed")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(e)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            return
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    if cancel_ev.is_set():
+                        row["status"] = "aborted"
+                        row["error"] = "Cancelled by user."
+                    elif exit_code == 0:
+                        row["status"] = "complete"
+                    else:
+                        row["status"] = "error"
+                        if not row.get("error"):
+                            row["error"] = f"CG reports script exited with code {exit_code}"
+                    row["finished_at"] = finished_at
+                    row["timing"] = {"duration_sec": float(duration_sec), "n_vms": int(row.get("summary", {}).get("total_tasks") or 0)}
+                    row.pop("process", None)
+                    row.pop("thread", None)
+                    row.pop("cancel_event", None)
+                    final_summary = dict(row.get("summary") or {})
+                else:
+                    final_summary = {}
+
+            hist = {
+                "run_id": run_id,
+                "job_kind": "cg_reports",
+                "pc_host": pc_ip,
+                "pc_host_key": _pc_host_key(pc_ip),
+                "at": finished_at,
+                "duration_sec": float(duration_sec),
+                "n_vms": int(final_summary.get("total_tasks") or 0),
+                "succeeded": int(final_summary.get("successful_downloads") or 0),
+                "failed": int(final_summary.get("failed_downloads") or 0),
+                "cg_mode": mode,
+                "total_batches": int(final_summary.get("total_batches") or 0),
+                "rate_limit_hits": int(final_summary.get("rate_limit_hits") or 0),
+                "nc_fqdn": nc_fqdn,
+            }
+            append_record(HISTORY_FILE, hist)
+
+    t = threading.Thread(target=_worker, daemon=True, name=f"cg-reports-{run_id[:10]}")
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    t.start()
+    return run_id
 
 
 def _cfg_to_dict(cfg: SnapshotConfig) -> dict:
@@ -1941,6 +2308,18 @@ def _summary_from_history_rec(rec: dict) -> dict:
             "guest_ssh_parallel": int(rec.get("guest_ssh_parallel") or 0),
             "median_wall_sec_per_vm": rec.get("median_wall_sec_per_vm"),
         }
+    if str(rec.get("job_kind") or "") == "cg_reports":
+        return {
+            "job_kind": "cg_reports",
+            "total_tasks": int(rec.get("n_vms", 0)),
+            "successful_downloads": int(rec.get("succeeded", 0)),
+            "failed_downloads": int(rec.get("failed", 0)),
+            "mode": str(rec.get("cg_mode") or ""),
+            "total_batches": int(rec.get("total_batches", 0)),
+            "rate_limit_hits": int(rec.get("rate_limit_hits", 0)),
+            "duration_sec": float(rec.get("duration_sec", 0)),
+            "nc_fqdn": str(rec.get("nc_fqdn") or ""),
+        }
     return {
         "n_vms": int(rec.get("n_vms", 0)),
         "duration_sec": float(rec.get("duration_sec", 0)),
@@ -2691,6 +3070,8 @@ def api_job(run_id: str):
             "finished_at": info.get("finished_at") or "",
             "job_kind": jk,
             "disk_op_mode": disk_mode,
+            "log_path": str(info.get("log_path") or ""),
+            "job_details": info.get("job_details"),
             "summary": summ,
             "disk_progress": info.get("disk_progress"),
             "snapshot_progress": info.get("snapshot_progress"),
@@ -3902,10 +4283,66 @@ def fetch_logs():
     return render_template("fetch_logs.html")
 
 
+@app.route("/cg")
+def cg_reports():
+    """Render Cost Governance reports page."""
+    rows = [r for r in _index_recent_runs(120) if str(r.get("job_kind") or "") == "cg_reports"][:20]
+    return render_template("cg.html", cg_recent_jobs=rows)
+
+
 @app.route("/additional")
 def additional():
     """Render additional reference details page."""
     return render_template("additional.html")
+
+
+@app.route("/api/cg/start", methods=["POST"])
+def api_cg_start():
+    """Start CG reports downloader as a background job."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    if not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip is required"}), 400
+    nc_fqdn = _nc_fqdn_from_pc_ip(pc_ip)
+    if not nc_fqdn:
+        return jsonify({"ok": False, "message": "pc_ip must be a valid IPv4 address"}), 400
+
+    mode = str(payload.get("mode") or "parallel").strip().lower()
+    if mode not in ("parallel", "sequential"):
+        return jsonify({"ok": False, "message": "mode must be parallel or sequential"}), 400
+
+    try:
+        batch_size = int(payload.get("batch_size") or 3)
+    except (TypeError, ValueError):
+        batch_size = 3
+    try:
+        retry_sleep = int(payload.get("retry_sleep") or 180)
+    except (TypeError, ValueError):
+        retry_sleep = 180
+    try:
+        max_retries = int(payload.get("max_retries") or 0)
+    except (TypeError, ValueError):
+        max_retries = 0
+
+    batch_size = max(1, min(20, batch_size))
+    retry_sleep = max(1, min(3600, retry_sleep))
+    max_retries = max(0, min(1000, max_retries))
+
+    try:
+        run_id = _enqueue_cg_reports_run(mode, batch_size, retry_sleep, max_retries, pc_ip)
+    except FileNotFoundError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+    except Exception as e:
+        APP_LOGGER.exception("Failed to enqueue CG reports job")
+        return jsonify({"ok": False, "message": str(e)}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "run_id": run_id,
+            "job_url": url_for("job_status", run_id=run_id),
+        }
+    )
 
 
 @app.route("/api/list_filer_folders", methods=["GET"])

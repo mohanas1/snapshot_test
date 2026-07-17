@@ -959,7 +959,7 @@
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -997,7 +997,7 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
-  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete') %}
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports') %}
   <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Snapshot Run Info</strong>
     <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
@@ -1285,13 +1285,68 @@
   </div>
   {% endif %}
 
+  {% if info.get('job_kind') == 'cg_reports' %}
+  <div id="cg-summary-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>CG Job Details</strong>
+    <div id="cg-summary-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+      <div class="disk-summary-card"><div class="disk-summary-card-label">PC IP</div><div class="disk-summary-card-value" id="cg-pc-ip">—</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Total Tasks</div><div class="disk-summary-card-value" id="cg-total">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Completed</div><div class="disk-summary-card-value" id="cg-completed">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Successful</div><div class="disk-summary-card-value" id="cg-success">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Failed</div><div class="disk-summary-card-value" id="cg-failed">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Rate Limit Hits</div><div class="disk-summary-card-value" id="cg-rate-limits">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Download API Calls</div><div class="disk-summary-card-value" id="cg-download-calls">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Status API Calls</div><div class="disk-summary-card-value" id="cg-status-calls">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Download Status Codes</div><div class="disk-summary-card-value" id="cg-download-codes" style="font-size:0.88rem;">{}</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Status Codes</div><div class="disk-summary-card-value" id="cg-status-codes" style="font-size:0.88rem;">{}</div></div>
+    </div>
+    <div style="margin-top: 0.85rem; overflow-x:auto;">
+      <table style="min-width: 620px;">
+        <thead>
+          <tr>
+            <th>API Type</th>
+            <th>Calls</th>
+            <th>Avg</th>
+            <th>P90</th>
+            <th>Unit</th>
+          </tr>
+        </thead>
+        <tbody id="cg-metrics-tbody">
+          <tr>
+            <td>Download API</td>
+            <td id="cg-m-download-calls">0</td>
+            <td id="cg-m-download-avg">0.00</td>
+            <td id="cg-m-download-p90">0.00</td>
+            <td>ms</td>
+          </tr>
+          <tr>
+            <td>Status API</td>
+            <td id="cg-m-status-calls">0</td>
+            <td id="cg-m-status-avg">0.00</td>
+            <td id="cg-m-status-p90">0.00</td>
+            <td>ms</td>
+          </tr>
+          <tr>
+            <td>Download Duration</td>
+            <td id="cg-m-duration-calls">0</td>
+            <td id="cg-m-duration-avg">0.00</td>
+            <td id="cg-m-duration-p90">0.00</td>
+            <td>s</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
   <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
 
   <script>
     const apiUrl = {{ api_url | tojson }};
     const cancelUrl = {{ cancel_api_url | tojson }};
     const isDiskJob = {{ (info.get('job_kind') == 'disk') | tojson }};
-    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete')) | tojson }};
+    const isCgJob = {{ (info.get('job_kind') == 'cg_reports') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -1347,6 +1402,25 @@
     const snapStatOther = document.getElementById('snap-stat-other');
     const snapStatIgnored = document.getElementById('snap-stat-ignored');
     const snapStatMode = document.getElementById('snap-stat-mode');
+    const cgPcIp = document.getElementById('cg-pc-ip');
+    const cgTotal = document.getElementById('cg-total');
+    const cgCompleted = document.getElementById('cg-completed');
+    const cgSuccess = document.getElementById('cg-success');
+    const cgFailed = document.getElementById('cg-failed');
+    const cgRateLimits = document.getElementById('cg-rate-limits');
+    const cgDownloadCalls = document.getElementById('cg-download-calls');
+    const cgStatusCalls = document.getElementById('cg-status-calls');
+    const cgDownloadCodes = document.getElementById('cg-download-codes');
+    const cgStatusCodes = document.getElementById('cg-status-codes');
+    const cgMDownloadCalls = document.getElementById('cg-m-download-calls');
+    const cgMDownloadAvg = document.getElementById('cg-m-download-avg');
+    const cgMDownloadP90 = document.getElementById('cg-m-download-p90');
+    const cgMStatusCalls = document.getElementById('cg-m-status-calls');
+    const cgMStatusAvg = document.getElementById('cg-m-status-avg');
+    const cgMStatusP90 = document.getElementById('cg-m-status-p90');
+    const cgMDurationCalls = document.getElementById('cg-m-duration-calls');
+    const cgMDurationAvg = document.getElementById('cg-m-duration-avg');
+    const cgMDurationP90 = document.getElementById('cg-m-duration-p90');
     var diskVmCompletedCache = [];
     /** null = API order; 'desc' = slowest first; 'asc' = fastest first */
     var diskVmDoneSortMode = null;
@@ -2240,6 +2314,33 @@
       }
     }
 
+    function renderCgSummary(j) {
+      if (!(isCgJob || j.job_kind === 'cg_reports')) return;
+      const d = (j && j.job_details) || {};
+      const s = (j && j.summary) || {};
+      if (cgPcIp) cgPcIp.textContent = String(d.pc_ip || s.pc_ip || '—');
+      if (cgTotal) cgTotal.textContent = String(Number(s.total_tasks || 0));
+      if (cgCompleted) cgCompleted.textContent = String(Number(s.completed_count || 0));
+      if (cgSuccess) cgSuccess.textContent = String(Number(s.successful_downloads || 0));
+      if (cgFailed) cgFailed.textContent = String(Number(s.failed_downloads || 0));
+      if (cgRateLimits) cgRateLimits.textContent = String(Number(s.rate_limit_hits || 0));
+      if (cgDownloadCalls) cgDownloadCalls.textContent = String(Number(s.download_api_calls || 0));
+      if (cgStatusCalls) cgStatusCalls.textContent = String(Number(s.status_api_calls || 0));
+      if (cgDownloadCodes) cgDownloadCodes.textContent = JSON.stringify(s.download_status_codes || {});
+      if (cgStatusCodes) cgStatusCodes.textContent = JSON.stringify(s.status_status_codes || {});
+
+      if (cgMDownloadCalls) cgMDownloadCalls.textContent = String(Number(s.download_api_calls || 0));
+      if (cgMDownloadAvg) cgMDownloadAvg.textContent = Number(s.download_api_avg_ms || 0).toFixed(2);
+      if (cgMDownloadP90) cgMDownloadP90.textContent = Number(s.download_api_p90_ms || 0).toFixed(2);
+      if (cgMStatusCalls) cgMStatusCalls.textContent = String(Number(s.status_api_calls || 0));
+      if (cgMStatusAvg) cgMStatusAvg.textContent = Number(s.status_api_avg_ms || 0).toFixed(2);
+      if (cgMStatusP90) cgMStatusP90.textContent = Number(s.status_api_p90_ms || 0).toFixed(2);
+      const durSamples = Array.isArray(s._download_duration_sec_samples) ? s._download_duration_sec_samples.length : 0;
+      if (cgMDurationCalls) cgMDurationCalls.textContent = String(durSamples || Number(s.successful_downloads || 0));
+      if (cgMDurationAvg) cgMDurationAvg.textContent = Number(s.download_duration_avg_sec || 0).toFixed(2);
+      if (cgMDurationP90) cgMDurationP90.textContent = Number(s.download_duration_p90_sec || 0).toFixed(2);
+    }
+
     async function fetchRunStatusLite(runId) {
       if (!runId) return null;
       try {
@@ -2328,6 +2429,9 @@
         }
         if (isSnapshotJob || j.job_kind === 'snapshot') {
           renderSnapshotInfo(j);
+        }
+        if (isCgJob || j.job_kind === 'cg_reports') {
+          renderCgSummary(j);
         }
         if (j.status === 'running' && (j.elapsed_running_sec != null)) {
           const sp = (j && j.snapshot_progress) || {};

@@ -242,6 +242,8 @@ class DiskOpConfig:
     churn_count_mib: int = 500
     # Cap guest SSH runs: "", "all", "100", "50%", etc. (see ``resolve_disk_run_limit``).
     disk_run_limit: str = ""
+    # Optional explicit VM UUID allow-list; when set, run only these VMs.
+    target_vm_uuids: Tuple[str, ...] = ()
     # Only VMs with Prism ``memory_mib`` **>** this (configured RAM). 0 = no minimum.
     guest_min_memory_mib: int = 250
     # Max concurrent ``ssh`` sessions to guests (default 10).
@@ -1796,6 +1798,21 @@ def run_disk_ops(
         snap_cfg,
         min_memory_mib=cfg.guest_min_memory_mib,
     )
+    explicit_targets = {str(v).strip() for v in (cfg.target_vm_uuids or ()) if str(v).strip()}
+    if explicit_targets:
+        by_uuid: Dict[str, Tuple[str, Optional[str], str, str]] = {
+            str(uid): (uid, name, ip, cname) for uid, name, ip, cname in worklist
+        }
+        # Preserve the caller-supplied order for deterministic execution.
+        scoped_worklist = [by_uuid[u] for u in cfg.target_vm_uuids if str(u).strip() in by_uuid]
+        missing = len(explicit_targets) - len(scoped_worklist)
+        worklist = scoped_worklist
+        log.debug(
+            "Applying explicit disk target UUID scope: requested=%d, matched_eligible=%d, missing_or_ineligible=%d.",
+            len(explicit_targets),
+            len(worklist),
+            max(0, missing),
+        )
     ignored_name = counts["ignored_name"]
     skipped_no_ip = counts["skipped_no_ip"]
     skipped_power_off = counts["skipped_power_off"]
@@ -1803,7 +1820,12 @@ def run_disk_ops(
 
     eligible_total = len(worklist)
     try:
-        if cfg.parallel_clusters:
+        if explicit_targets:
+            # Scope is already exact; do not re-trim by disk_run_limit/vm_per_cluster.
+            pc_meta = {}
+            candidates = worklist
+            n_run = len(candidates)
+        elif cfg.parallel_clusters:
             candidates, pc_meta = partition_guest_disk_worklist_by_cluster(worklist, cfg)
             n_run = len(candidates)
         else:
