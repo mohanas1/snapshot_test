@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 
 import requests
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
+from flask_socketio import SocketIO
 
 from snapshot_runner import RANDOM_CRASH_OR_APP, RunCancelled, SnapshotConfig, run_snapshots
 from vm_disk_runner import (
@@ -42,6 +43,7 @@ from run_history import append_record, load_records
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 PROJECT_DIR = Path(__file__).resolve().parent
 LOG_DIR = PROJECT_DIR / "logs"
@@ -67,7 +69,19 @@ LOG_FILES = {
 }
 
 CG_REPORTS_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "cg_random_reports_download.py"
-CG_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "trigger_data_loader.sh"
+CG_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "trigger_data_loader_job.sh"
+CG_STREAM_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "cg_data_loader_script.sh"
+# Required binaries: sshpass + ssh (local Flask host), kubectl + mspctl (remote execution host).
+CG_SSH_OPTIONS = [
+    "-o",
+    "StrictHostKeyChecking=no",
+    "-o",
+    "UserKnownHostsFile=/dev/null",
+    "-o",
+    "GlobalKnownHostsFile=/dev/null",
+    "-o",
+    "ConnectTimeout=10",
+]
 
 
 def _run_log_path(run_id: str) -> Path:
@@ -201,6 +215,11 @@ _disk_progress_hot_lock = threading.Lock()
 # }
 _log_jobs: dict[str, dict] = {}
 _log_jobs_lock = threading.Lock()
+
+_cg_loader_lock = threading.Lock()
+_cg_loader_process: subprocess.Popen | None = None
+_cg_loader_thread: threading.Thread | None = None
+_cg_loader_abort_event = threading.Event()
 
 
 def _set_disk_progress_hot(run_id: str, snap: dict) -> None:
@@ -918,6 +937,156 @@ def _nc_fqdn_from_pc_ip(pc_ip: str) -> str:
     return f"nconprem-{ip.replace('.', '-')}.ccpnx.com"
 
 
+def _extract_ip_from_nc_fqdn(nc_fqdn: str) -> str:
+    """Parse nconprem-10-53-56-44.ccpnx.com -> 10.53.56.44."""
+    host = str(nc_fqdn or "").strip().lower()
+    m = re.search(r"nconprem-(\d+)-(\d+)-(\d+)-(\d+)\.", host)
+    if not m:
+        return ""
+    candidate = ".".join(m.groups())
+    try:
+        socket.inet_aton(candidate)
+    except OSError:
+        return ""
+    return candidate
+
+
+def _resolve_pc_ip(pc_ip: str, nc_fqdn: str | None = None) -> str:
+    """Prefer explicit pc_ip, fallback to extracting from NC FQDN."""
+    direct_ip = str(pc_ip or "").strip()
+    if direct_ip:
+        try:
+            socket.inet_aton(direct_ip)
+            return direct_ip
+        except OSError:
+            return ""
+    return _extract_ip_from_nc_fqdn(nc_fqdn or "")
+
+
+def _emit_cg_loader_status(msg_type: str, message: str) -> None:
+    socketio.emit(
+        "cg_loader_status",
+        {
+            "type": str(msg_type or "info"),
+            "message": str(message or ""),
+            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        },
+    )
+
+
+def _render_cg_loader_script(
+    script_content: str,
+    *,
+    iterations: int,
+    sleep_duration: int,
+    backfill_hours: int,
+    wait_after_completion: int,
+) -> str:
+    """Update top-level constants in the loader shell script before remote execution."""
+    rendered = str(script_content or "")
+    replacements = {
+        "ITERATIONS": int(iterations),
+        "SLEEP_DURATION": int(sleep_duration),
+        "BACKFILL_HOURS": int(backfill_hours),
+        "WAIT_AFTER_COMPLETION": int(wait_after_completion),
+    }
+    for key, value in replacements.items():
+        rendered = re.sub(
+            rf"(?m)^{re.escape(key)}=\d+\s*$",
+            f"{key}={value}",
+            rendered,
+        )
+    return rendered
+
+
+def _read_stream_lines(stream, msg_type: str) -> None:
+    """Forward stream lines to Socket.IO as they arrive."""
+    if stream is None:
+        return
+    for raw_line in iter(stream.readline, ""):
+        line = raw_line.rstrip("\n")
+        if line:
+            _emit_cg_loader_status(msg_type, line)
+
+
+def run_data_loader_background(
+    pc_ip: str,
+    username: str,
+    password: str,
+    iterations: int,
+    sleep_duration: int,
+    backfill_hours: int,
+    wait_after_completion: int,
+    ncm_username: str = "",
+    ncm_password: str = "",
+    ncm_base_url: str = "",
+) -> None:
+    """Execute cg_data_loader_script.sh remotely and stream live logs."""
+    global _cg_loader_process, _cg_loader_thread
+    del ncm_username, ncm_password, ncm_base_url
+    proc: subprocess.Popen | None = None
+    try:
+        _emit_cg_loader_status("info", f"Starting CG data-loader on {pc_ip} as {username}")
+        script_body = CG_STREAM_DATA_LOADER_SCRIPT_PATH.read_text(encoding="utf-8")
+        rendered_script = _render_cg_loader_script(
+            script_body,
+            iterations=int(iterations),
+            sleep_duration=int(sleep_duration),
+            backfill_hours=int(backfill_hours),
+            wait_after_completion=int(wait_after_completion),
+        )
+        cmd = [
+            "sshpass",
+            "-p",
+            password,
+            "ssh",
+            *CG_SSH_OPTIONS,
+            f"{username}@{pc_ip}",
+            "bash -s",
+        ]
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        with _cg_loader_lock:
+            _cg_loader_process = proc
+        if proc.stdin is not None:
+            proc.stdin.write(rendered_script)
+            proc.stdin.close()
+
+        out_thread = threading.Thread(target=_read_stream_lines, args=(proc.stdout, "stdout"), daemon=True)
+        err_thread = threading.Thread(target=_read_stream_lines, args=(proc.stderr, "stderr"), daemon=True)
+        out_thread.start()
+        err_thread.start()
+
+        exit_code = proc.wait()
+        out_thread.join(timeout=2)
+        err_thread.join(timeout=2)
+        if _cg_loader_abort_event.is_set():
+            return
+        if exit_code == 0:
+            _emit_cg_loader_status("success", "CG data-loader completed successfully")
+        else:
+            _emit_cg_loader_status("error", f"CG data-loader failed with exit code {exit_code}")
+    except FileNotFoundError as e:
+        if "sshpass" in str(e):
+            _emit_cg_loader_status("error", "sshpass is not installed on server running Flask.")
+        else:
+            _emit_cg_loader_status("error", f"Required binary missing: {e}")
+    except Exception as e:
+        APP_LOGGER.exception("CG data-loader stream run failed")
+        _emit_cg_loader_status("error", f"Failed to run CG data-loader: {e}")
+    finally:
+        with _cg_loader_lock:
+            _cg_loader_process = None
+            _cg_loader_thread = None
+            _cg_loader_abort_event.clear()
+
+
 def _update_cg_summary_from_line(summary: dict, line: str) -> dict:
     """Best-effort parser for live CG downloader logs."""
     s = dict(summary or {})
@@ -1262,6 +1431,209 @@ def _enqueue_cg_reports_run(mode: str, batch_size: int, retry_sleep: int, max_re
             append_record(HISTORY_FILE, hist)
 
     t = threading.Thread(target=_worker, daemon=True, name=f"cg-reports-{run_id[:10]}")
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    t.start()
+    return run_id
+
+
+def _update_cg_data_loader_summary_from_line(summary: dict, line: str) -> dict:
+    """Best-effort parser for trigger_data_loader.sh live logs."""
+    s = dict(summary or {})
+
+    m = re.search(r"Iteration\s+(\d+)\s+of\s+(\d+)", line)
+    if m:
+        s["current_iteration"] = int(m.group(1))
+        s["iterations"] = int(m.group(2))
+
+    m = re.search(r"Successful:\s*(\d+)", line)
+    if m:
+        s["successful_iterations"] = int(m.group(1))
+    m = re.search(r"Failed:\s*(\d+)", line)
+    if m:
+        s["failed_iterations"] = int(m.group(1))
+    m = re.search(r"Total Iterations:\s*(\d+)", line)
+    if m:
+        s["iterations"] = int(m.group(1))
+
+    if "All iterations completed successfully" in line:
+        s["status_text"] = "All iterations completed successfully"
+    elif "iteration(s) failed" in line:
+        s["status_text"] = line.strip()
+
+    s["last_log_line"] = line[-500:]
+    s["last_update_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    return s
+
+
+def _enqueue_cg_data_loader_run(
+    pc_ip: str,
+    *,
+    pc_user: str = "",
+    pc_password: str = "",
+    iterations: int = 2,
+    sleep_duration: int = 10800,
+    backfill_hours: int = 8,
+    wait_after_completion: int = 300,
+    log_check_interval: int = 15,
+) -> str:
+    """Start trigger_data_loader.sh as a background run."""
+    if not CG_DATA_LOADER_SCRIPT_PATH.is_file():
+        raise FileNotFoundError(f"CG data-loader script not found: {CG_DATA_LOADER_SCRIPT_PATH}")
+
+    run_id, log_path = _allocate_run_id_and_path(pc_ip or "cg-data-loader")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    nc_fqdn = _nc_fqdn_from_pc_ip(pc_ip)
+    if not nc_fqdn:
+        raise ValueError("Invalid pc_ip; could not derive NC FQDN.")
+
+    job_details = {
+        "pc_ip": pc_ip,
+        "nc_fqdn": nc_fqdn,
+        "script_path": str(CG_DATA_LOADER_SCRIPT_PATH),
+        "pc_user": (pc_user or CURATOR_PC_SSH_USER),
+        "iterations": int(iterations),
+        "sleep_duration": int(sleep_duration),
+        "backfill_hours": int(backfill_hours),
+        "wait_after_completion": int(wait_after_completion),
+        "log_check_interval": int(log_check_interval),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "cg_data_loader",
+            "job_details": job_details,
+            "summary": {
+                "pc_ip": pc_ip,
+                "iterations": int(iterations),
+                "current_iteration": 0,
+                "successful_iterations": 0,
+                "failed_iterations": 0,
+                "status_text": "",
+            },
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        cmd = [
+            "bash",
+            str(CG_DATA_LOADER_SCRIPT_PATH),
+            str(pc_ip),
+            str(pc_user or CURATOR_PC_SSH_USER),
+        ]
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+        try:
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+            env["PC_IP"] = str(pc_ip)
+            env["PC_USER"] = str(pc_user or CURATOR_PC_SSH_USER)
+            env["PC_PASSWORD"] = str(pc_password or CURATOR_PC_SSH_PASSWORD)
+            env["ITERATIONS"] = str(int(iterations))
+            env["SLEEP_DURATION"] = str(int(sleep_duration))
+            env["BACKFILL_HOURS"] = str(int(backfill_hours))
+            env["WAIT_AFTER_COMPLETION"] = str(int(wait_after_completion))
+            env["LOG_CHECK_INTERVAL"] = str(int(log_check_interval))
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(f"{start_ts.isoformat()} [INFO] Starting CG data-loader job: {' '.join(cmd)}\n")
+                log_fh.flush()
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(CG_DATA_LOADER_SCRIPT_PATH.parent),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+
+                if proc.stdout is not None:
+                    while True:
+                        line = proc.stdout.readline()
+                        if line:
+                            line = line.rstrip("\n")
+                            log_fh.write(f"{line}\n")
+                            log_fh.flush()
+                            with runs_lock:
+                                row = runs.get(run_id)
+                                if row is not None:
+                                    row["summary"] = _update_cg_data_loader_summary_from_line(row.get("summary") or {}, line)
+                        elif proc.poll() is not None:
+                            break
+
+                        if cancel_ev.is_set() and proc.poll() is None:
+                            log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Cancel requested; stopping process\n")
+                            log_fh.flush()
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=8)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                            break
+                exit_code = proc.wait(timeout=5)
+        except Exception as e:
+            APP_LOGGER.exception("CG data-loader job failed")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(e)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            return
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    if cancel_ev.is_set():
+                        row["status"] = "aborted"
+                        row["error"] = "Cancelled by user."
+                    elif exit_code == 0:
+                        row["status"] = "complete"
+                    else:
+                        row["status"] = "error"
+                        if not row.get("error"):
+                            row["error"] = f"CG data-loader script exited with code {exit_code}"
+                    row["finished_at"] = finished_at
+                    row["timing"] = {"duration_sec": float(duration_sec), "n_vms": int(row.get("summary", {}).get("iterations") or 0)}
+                    row.pop("process", None)
+                    row.pop("thread", None)
+                    row.pop("cancel_event", None)
+                    final_summary = dict(row.get("summary") or {})
+                else:
+                    final_summary = {}
+
+            hist = {
+                "run_id": run_id,
+                "job_kind": "cg_data_loader",
+                "pc_host": pc_ip,
+                "pc_host_key": _pc_host_key(pc_ip),
+                "at": finished_at,
+                "duration_sec": float(duration_sec),
+                "n_vms": int(final_summary.get("iterations") or 0),
+                "succeeded": int(final_summary.get("successful_iterations") or 0),
+                "failed": int(final_summary.get("failed_iterations") or 0),
+            }
+            append_record(HISTORY_FILE, hist)
+
+    t = threading.Thread(target=_worker, daemon=True, name=f"cg-dataloader-{run_id[:10]}")
     with runs_lock:
         if run_id in runs:
             runs[run_id]["thread"] = t
@@ -2319,6 +2691,14 @@ def _summary_from_history_rec(rec: dict) -> dict:
             "rate_limit_hits": int(rec.get("rate_limit_hits", 0)),
             "duration_sec": float(rec.get("duration_sec", 0)),
             "nc_fqdn": str(rec.get("nc_fqdn") or ""),
+        }
+    if str(rec.get("job_kind") or "") == "cg_data_loader":
+        return {
+            "job_kind": "cg_data_loader",
+            "iterations": int(rec.get("n_vms", 0)),
+            "successful_iterations": int(rec.get("succeeded", 0)),
+            "failed_iterations": int(rec.get("failed", 0)),
+            "duration_sec": float(rec.get("duration_sec", 0)),
         }
     return {
         "n_vms": int(rec.get("n_vms", 0)),
@@ -4286,7 +4666,7 @@ def fetch_logs():
 @app.route("/cg")
 def cg_reports():
     """Render Cost Governance reports page."""
-    rows = [r for r in _index_recent_runs(120) if str(r.get("job_kind") or "") == "cg_reports"][:20]
+    rows = [r for r in _index_recent_runs(200) if str(r.get("job_kind") or "") in ("cg_reports", "cg_data_loader")][:30]
     return render_template("cg.html", cg_recent_jobs=rows)
 
 
@@ -4343,6 +4723,207 @@ def api_cg_start():
             "job_url": url_for("job_status", run_id=run_id),
         }
     )
+
+
+@app.route("/api/cg/data_loader/start", methods=["POST"])
+def api_cg_data_loader_start():
+    """Start CG trigger_data_loader.sh as a background job."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    pc_user = str(payload.get("pc_user") or payload.get("username") or CURATOR_PC_SSH_USER).strip() or CURATOR_PC_SSH_USER
+    pc_password = str(payload.get("pc_password") or payload.get("password") or CURATOR_PC_SSH_PASSWORD)
+    if not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip is required"}), 400
+    nc_fqdn = _nc_fqdn_from_pc_ip(pc_ip)
+    if not nc_fqdn:
+        return jsonify({"ok": False, "message": "pc_ip must be a valid IPv4 address"}), 400
+
+    try:
+        iterations = int(payload.get("iterations") or 2)
+    except (TypeError, ValueError):
+        iterations = 2
+    try:
+        sleep_duration = int(payload.get("sleep_duration") or 10800)
+    except (TypeError, ValueError):
+        sleep_duration = 10800
+    try:
+        backfill_hours = int(payload.get("backfill_hours") or 8)
+    except (TypeError, ValueError):
+        backfill_hours = 8
+    try:
+        wait_after_completion = int(payload.get("wait_after_completion") or 300)
+    except (TypeError, ValueError):
+        wait_after_completion = 300
+    try:
+        log_check_interval = int(payload.get("log_check_interval") or 15)
+    except (TypeError, ValueError):
+        log_check_interval = 15
+
+    iterations = max(1, min(100, iterations))
+    sleep_duration = max(1, min(86400, sleep_duration))
+    backfill_hours = max(1, min(168, backfill_hours))
+    wait_after_completion = max(1, min(3600, wait_after_completion))
+    log_check_interval = max(1, min(300, log_check_interval))
+
+    try:
+        run_id = _enqueue_cg_data_loader_run(
+            pc_ip,
+            pc_user=pc_user,
+            pc_password=pc_password,
+            iterations=iterations,
+            sleep_duration=sleep_duration,
+            backfill_hours=backfill_hours,
+            wait_after_completion=wait_after_completion,
+            log_check_interval=log_check_interval,
+        )
+    except FileNotFoundError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+    except Exception as e:
+        APP_LOGGER.exception("Failed to enqueue CG data-loader job")
+        return jsonify({"ok": False, "message": str(e)}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "run_id": run_id,
+            "job_url": url_for("job_status", run_id=run_id),
+        }
+    )
+
+
+@app.route("/cg_test_connection", methods=["POST"])
+def cg_test_connection():
+    """Validate SSH connectivity to Prism Central host/IP via sshpass + ssh."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip(), payload.get("nc_fqdn"))
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if not pc_ip or not username or not password:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "pc_ip (or nc_fqdn), username, and password are required",
+                }
+            ),
+            400,
+        )
+
+    cmd = [
+        "sshpass",
+        "-p",
+        password,
+        "ssh",
+        *CG_SSH_OPTIONS,
+        f"{username}@{pc_ip}",
+        "date",
+    ]
+    started = time.perf_counter()
+    try:
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "SSH connection timed out after 15 seconds"}), 408
+    except FileNotFoundError as e:
+        if "sshpass" in str(e):
+            return jsonify({"success": False, "error": "sshpass is not installed on server running Flask"}), 500
+        return jsonify({"success": False, "error": f"Required binary missing: {e}"}), 500
+    except Exception as e:
+        APP_LOGGER.exception("CG test connection failed")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    connection_time = round(time.perf_counter() - started, 3)
+    if res.returncode != 0:
+        err = (res.stderr or res.stdout or "").strip() or "SSH command failed"
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": err,
+                    "connection_time": connection_time,
+                }
+            ),
+            400,
+        )
+    return jsonify(
+        {
+            "success": True,
+            "pc_ip": pc_ip,
+            "connection_time": connection_time,
+            "remote_date": (res.stdout or "").strip(),
+        }
+    )
+
+
+@app.route("/cg_run_data_loader", methods=["POST"])
+def cg_run_data_loader():
+    """Start CG data-loader job and return job page URL."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip(), payload.get("nc_fqdn"))
+    pc_user = str(payload.get("pc_user") or payload.get("username") or CURATOR_PC_SSH_USER).strip() or CURATOR_PC_SSH_USER
+    pc_password = str(payload.get("pc_password") or payload.get("password") or CURATOR_PC_SSH_PASSWORD)
+    if not pc_ip:
+        return jsonify({"success": False, "error": "pc_ip (or nc_fqdn) is required"}), 400
+
+    try:
+        iterations = max(1, min(100, int(payload.get("iterations") or 20)))
+        sleep_duration = max(1, min(86400, int(payload.get("sleep_duration") or 10800)))
+        backfill_hours = max(1, min(168, int(payload.get("backfill_hours") or 8)))
+        wait_after_completion = max(1, min(3600, int(payload.get("wait_after_completion") or 300)))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "iterations/sleep_duration/backfill_hours/wait_after_completion must be integers"}), 400
+
+    try:
+        run_id = _enqueue_cg_data_loader_run(
+            pc_ip,
+            pc_user=pc_user,
+            pc_password=pc_password,
+            iterations=iterations,
+            sleep_duration=sleep_duration,
+            backfill_hours=backfill_hours,
+            wait_after_completion=wait_after_completion,
+        )
+    except FileNotFoundError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        APP_LOGGER.exception("Failed to enqueue CG data-loader job from /cg_run_data_loader")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    return jsonify(
+        {
+            "success": True,
+            "message": "Data loader started...",
+            "run_id": run_id,
+            "job_url": url_for("job_status", run_id=run_id),
+        }
+    )
+
+
+@app.route("/cg_abort_data_loader", methods=["POST"])
+def cg_abort_data_loader():
+    """Abort an active CG data-loader process."""
+    with _cg_loader_lock:
+        proc = _cg_loader_process
+        if proc is None or proc.poll() is not None:
+            return jsonify({"success": False, "error": "No running data loader process"}), 404
+        _cg_loader_abort_event.set()
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        except Exception as e:
+            APP_LOGGER.exception("Failed to abort CG data-loader")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    _emit_cg_loader_status("error", "Data loader aborted by user")
+    return jsonify({"success": True, "message": "Abort signal sent"})
 
 
 @app.route("/api/list_filer_folders", methods=["GET"])
@@ -7358,4 +7939,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("BULK_SNAP_PORT", "8765"))
     # threaded=False serializes HTTP handlers so Werkzeug access lines don't interleave on the terminal.
     threaded = os.environ.get("BULK_SNAP_THREADED", "1").strip().lower() not in ("0", "false", "no")
-    app.run(host=host, port=port, debug=False, threaded=threaded)
+    socketio.run(app, host=host, port=port, debug=False)

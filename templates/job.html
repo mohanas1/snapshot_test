@@ -959,7 +959,7 @@
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -997,7 +997,7 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
-  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports') %}
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader') %}
   <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Snapshot Run Info</strong>
     <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
@@ -1339,6 +1339,20 @@
   </div>
   {% endif %}
 
+  {% if info.get('job_kind') == 'cg_data_loader' %}
+  <div id="cg-dl-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>CG Data Loader Details</strong>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+      <div class="disk-summary-card"><div class="disk-summary-card-label">PC IP</div><div class="disk-summary-card-value" id="cgdl-pc-ip">—</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Iterations</div><div class="disk-summary-card-value" id="cgdl-iterations">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Current Iteration</div><div class="disk-summary-card-value" id="cgdl-current">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Successful</div><div class="disk-summary-card-value" id="cgdl-success">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Failed</div><div class="disk-summary-card-value" id="cgdl-failed">0</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Status</div><div class="disk-summary-card-value" id="cgdl-status-text" style="font-size:0.95rem;">—</div></div>
+    </div>
+  </div>
+  {% endif %}
+
   <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
 
   <script>
@@ -1346,7 +1360,8 @@
     const cancelUrl = {{ cancel_api_url | tojson }};
     const isDiskJob = {{ (info.get('job_kind') == 'disk') | tojson }};
     const isCgJob = {{ (info.get('job_kind') == 'cg_reports') | tojson }};
-    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports')) | tojson }};
+    const isCgDataLoaderJob = {{ (info.get('job_kind') == 'cg_data_loader') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -1421,6 +1436,12 @@
     const cgMDurationCalls = document.getElementById('cg-m-duration-calls');
     const cgMDurationAvg = document.getElementById('cg-m-duration-avg');
     const cgMDurationP90 = document.getElementById('cg-m-duration-p90');
+    const cgdlPcIp = document.getElementById('cgdl-pc-ip');
+    const cgdlIterations = document.getElementById('cgdl-iterations');
+    const cgdlCurrent = document.getElementById('cgdl-current');
+    const cgdlSuccess = document.getElementById('cgdl-success');
+    const cgdlFailed = document.getElementById('cgdl-failed');
+    const cgdlStatusText = document.getElementById('cgdl-status-text');
     var diskVmCompletedCache = [];
     /** null = API order; 'desc' = slowest first; 'asc' = fastest first */
     var diskVmDoneSortMode = null;
@@ -2341,6 +2362,18 @@
       if (cgMDurationP90) cgMDurationP90.textContent = Number(s.download_duration_p90_sec || 0).toFixed(2);
     }
 
+    function renderCgDataLoaderSummary(j) {
+      if (!(isCgDataLoaderJob || j.job_kind === 'cg_data_loader')) return;
+      const d = (j && j.job_details) || {};
+      const s = (j && j.summary) || {};
+      if (cgdlPcIp) cgdlPcIp.textContent = String(d.pc_ip || s.pc_ip || '—');
+      if (cgdlIterations) cgdlIterations.textContent = String(Number(s.iterations || 0));
+      if (cgdlCurrent) cgdlCurrent.textContent = String(Number(s.current_iteration || 0));
+      if (cgdlSuccess) cgdlSuccess.textContent = String(Number(s.successful_iterations || 0));
+      if (cgdlFailed) cgdlFailed.textContent = String(Number(s.failed_iterations || 0));
+      if (cgdlStatusText) cgdlStatusText.textContent = String(s.status_text || 'Running');
+    }
+
     async function fetchRunStatusLite(runId) {
       if (!runId) return null;
       try {
@@ -2432,6 +2465,9 @@
         }
         if (isCgJob || j.job_kind === 'cg_reports') {
           renderCgSummary(j);
+        }
+        if (isCgDataLoaderJob || j.job_kind === 'cg_data_loader') {
+          renderCgDataLoaderSummary(j);
         }
         if (j.status === 'running' && (j.elapsed_running_sec != null)) {
           const sp = (j && j.snapshot_progress) || {};

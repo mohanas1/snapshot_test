@@ -1,0 +1,31 @@
+
+[0;36m========================================[0m
+[0;36mStarting Data Loader Script[0m
+[0;36m========================================[0m
+[0;32m[INFO][0m 2026-07-22 17:44:52 - Logs will be saved to: data_loader_2026-07-22_17-44-52.log
+[0;32m[INFO][0m 2026-07-22 17:44:52 - Configuration:
+  - Namespace: ncm-cg
+  - Datastore Namespace: ntnx-ncm-datastore
+  - PostgreSQL Pod: cg-pg-1
+  - Database: cg_nx
+  - CronJob: cron-nx-cg-data-loader
+  - Data Loader Deployment: nx-cg-data-loader
+  - Iterations: 20
+  - Max Wait Duration: 10800 seconds (180 minutes)
+  - Wait After Completion: 300 seconds (5 minutes)
+  - Log Check Interval: 15 seconds
+  - Backfill Hours: 8
+  - Completion Patterns:
+    * CLUSTER_CONFIG completed successfully
+    * CATEGORIES_CONFIG completed successfully
+    * VM_CONFIG completed successfully
+    * CLUSTER_HARDWARE_CONFIG completed successfully
+    * VM_RECOVERY_POINT_CONFIG completed successfully
+    * Updating service backfill status for Service :\[CLUSTER_CONFIG\]
+    * Updating service backfill status for Service :\[NX_ROUTINE_WORKFLOW\]
+    * Updating service backfill status for Service :\[CATEGORIES_CONFIG\]
+    * Updating service backfill status for Service :\[VM_CONFIG\]
+    * Updating service backfill status for Service :\[CLUSTER_HARDWARE_CONFIG\]
+    * Updating service backfill status for Service :\[VM_RECOVERY_POINT_CONFIG\]
+[0;32m[INFO][0m 2026-07-22 17:44:52 - Checking prerequisites...
+[0;31m[ERROR][0m 2026-07-22 17:44:52 - Namespace 'ncm-cg' does not exist.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CG Reports | Nutanix Operations</title>
+  <title>Cost Governance Data Loader</title>
   <style>
     :root {
       --bg-main: #f6f8fb;
@@ -15,6 +15,7 @@
       --border-gray: #e5e7eb;
       --primary-blue: #3b82f6;
       --danger: #dc2626;
+      --success: #059669;
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-primary); }
@@ -33,7 +34,7 @@
     .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
     label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.9rem; }
-    input, select {
+    input {
       width: 100%;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
@@ -41,12 +42,13 @@
       font-size: 0.92rem;
       background: #fff;
     }
-    .actions { margin-top: 1rem; display: flex; gap: 0.65rem; align-items: center; }
-    .btn { border: 1px solid transparent; border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration:none; }
+    .actions { margin-top: 1rem; display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
+    .btn { border: 1px solid transparent; border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; }
     .btn-primary { background: var(--primary-blue); color: #fff; }
     .btn-secondary { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
     .msg { font-size: 0.88rem; color: var(--text-muted); }
     .msg.error { color: var(--danger); }
+    .msg.success { color: var(--success); }
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid var(--border-gray); padding: 0.55rem; text-align: left; font-size: 0.88rem; }
     th { background: #f3f4f6; }
@@ -68,39 +70,72 @@
 
     <div class="main-content">
       <div class="card">
-        <h1>CG</h1>
-        <p class="sub">Run Cost Governance random reports downloader as a managed job.</p>
+        <h1>Cost Governance Data Loader</h1>
+        <p class="sub">Trigger CG data-loader as a managed background job and open the standard job page.</p>
+      </div>
 
-        <h2 class="section-title">Reports Downloader</h2>
+      <div class="card">
+        <h2 class="section-title">PC Connection</h2>
         <div class="grid">
           <div>
             <label for="pc-ip">PC IP</label>
-            <input id="pc-ip" type="text" placeholder="10.114.55.128" />
+            <input id="pc-ip" type="text" value="10.114.55.128"/>
           </div>
           <div>
-            <label for="mode">Mode</label>
-            <select id="mode">
-              <option value="parallel" selected>Parallel</option>
-              <option value="sequential">Sequential</option>
-            </select>
+            <label for="nc-fqdn">NC FQDN (optional)</label>
+            <input id="nc-fqdn" type="text" placeholder="nconprem-10-53-56-44.ccpnx.com"/>
           </div>
           <div>
-            <label for="batch-size">Batch size (parallel)</label>
-            <input id="batch-size" type="number" min="1" max="20" value="3" />
+            <label for="ssh-username">SSH Username</label>
+            <input id="ssh-username" type="text" value="nutanix"/>
           </div>
           <div>
-            <label for="retry-sleep">Retry sleep sec (parallel)</label>
-            <input id="retry-sleep" type="number" min="1" max="3600" value="180" />
+            <label for="ssh-password">SSH Password</label>
+            <input id="ssh-password" type="password" value="nutanix/4u"/>
           </div>
           <div>
-            <label for="max-retries">Max retries (parallel)</label>
-            <input id="max-retries" type="number" min="0" max="1000" value="0" />
+            <label for="ncm-username">NCM Username</label>
+            <input id="ncm-username" type="text" placeholder="admin" />
+          </div>
+          <div>
+            <label for="ncm-password">NCM Password</label>
+            <input id="ncm-password" type="password" placeholder="••••••••" />
+          </div>
+          <div>
+            <label for="ncm-base-url">NCM Base URL</label>
+            <input id="ncm-base-url" type="text" placeholder="https://pc-ip:9440" />
           </div>
         </div>
         <div class="actions">
-          <button id="start-btn" class="btn btn-primary" type="button">Start CG Job</button>
+          <button id="test-connection-btn" class="btn btn-secondary" type="button">Test Connection</button>
+          <span id="connection-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Run Data Loader</h2>
+        <div class="grid">
+          <div>
+            <label for="iterations">Iterations</label>
+            <input id="iterations" type="number" min="1" max="1000" value="20" />
+          </div>
+          <div>
+            <label for="sleep-duration-min">Sleep Duration (minutes)</label>
+            <input id="sleep-duration-min" type="number" min="1" value="180" />
+          </div>
+          <div>
+            <label for="backfill-hours">Backfill Hours</label>
+            <input id="backfill-hours" type="number" min="1" value="8" />
+          </div>
+          <div>
+            <label for="wait-after-min">Wait After Completion (minutes)</label>
+            <input id="wait-after-min" type="number" min="1" value="5" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="run-loader-btn" class="btn btn-primary" type="button">Run Data Loader</button>
           <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Snapshot Project</a>
-          <span id="status-msg" class="msg"></span>
+          <span id="run-msg" class="msg"></span>
         </div>
       </div>
 
@@ -113,7 +148,7 @@
               <th>Run ID</th>
               <th>Status</th>
               <th>Started/At</th>
-              <th>Mode</th>
+              <th>Type / Mode</th>
               <th>Success</th>
               <th>Failed</th>
               <th>Action</th>
@@ -125,9 +160,9 @@
               <td><code>{{ row.run_id[:22] }}{% if row.run_id|length > 22 %}…{% endif %}</code></td>
               <td>{{ row.status }}</td>
               <td>{{ row.started_at or row.at or "-" }}</td>
-              <td>{{ (row.summary or {}).get('mode', '-') }}</td>
-              <td>{{ (row.summary or {}).get('successful_downloads', '-') }}</td>
-              <td>{{ (row.summary or {}).get('failed_downloads', '-') }}</td>
+              <td>{% if row.job_kind == 'cg_data_loader' %}data-loader{% else %}reports / {{ (row.summary or {}).get('mode', '-') }}{% endif %}</td>
+              <td>{% if row.job_kind == 'cg_data_loader' %}{{ (row.summary or {}).get('successful_iterations', '-') }}{% else %}{{ (row.summary or {}).get('successful_downloads', '-') }}{% endif %}</td>
+              <td>{% if row.job_kind == 'cg_data_loader' %}{{ (row.summary or {}).get('failed_iterations', '-') }}{% else %}{{ (row.summary or {}).get('failed_downloads', '-') }}{% endif %}</td>
               <td><a href="{{ row.job_url }}">Open Job</a></td>
             </tr>
             {% endfor %}
@@ -141,48 +176,77 @@
   </div>
 
   <script>
-    const modeEl = document.getElementById('mode');
     const pcIpEl = document.getElementById('pc-ip');
-    const batchEl = document.getElementById('batch-size');
-    const retryEl = document.getElementById('retry-sleep');
-    const maxRetriesEl = document.getElementById('max-retries');
-    const statusMsg = document.getElementById('status-msg');
-    const startBtn = document.getElementById('start-btn');
+    const ncFqdnEl = document.getElementById('nc-fqdn');
+    const sshUsernameEl = document.getElementById('ssh-username');
+    const sshPasswordEl = document.getElementById('ssh-password');
+    const ncmUsernameEl = document.getElementById('ncm-username');
+    const ncmPasswordEl = document.getElementById('ncm-password');
+    const ncmBaseUrlEl = document.getElementById('ncm-base-url');
+    const iterationsEl = document.getElementById('iterations');
+    const sleepMinEl = document.getElementById('sleep-duration-min');
+    const backfillHoursEl = document.getElementById('backfill-hours');
+    const waitAfterMinEl = document.getElementById('wait-after-min');
+    const runBtn = document.getElementById('run-loader-btn');
+    const testBtn = document.getElementById('test-connection-btn');
+    const connectionMsg = document.getElementById('connection-msg');
+    const runMsg = document.getElementById('run-msg');
 
-    function syncModeUi() {
-      const parallel = modeEl.value === 'parallel';
-      batchEl.disabled = !parallel;
-      retryEl.disabled = !parallel;
-      maxRetriesEl.disabled = !parallel;
-    }
-    modeEl.addEventListener('change', syncModeUi);
-    syncModeUi();
-
-    startBtn.addEventListener('click', async () => {
-      statusMsg.className = 'msg';
-      statusMsg.textContent = 'Starting CG reports job...';
-      startBtn.disabled = true;
+    testBtn.addEventListener('click', async () => {
+      connectionMsg.className = 'msg';
+      connectionMsg.textContent = 'Testing connection...';
       try {
         const payload = {
           pc_ip: String(pcIpEl.value || '').trim(),
-          mode: modeEl.value,
-          batch_size: Number(batchEl.value || 3),
-          retry_sleep: Number(retryEl.value || 180),
-          max_retries: Number(maxRetriesEl.value || 0),
+          nc_fqdn: String(ncFqdnEl.value || '').trim(),
+          username: String(sshUsernameEl.value || '').trim(),
+          password: String(sshPasswordEl.value || ''),
         };
-        if (!payload.pc_ip) throw new Error('pc_ip is required');
-        const resp = await fetch('{{ url_for("api_cg_start") }}', {
+        const resp = await fetch('/cg_test_connection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const data = await resp.json();
-        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start job');
+        if (!resp.ok || !data.success) throw new Error(data.error || 'Connection failed');
+        connectionMsg.className = 'msg success';
+        connectionMsg.textContent = `Connected in ${data.connection_time}s. Remote date: ${data.remote_date}`;
+      } catch (err) {
+        connectionMsg.className = 'msg error';
+        connectionMsg.textContent = String(err);
+      }
+    });
+
+    runBtn.addEventListener('click', async () => {
+      runMsg.className = 'msg';
+      runMsg.textContent = 'Starting data loader...';
+      runBtn.disabled = true;
+      try {
+        const payload = {
+          pc_ip: String(pcIpEl.value || '').trim(),
+          nc_fqdn: String(ncFqdnEl.value || '').trim(),
+          username: String(sshUsernameEl.value || '').trim(),
+          password: String(sshPasswordEl.value || ''),
+          ncm_username: String(ncmUsernameEl.value || '').trim(),
+          ncm_password: String(ncmPasswordEl.value || ''),
+          ncm_base_url: String(ncmBaseUrlEl.value || '').trim(),
+          iterations: Number(iterationsEl.value || 20),
+          sleep_duration: Number(sleepMinEl.value || 180) * 60,
+          backfill_hours: Number(backfillHoursEl.value || 8),
+          wait_after_completion: Number(waitAfterMinEl.value || 5) * 60,
+        };
+        const resp = await fetch('/cg_run_data_loader', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) throw new Error(data.error || 'Failed to start data loader');
         window.location.href = data.job_url;
       } catch (err) {
-        statusMsg.className = 'msg error';
-        statusMsg.textContent = String(err);
-        startBtn.disabled = false;
+        runMsg.className = 'msg error';
+        runMsg.textContent = String(err);
+        runBtn.disabled = false;
       }
     });
   </script>
