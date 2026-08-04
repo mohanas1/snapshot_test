@@ -52,6 +52,7 @@ POST_COMPLETION_PATTERNS=(
 
 # Global variable to store job start timestamp (ISO 8601 format for --since-time)
 JOB_START_TIMESTAMP=""
+CURRENT_ITERATION_START_TIMESTAMP=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -395,7 +396,7 @@ check_job_completion() {
     
     for job_type in "${job_types[@]}"; do
         if echo "$logs" | grep -q "$job_type completed successfully" || \
-           ([ "$job_type" = "NX_ROUTINE_WORKFLOW" ] && echo "$logs" | grep -q "Updating service backfill status for Service :\[NX_ROUTINE_WORKFLOW\]"); then
+           echo "$logs" | grep -q "Updating service backfill status for Service :\[$job_type\]"; then
             completed_jobs+=("$job_type")
             
             local completion_msg_key="${job_type}_completion_msg"
@@ -501,7 +502,10 @@ wait_for_job_completion() {
     unset LOGGED_MILESTONES
     declare -gA LOGGED_MILESTONES
     
-    JOB_START_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    JOB_START_TIMESTAMP="$CURRENT_ITERATION_START_TIMESTAMP"
+    if [ -z "$JOB_START_TIMESTAMP" ]; then
+        JOB_START_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    fi
     log_info "Job start timestamp: $JOB_START_TIMESTAMP"
     
     log_info "Waiting for data loader pod to be ready..."
@@ -602,6 +606,7 @@ START_TIME=$(date +%s)
 for i in $(seq 1 $ITERATIONS); do
     log_section "Iteration $i of $ITERATIONS"
     ITERATION_START=$(date +%s)
+    CURRENT_ITERATION_START_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     
     if ! query_backfill_status; then
         log_error "Failed to query initial backfill status."

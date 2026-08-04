@@ -1,0 +1,19 @@
+[
+  {
+    "enabled": true,
+    "frequency_minutes": 60,
+    "id": "cgmon-10-114-55-128",
+    "last_started_at": "2026-08-03T08:52:01.935964+00:00",
+    "ncm_base_url": "https://10.114.55.128:9440",
+    "ncm_token": "",
+    "next_run_at": "2026-08-03T09:52:01.935964+00:00",
+    "pc_ip": "10.114.55.128",
+    "pc_password": "nutanix/4u",
+    "pc_user": "nutanix",
+    "prom_namespace_label": "ncm-cg",
+    "prom_query_window": "15m",
+    "prometheus_base_url": "",
+    "prometheus_token": "",
+    "updated_at": "2026-07-25T18:51:36.823562+00:00"
+  }
+]

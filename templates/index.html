@@ -4501,6 +4501,11 @@
         <option value="{{ RANDOM_CRASH_OR_APP }}">{{ RANDOM_CRASH_OR_APP }} (random per VM)</option>
       </select>
 
+      <label style="display:flex; align-items:center; gap:0.5rem; margin-top:0.75rem;">
+        <input type="checkbox" id="force_snapshot" name="force_snapshot" value="1" />
+        <span>Force snapshot (bypass eligible filters/name-skip/cap)</span>
+      </label>
+
       <p id="estimate-line" class="muted"></p>
 
     </fieldset>
@@ -6801,6 +6806,8 @@
         sleep_before_task_poll_sec: parseFloat($("sleep_before_task_poll_sec").value) || 0,
         snapshot_trigger_mode: $("snapshot_trigger_mode").value,
         recovery_point_type: $("recovery_point_type").value,
+        force_snapshot: $("force_snapshot") && $("force_snapshot").checked,
+        disk_run_limit: $("disk_run_limit") ? $("disk_run_limit").value : "",
       };
     }
 
@@ -7904,6 +7911,16 @@
     }
 
     function affectedVmText(jobType) {
+      if (jobType === "snapshot") {
+        const forceSnap = !!($("force_snapshot") && $("force_snapshot").checked);
+        if (forceSnap) {
+          const invFiltered = Array.isArray(inventoryCurrentRows) ? inventoryCurrentRows.length : 0;
+          const invTotal = Array.isArray(window.inventoryUnfilteredRows) ? window.inventoryUnfilteredRows.length : invFiltered;
+          if (invTotal > 0) return "ALL discovered (" + invTotal + ")";
+          if (invFiltered > 0) return "ALL discovered (" + invFiltered + ")";
+          return "ALL discovered";
+        }
+      }
       // Always prefer disk-preview selected set for disk/full-pipeline.
       // This is the VM set actually targeted by disk ops and must match snapshot target for pipeline.
       const diskBase = lastDiskPreviewNorm || lastDiskPreviewPipe || null;

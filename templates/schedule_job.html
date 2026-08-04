@@ -164,6 +164,21 @@
       <div id="recent" class="muted">—</div>
     </div>
 
+    <div class="card" id="snapshot-info-card" style="display:none;">
+      <h3 style="margin-top:0;">Current Snapshot Run Info</h3>
+      <div class="grid" style="grid-template-columns: repeat(6, minmax(0, 1fr));">
+        <div><div class="muted">Target VMs</div><div id="snap-target" class="mono">—</div></div>
+        <div><div class="muted">Succeeded</div><div id="snap-succeeded" class="mono">—</div></div>
+        <div><div class="muted">Failed</div><div id="snap-failed" class="mono">—</div></div>
+        <div><div class="muted">Other</div><div id="snap-other" class="mono">—</div></div>
+        <div><div class="muted">Ignored</div><div id="snap-ignored" class="mono">—</div></div>
+        <div><div class="muted">Mode / Batch</div><div id="snap-mode-batch" class="mono">—</div></div>
+      </div>
+      <div style="margin-top:.75rem;">
+        <a id="snap-open-job" class="job-link" href="#" style="display:none;">Open snapshot job</a>
+      </div>
+    </div>
+
     <div class="card">
       <h3 style="margin-top:0;">Events</h3>
       <div id="events" class="muted">No events yet.</div>
@@ -218,6 +233,39 @@
               </div>`
             )).join("")
           : "—";
+
+        const snapshotInfoCard = document.getElementById("snapshot-info-card");
+        if ((j.job_type || "") === "snapshot" && recent.length) {
+          const latest = recent[0] || {};
+          const sj = await fetchRun(latest.run_id);
+          const sm = (sj && sj.summary) || {};
+          const sp = (sj && sj.snapshot_progress) || {};
+          const target = Number(sm.n_vms ?? sm.target_total ?? sp.overall_total ?? 0);
+          const succeeded = Number(sm.succeeded ?? sp.succeeded ?? 0);
+          const failed = Number(sm.failed ?? sp.failed ?? 0);
+          const other = Number(sm.other ?? sp.other ?? 0);
+          const ignored = Number(sm.ignored ?? sp.ignored ?? 0);
+          const mode = String(sm.snapshot_trigger_mode ?? sp.snapshot_trigger_mode ?? "—");
+          const batch = Number(sm.batch_size ?? sp.batch_size ?? 0);
+
+          document.getElementById("snap-target").textContent = String(target || 0);
+          document.getElementById("snap-succeeded").textContent = String(succeeded || 0);
+          document.getElementById("snap-failed").textContent = String(failed || 0);
+          document.getElementById("snap-other").textContent = String(other || 0);
+          document.getElementById("snap-ignored").textContent = String(ignored || 0);
+          document.getElementById("snap-mode-batch").textContent = batch ? `${mode} / ${batch}` : mode;
+
+          const openJob = document.getElementById("snap-open-job");
+          if (latest.run_id) {
+            openJob.href = `/job/${encodeURIComponent(latest.run_id)}`;
+            openJob.style.display = "inline-block";
+          } else {
+            openJob.style.display = "none";
+          }
+          snapshotInfoCard.style.display = "block";
+        } else {
+          snapshotInfoCard.style.display = "none";
+        }
 
         const evs = Array.isArray(j.events) ? j.events : [];
         document.getElementById("events").innerHTML = evs.length

@@ -203,7 +203,9 @@ copy_pod_logs_selective() {
         matching_dirs=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$find_cmd" 2>/dev/null || true)
         
         print_info "Raw matching_dirs output:"
-        echo "$matching_dirs" | head -10
+        # Print the full list so debug logs match the reported count.
+        # Previous behavior used `head -10`, which looked like missing folders.
+        echo "$matching_dirs"
         print_info "---"
         
         if [ -z "$matching_dirs" ]; then
@@ -243,7 +245,8 @@ copy_pod_logs_selective() {
             local from_epoch="${FLUENTD_TIME_FROM_EPOCH:-}"
             local to_epoch="${FLUENTD_TIME_TO_EPOCH:-}"
             local prune_grace_sec=86400   # 24h grace on each side
-            if [ -n "$from_epoch" ] && [ -n "$to_epoch" ]; then
+            local enable_folder_prune="${FLUENTD_ENABLE_FOLDER_PRUNE:-false}"
+            if [ -n "$from_epoch" ] && [ -n "$to_epoch" ] && [ "$enable_folder_prune" = "true" ]; then
                 local prune_from=$((from_epoch - prune_grace_sec))
                 local prune_to=$((to_epoch + prune_grace_sec))
                 local prune_cmd="
@@ -260,10 +263,30 @@ done"
                 if [ "$pruned_count" -gt 0 ]; then
                     candidate_dirs="$pruned_dirs"
                     print_info "Folder-time prune for ${ns}: ${dir_count} -> ${pruned_count} candidate folder(s)"
+                    local dropped_count=$((dir_count - pruned_count))
+                    if [ "$dropped_count" -gt 0 ]; then
+                        print_warning "Folder-time prune skipped ${dropped_count} folder(s) for ${ns} (directory mtime outside window+grace)"
+                        local dropped_dirs
+                        dropped_dirs=$(comm -23 \
+                            <(echo "$matching_dirs" | sed '/^$/d' | sort) \
+                            <(echo "$pruned_dirs" | sed '/^$/d' | sort) || true)
+                        local shown=0
+                        while IFS= read -r dd; do
+                            [ -z "$dd" ] && continue
+                            print_warning "  [${ns}] Pruned by folder mtime: $(basename "$dd")"
+                            shown=$((shown + 1))
+                            [ "$shown" -ge 10 ] && break
+                        done <<< "$dropped_dirs"
+                        if [ "$dropped_count" -gt "$shown" ]; then
+                            print_warning "  [${ns}] ... plus $((dropped_count - shown)) more pruned folder(s)"
+                        fi
+                    fi
                 else
                     # Safe fallback when mtime pruning is too strict.
                     print_warning "Folder-time prune yielded 0 for ${ns}; falling back to all ${dir_count} folders"
                 fi
+            elif [ -n "$from_epoch" ] && [ -n "$to_epoch" ]; then
+                print_info "Folder-time prune disabled for ${ns} (FLUENTD_ENABLE_FOLDER_PRUNE=${enable_folder_prune}); scanning all ${dir_count} folders"
             fi
 
             local candidate_count
@@ -274,6 +297,11 @@ done"
             fi
             print_info "Scanning ${candidate_count} candidate folder(s) for ${ns} (heartbeat every ${heartbeat_every})"
             local candidate_index=0
+            local folders_with_selected_files=0
+            local folders_without_selected_files=0
+            local folders_missing_log_files=0
+            local folders_skipped_by_window=0
+            local skipped_folder_samples=0
             while IFS= read -r pod_dir; do
                 [ -z "$pod_dir" ] && continue
                 candidate_index=$((candidate_index + 1))
@@ -294,10 +322,41 @@ done | sort"
                 local active_cmd="[ -f \"${pod_dir}/file.log.log\" ] && echo \"${pod_dir}/file.log.log\" || true"
                 local active_path
                 active_path=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$active_cmd" 2>/dev/null || true)
+                local active_first_ts=""
+                local active_last_seen_ts=""
+                local active_overlaps_window=0
+                if [ -n "$active_path" ]; then
+                    # Try to infer active file time span from log content timestamps.
+                    # Supports both:
+                    # - 2026-08-03T12:40:54...
+                    # - 2026/08/03 12:40:54...
+                    local active_range_cmd="
+awk '
+match(\$0, /^([0-9]{4})[-\\/]([0-9]{2})[-\\/]([0-9]{2})[T ]([0-9]{2}):([0-9]{2}):([0-9]{2})/, a) {
+  ts = a[1] a[2] a[3] a[4] a[5] a[6]
+  if (first == \"\") first = ts
+  last = ts
+}
+END {
+  if (first != \"\") print first \"|\" last
+}
+' \"${active_path}\" 2>/dev/null"
+                    local active_range
+                    active_range=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$active_range_cmd" 2>/dev/null || true)
+                    if [ -n "$active_range" ] && [[ "$active_range" == *"|"* ]]; then
+                        active_first_ts="${active_range%%|*}"
+                        active_last_seen_ts="${active_range#*|}"
+                        if [[ "$active_last_seen_ts" > "$from_ts" || "$active_last_seen_ts" == "$from_ts" ]] && \
+                           [[ "$active_first_ts" < "$to_ts" || "$active_first_ts" == "$to_ts" ]]; then
+                            active_overlaps_window=1
+                        fi
+                    fi
+                fi
 
                 local started=0
                 local done=0
                 local last_ts=""
+                local folder_selected_files=0
                 while IFS= read -r row; do
                     [ -z "$row" ] && continue
                     local ts="${row%%|*}"
@@ -308,6 +367,7 @@ done | sort"
                         if [[ "$ts" > "$from_ts" || "$ts" == "$from_ts" ]]; then
                             started=1
                             remote_file_list="${remote_file_list}${path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
                             if [[ "$ts" > "$to_ts" || "$ts" == "$to_ts" ]]; then
                                 done=1
                                 break
@@ -315,6 +375,7 @@ done | sort"
                         fi
                     else
                         remote_file_list="${remote_file_list}${path}"$'\n'
+                        folder_selected_files=$((folder_selected_files + 1))
                         if [[ "$ts" > "$to_ts" || "$ts" == "$to_ts" ]]; then
                             done=1
                             break
@@ -325,20 +386,51 @@ done | sort"
                 if [ "$started" -eq 1 ]; then
                     # If window extends beyond last rotated file, include active file.
                     if [ "$done" -eq 0 ] && [ -n "$active_path" ]; then
-                        remote_file_list="${remote_file_list}${active_path}"$'\n'
+                        if [ "$active_overlaps_window" -eq 1 ]; then
+                            remote_file_list="${remote_file_list}${active_path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
+                        elif [ -z "$active_first_ts" ] || [ -z "$active_last_seen_ts" ]; then
+                            # Fallback for unparseable log format: keep previous behavior.
+                            remote_file_list="${remote_file_list}${active_path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
+                        fi
                     fi
                 else
                     # No rotated file boundary found in range. Include active for recent and
                     # for ranges newer than last rotated boundary.
                     if [ -n "$active_path" ]; then
-                        if [ "$filter_type" = "recent" ]; then
+                        if [ "$active_overlaps_window" -eq 1 ]; then
                             remote_file_list="${remote_file_list}${active_path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
+                        elif [ "$filter_type" = "recent" ] && { [ -z "$active_first_ts" ] || [ -z "$active_last_seen_ts" ]; }; then
+                            remote_file_list="${remote_file_list}${active_path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
                         elif [ -n "$last_ts" ] && [[ "$from_ts" > "$last_ts" ]]; then
                             remote_file_list="${remote_file_list}${active_path}"$'\n'
+                            folder_selected_files=$((folder_selected_files + 1))
                         fi
                     fi
                 fi
+
+                if [ "$folder_selected_files" -gt 0 ]; then
+                    folders_with_selected_files=$((folders_with_selected_files + 1))
+                else
+                    folders_without_selected_files=$((folders_without_selected_files + 1))
+                    local skip_reason="outside requested time window"
+                    if [ -z "$rotated_list" ] && [ -z "$active_path" ]; then
+                        skip_reason="no file.log.log* files found in folder"
+                        folders_missing_log_files=$((folders_missing_log_files + 1))
+                    else
+                        folders_skipped_by_window=$((folders_skipped_by_window + 1))
+                    fi
+                    if [ "$skipped_folder_samples" -lt 10 ]; then
+                        print_warning "  [${ns}] Skipping folder: $(basename "$pod_dir") - ${skip_reason}"
+                        skipped_folder_samples=$((skipped_folder_samples + 1))
+                    fi
+                fi
             done <<< "$candidate_dirs"
+
+            print_info "  [${ns}] Folder scan summary: scanned=${candidate_index}, selected=${folders_with_selected_files}, skipped=${folders_without_selected_files}, missing_logs=${folders_missing_log_files}, outside_window=${folders_skipped_by_window}"
         fi
 
         local download_success_count=0
@@ -452,9 +544,12 @@ done | sort"
             # Build deterministic groups by container name so each tar maps to container(s).
             local dirs_with_sizes
             dirs_with_sizes=$(du -sk "${ns_output_dir}"/* 2>/dev/null | sort -k2 || true)
-            declare -A container_dirs
-            declare -A container_size_kb
-            declare -A container_dir_count
+            # IMPORTANT: hard reset per-namespace arrays.
+            # Without explicit =(), entries from a previous namespace can leak and
+            # cause tar to reference non-existent local directories.
+            local -A container_dirs=()
+            local -A container_size_kb=()
+            local -A container_dir_count=()
 
             while IFS= read -r line; do
                 [ -z "$line" ] && continue
@@ -486,11 +581,30 @@ done | sort"
                 _emit_index=$((_emit_index + 1))
                 local filer_filename="${ns}__${tar_label}.tar.gz"
                 local local_tar="${output_dir}/${filer_filename}"
+                local existing_dirs=()
+                local missing_dirs=()
+                local d
+
+                for d in "${dirs[@]}"; do
+                    if [ -d "${ns_output_dir}/${d}" ]; then
+                        existing_dirs+=("$d")
+                    else
+                        missing_dirs+=("$d")
+                    fi
+                done
 
                 print_info ""
                 print_info "  📦 Group ${_emit_index}: ${filer_filename} (${#dirs[@]} dirs)"
+                if [ ${#missing_dirs[@]} -gt 0 ]; then
+                    print_warning "  Missing local dirs before tar: ${#missing_dirs[@]}/${#dirs[@]} (sample: ${missing_dirs[*]:0:5})"
+                fi
+                if [ ${#existing_dirs[@]} -eq 0 ]; then
+                    print_error "  ✗ Skipping group: no local directories exist for tar"
+                    total_failed=$((total_failed + 1))
+                    return 1
+                fi
                 print_info "  Creating tar locally..."
-                tar_chunk_output=$(tar -czf "$local_tar" -C "$ns_output_dir" "${dirs[@]}" 2>&1)
+                tar_chunk_output=$(tar -czf "$local_tar" -C "$ns_output_dir" "${existing_dirs[@]}" 2>&1)
                 tar_chunk_exit=$?
                 if [ $tar_chunk_exit -eq 0 ] && [ -f "$local_tar" ]; then
                     local tar_size
@@ -518,12 +632,6 @@ done | sort"
                 fi
             }
 
-            # Pack small containers together up to chunk_size_mb.
-            local pack_size_kb=0
-            local pack_containers=""
-            local pack_dirs=()
-            local flush_pack=0
-
             for container_name in "${container_names[@]}"; do
                 local c_size_kb=${container_size_kb["$container_name"]:-0}
                 local c_size_mb=$((c_size_kb / 1024))
@@ -539,15 +647,6 @@ done | sort"
 
                 # If this container itself exceeds threshold, split it into parts.
                 if [ "$c_size_mb" -gt "$chunk_size_mb" ]; then
-                    if [ ${#pack_dirs[@]} -gt 0 ]; then
-                        local bundle_label
-                        bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
-                        emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
-                        pack_dirs=()
-                        pack_size_kb=0
-                        pack_containers=""
-                    fi
-
                     local part_idx=1
                     local part_size_kb=0
                     local part_dirs=()
@@ -569,27 +668,10 @@ done | sort"
                     continue
                 fi
 
-                # Small/medium container: pack with other small ones.
-                if [ $(( (pack_size_kb + c_size_kb) / 1024 )) -gt "$chunk_size_mb" ] && [ ${#pack_dirs[@]} -gt 0 ]; then
-                    local bundle_label
-                    bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
-                    emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
-                    pack_dirs=()
-                    pack_size_kb=0
-                    pack_containers=""
-                fi
-                pack_size_kb=$((pack_size_kb + c_size_kb))
-                pack_containers="${pack_containers}_${safe_container}"
-                for d in "${c_dirs[@]}"; do
-                    pack_dirs+=("$d")
-                done
+                # Always emit one tar per detected container group.
+                # This keeps behavior aligned with "Container groups detected: N".
+                emit_tar_for_dirs "${safe_container}" "${c_dirs[@]}"
             done
-
-            if [ ${#pack_dirs[@]} -gt 0 ]; then
-                local bundle_label
-                bundle_label=$(echo "$pack_containers" | sed 's/^_//' | cut -c1-120)
-                emit_tar_for_dirs "$bundle_label" "${pack_dirs[@]}"
-            fi
             
         else
             # Single tar (small namespace)

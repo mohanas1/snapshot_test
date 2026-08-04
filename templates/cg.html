@@ -82,28 +82,12 @@
             <input id="pc-ip" type="text" value="10.114.55.128"/>
           </div>
           <div>
-            <label for="nc-fqdn">NC FQDN (optional)</label>
-            <input id="nc-fqdn" type="text" placeholder="nconprem-10-53-56-44.ccpnx.com"/>
-          </div>
-          <div>
             <label for="ssh-username">SSH Username</label>
             <input id="ssh-username" type="text" value="nutanix"/>
           </div>
           <div>
             <label for="ssh-password">SSH Password</label>
             <input id="ssh-password" type="password" value="nutanix/4u"/>
-          </div>
-          <div>
-            <label for="ncm-username">NCM Username</label>
-            <input id="ncm-username" type="text" placeholder="admin" />
-          </div>
-          <div>
-            <label for="ncm-password">NCM Password</label>
-            <input id="ncm-password" type="password" placeholder="••••••••" />
-          </div>
-          <div>
-            <label for="ncm-base-url">NCM Base URL</label>
-            <input id="ncm-base-url" type="text" placeholder="https://pc-ip:9440" />
           </div>
         </div>
         <div class="actions">
@@ -132,11 +116,83 @@
             <input id="wait-after-min" type="number" min="1" value="5" />
           </div>
         </div>
+        <div style="margin-top:0.75rem; padding:0.65rem 0.75rem; border:1px solid #E5E7EB; border-radius:8px; background:#F8FAFC;">
+          <label style="display:flex; align-items:center; gap:0.55rem; margin:0; font-weight:600;">
+            <input id="cg-collect-ns-logs" type="checkbox" checked style="width:auto; margin:0;" />
+            Collect CG namespace live logs for each iteration
+          </label>
+          <div style="margin-top:0.3rem; color:#6B7280; font-size:0.84rem;">
+            Runs live pod log streaming (up to 8 hours) and auto-stops when that iteration completes.
+          </div>
+        </div>
         <div class="actions">
           <button id="run-loader-btn" class="btn btn-primary" type="button">Run Data Loader</button>
           <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Snapshot Project</a>
           <span id="run-msg" class="msg"></span>
         </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">CG Monitor</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Register PCs for day-2-day CG health checks. Monitor runs execute at fixed frequency and collect health output logs.
+        </p>
+        <div class="grid">
+          <div>
+            <label for="mon-frequency-min">Check Frequency (minutes)</label>
+            <input id="mon-frequency-min" type="number" min="5" value="60" />
+          </div>
+          <div>
+            <label style="display:block; color:#6B7280; font-size:0.84rem; margin-top:1.4rem;">
+              NCM endpoint and Prometheus details are auto-resolved from PC connection.
+            </label>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <label style="display:flex; align-items:center; gap:0.45rem; margin:0; font-weight:600;">
+              <input id="mon-enabled" type="checkbox" checked style="width:auto; margin:0;" />
+              Enabled
+            </label>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="mon-save-btn" class="btn btn-primary" type="button">Save Monitor</button>
+          <button id="mon-run-now-btn" class="btn btn-secondary" type="button">Run Once Now</button>
+          <span id="mon-msg" class="msg"></span>
+        </div>
+
+        <h3 style="margin:1rem 0 0.6rem; font-size:1rem;">Configured Monitors</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>PC IP</th>
+              <th>Frequency</th>
+              <th>Enabled</th>
+              <th>Next Run</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="mon-configs-body">
+            <tr><td colspan="5" class="sub">No monitor configs yet.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin:1rem 0 0.6rem; font-size:1rem;">Recent Monitor Runs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>PC IP</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Overall</th>
+              <th>Trend</th>
+              <th>Duration</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="mon-history-body">
+            <tr><td colspan="7" class="sub">No monitor runs yet.</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="card">
@@ -177,20 +233,24 @@
 
   <script>
     const pcIpEl = document.getElementById('pc-ip');
-    const ncFqdnEl = document.getElementById('nc-fqdn');
     const sshUsernameEl = document.getElementById('ssh-username');
     const sshPasswordEl = document.getElementById('ssh-password');
-    const ncmUsernameEl = document.getElementById('ncm-username');
-    const ncmPasswordEl = document.getElementById('ncm-password');
-    const ncmBaseUrlEl = document.getElementById('ncm-base-url');
     const iterationsEl = document.getElementById('iterations');
     const sleepMinEl = document.getElementById('sleep-duration-min');
     const backfillHoursEl = document.getElementById('backfill-hours');
     const waitAfterMinEl = document.getElementById('wait-after-min');
+    const collectCgNsLogsEl = document.getElementById('cg-collect-ns-logs');
     const runBtn = document.getElementById('run-loader-btn');
     const testBtn = document.getElementById('test-connection-btn');
     const connectionMsg = document.getElementById('connection-msg');
     const runMsg = document.getElementById('run-msg');
+    const monFreqEl = document.getElementById('mon-frequency-min');
+    const monEnabledEl = document.getElementById('mon-enabled');
+    const monSaveBtn = document.getElementById('mon-save-btn');
+    const monRunNowBtn = document.getElementById('mon-run-now-btn');
+    const monMsg = document.getElementById('mon-msg');
+    const monConfigsBody = document.getElementById('mon-configs-body');
+    const monHistoryBody = document.getElementById('mon-history-body');
 
     testBtn.addEventListener('click', async () => {
       connectionMsg.className = 'msg';
@@ -198,7 +258,6 @@
       try {
         const payload = {
           pc_ip: String(pcIpEl.value || '').trim(),
-          nc_fqdn: String(ncFqdnEl.value || '').trim(),
           username: String(sshUsernameEl.value || '').trim(),
           password: String(sshPasswordEl.value || ''),
         };
@@ -224,16 +283,13 @@
       try {
         const payload = {
           pc_ip: String(pcIpEl.value || '').trim(),
-          nc_fqdn: String(ncFqdnEl.value || '').trim(),
           username: String(sshUsernameEl.value || '').trim(),
           password: String(sshPasswordEl.value || ''),
-          ncm_username: String(ncmUsernameEl.value || '').trim(),
-          ncm_password: String(ncmPasswordEl.value || ''),
-          ncm_base_url: String(ncmBaseUrlEl.value || '').trim(),
           iterations: Number(iterationsEl.value || 20),
           sleep_duration: Number(sleepMinEl.value || 180) * 60,
           backfill_hours: Number(backfillHoursEl.value || 8),
           wait_after_completion: Number(waitAfterMinEl.value || 5) * 60,
+          collect_cg_namespace_logs_per_iteration: !!(collectCgNsLogsEl && collectCgNsLogsEl.checked),
         };
         const resp = await fetch('/cg_run_data_loader', {
           method: 'POST',
@@ -249,6 +305,169 @@
         runBtn.disabled = false;
       }
     });
+
+    function esc(text) {
+      const d = document.createElement('div');
+      d.textContent = String(text ?? '');
+      return d.innerHTML;
+    }
+    function fmtTs(v) {
+      if (!v) return '-';
+      return String(v).replace('T', ' ').replace('+00:00', ' UTC');
+    }
+    function fmtDur(s) {
+      const n = Number(s || 0);
+      if (!Number.isFinite(n) || n <= 0) return '-';
+      if (n < 60) return n.toFixed(1) + 's';
+      const m = Math.floor(n / 60);
+      const sec = Math.round(n % 60);
+      return m + 'm ' + sec + 's';
+    }
+    function setMonMessage(text, isError) {
+      monMsg.className = isError ? 'msg error' : 'msg success';
+      monMsg.textContent = text;
+    }
+    async function loadMonitorConfigs() {
+      const resp = await fetch('/api/cg/monitor/configs');
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to load monitor configs');
+      const rows = Array.isArray(data.configs) ? data.configs : [];
+      if (!rows.length) {
+        monConfigsBody.innerHTML = '<tr><td colspan="5" class="sub">No monitor configs yet.</td></tr>';
+        return;
+      }
+      monConfigsBody.innerHTML = rows.map((r) => {
+        const id = esc(r.id || '');
+        const enabled = !!r.enabled;
+        return '<tr>'
+          + '<td><code>' + esc(r.pc_ip || '') + '</code></td>'
+          + '<td>' + esc((r.frequency_minutes || 60) + 'm') + '</td>'
+          + '<td>' + (enabled ? 'Yes' : 'No') + '</td>'
+          + '<td>' + esc(fmtTs(r.next_run_at)) + '</td>'
+          + '<td>'
+          + '<button class="btn btn-secondary" style="padding:0.3rem 0.55rem; font-size:0.78rem; margin-right:0.35rem;" onclick="toggleMonitorCfg(\'' + id + '\',' + (!enabled) + ')">' + (enabled ? 'Pause' : 'Resume') + '</button>'
+          + '<button class="btn btn-secondary" style="padding:0.3rem 0.55rem; font-size:0.78rem;" onclick="deleteMonitorCfg(\'' + id + '\')">Delete</button>'
+          + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+    async function loadMonitorHistory() {
+      const resp = await fetch('/api/cg/monitor/history');
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to load monitor history');
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length) {
+        monHistoryBody.innerHTML = '<tr><td colspan="7" class="sub">No monitor runs yet.</td></tr>';
+        return;
+      }
+      monHistoryBody.innerHTML = rows.slice(0, 20).map((r) => {
+        const url = r.view_url ? String(r.view_url) : (r.download_url ? String(r.download_url) : '#');
+        const tr = (r && typeof r.trend === 'object' && r.trend) ? r.trend : {};
+        const trendTxt = (Number.isFinite(Number(tr.delta_warn)) || Number.isFinite(Number(tr.delta_critical)) || Number.isFinite(Number(tr.delta_fail)))
+          ? ('W ' + (Number(tr.delta_warn || 0) >= 0 ? '+' : '') + Number(tr.delta_warn || 0)
+            + ', C ' + (Number(tr.delta_critical || 0) >= 0 ? '+' : '') + Number(tr.delta_critical || 0)
+            + ', F ' + (Number(tr.delta_fail || 0) >= 0 ? '+' : '') + Number(tr.delta_fail || 0))
+          : '-';
+        return '<tr>'
+          + '<td><code>' + esc(r.pc_ip || '-') + '</code></td>'
+          + '<td>' + esc(r.status || '-') + '</td>'
+          + '<td>' + esc(fmtTs(r.started_at)) + '</td>'
+          + '<td>' + esc(r.overall || '-') + '</td>'
+          + '<td>' + esc(trendTxt) + '</td>'
+          + '<td>' + esc(fmtDur(r.duration_sec)) + '</td>'
+          + '<td><a href="' + esc(url) + '">Open log</a></td>'
+          + '</tr>';
+      }).join('');
+    }
+    async function refreshMonitorTables() {
+      await Promise.all([loadMonitorConfigs(), loadMonitorHistory()]);
+    }
+    window.toggleMonitorCfg = async (id, enabled) => {
+      try {
+        const resp = await fetch('/api/cg/monitor/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, enabled }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to update monitor');
+        setMonMessage('Monitor updated.', false);
+        await refreshMonitorTables();
+      } catch (err) {
+        setMonMessage(String(err), true);
+      }
+    };
+    window.deleteMonitorCfg = async (id) => {
+      if (!confirm('Delete this monitor configuration?')) return;
+      try {
+        const resp = await fetch('/api/cg/monitor/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to delete monitor');
+        setMonMessage('Monitor deleted.', false);
+        await refreshMonitorTables();
+      } catch (err) {
+        setMonMessage(String(err), true);
+      }
+    };
+    monSaveBtn.addEventListener('click', async () => {
+      try {
+        monMsg.className = 'msg';
+        monMsg.textContent = 'Saving monitor...';
+        const payload = {
+          pc_ip: String(pcIpEl.value || '').trim(),
+          username: String(sshUsernameEl.value || '').trim(),
+          password: String(sshPasswordEl.value || ''),
+          frequency_minutes: Number(monFreqEl.value || 60),
+          enabled: !!(monEnabledEl && monEnabledEl.checked),
+        };
+        const resp = await fetch('/api/cg/monitor/upsert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to save monitor');
+        setMonMessage('Monitor saved successfully.', false);
+        await refreshMonitorTables();
+      } catch (err) {
+        setMonMessage(String(err), true);
+      }
+    });
+    monRunNowBtn.addEventListener('click', async () => {
+      try {
+        monMsg.className = 'msg';
+        monMsg.textContent = 'Starting monitor run...';
+        const pcIp = String(pcIpEl.value || '').trim();
+        if (!pcIp) throw new Error('Enter PC IP to run monitor.');
+        const id = 'cgmon-' + pcIp.replaceAll('.', '-');
+        const resp = await fetch('/api/cg/monitor/run_once', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id,
+            pc_ip: pcIp,
+            username: String(sshUsernameEl.value || '').trim(),
+            password: String(sshPasswordEl.value || ''),
+            frequency_minutes: Number(monFreqEl.value || 60),
+            enabled: !!(monEnabledEl && monEnabledEl.checked),
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start monitor run');
+        setMonMessage('Monitor run started.', false);
+        await refreshMonitorTables();
+      } catch (err) {
+        setMonMessage(String(err), true);
+      }
+    });
+    refreshMonitorTables().catch((err) => setMonMessage(String(err), true));
+    setInterval(() => {
+      refreshMonitorTables().catch(() => {});
+    }, 20000);
   </script>
 </body>
 </html>

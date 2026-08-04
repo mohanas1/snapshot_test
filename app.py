@@ -12,8 +12,10 @@ import socket
 import statistics
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import tarfile
 import uuid
 import datetime as dt
 from pathlib import Path
@@ -49,10 +51,11 @@ PROJECT_DIR = Path(__file__).resolve().parent
 LOG_DIR = PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 RUN_LOG_DIR = LOG_DIR / "runs"
+CG_LIVE_LOG_DIR = LOG_DIR / "cg_namespace_live"
 FETCH_LOG_DIR = LOG_DIR / "fetch"
 POWER_LOG_DIR = LOG_DIR / "power"
 OPS_LOG_DIR = LOG_DIR / "ops"
-for _d in (RUN_LOG_DIR, FETCH_LOG_DIR, POWER_LOG_DIR, OPS_LOG_DIR):
+for _d in (RUN_LOG_DIR, CG_LIVE_LOG_DIR, FETCH_LOG_DIR, POWER_LOG_DIR, OPS_LOG_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # Log collection jobs history
@@ -70,7 +73,7 @@ LOG_FILES = {
 
 CG_REPORTS_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "cg_random_reports_download.py"
 CG_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "trigger_data_loader_job.sh"
-CG_STREAM_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "cg_data_loader_script.sh"
+CG_STREAM_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "trigger_data_loader_job.sh"
 # Required binaries: sshpass + ssh (local Flask host), kubectl + mspctl (remote execution host).
 CG_SSH_OPTIONS = [
     "-o",
@@ -181,9 +184,14 @@ app.logger.info(f"Working Directory: {PROJECT_DIR}")
 app.logger.info("="*100)
 DATA_DIR = PROJECT_DIR / "data"
 HISTORY_FILE = DATA_DIR / "run_history.jsonl"
+CG_DATA_LOADER_TIMINGS_FILE = DATA_DIR / "cg_data_loader_step_timings.jsonl"
+CG_MONITOR_CONFIG_FILE = DATA_DIR / "cg_monitor_configs.json"
+CG_MONITOR_HISTORY_FILE = DATA_DIR / "cg_monitor_history.jsonl"
 SCHEDULES_FILE = DATA_DIR / "schedules.json"
 SCHEDULE_JOBS_FILE = DATA_DIR / "schedule_job_history.json"
 DATA_DIR.mkdir(exist_ok=True)
+CG_MONITOR_LOG_DIR = LOG_DIR / "cg_monitor"
+CG_MONITOR_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 runs_lock = threading.Lock()
 # run_id -> dict
@@ -220,6 +228,10 @@ _cg_loader_lock = threading.Lock()
 _cg_loader_process: subprocess.Popen | None = None
 _cg_loader_thread: threading.Thread | None = None
 _cg_loader_abort_event = threading.Event()
+
+_cg_monitor_lock = threading.Lock()
+_cg_monitor_running: dict[str, str] = {}
+_cg_monitor_supervisor_started = False
 
 
 def _set_disk_progress_hot(run_id: str, snap: dict) -> None:
@@ -1441,30 +1453,535 @@ def _enqueue_cg_reports_run(mode: str, batch_size: int, retry_sleep: int, max_re
 def _update_cg_data_loader_summary_from_line(summary: dict, line: str) -> dict:
     """Best-effort parser for trigger_data_loader.sh live logs."""
     s = dict(summary or {})
+    clean_line = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", str(line or ""))
 
-    m = re.search(r"Iteration\s+(\d+)\s+of\s+(\d+)", line)
-    if m:
-        s["current_iteration"] = int(m.group(1))
-        s["iterations"] = int(m.group(2))
-
-    m = re.search(r"Successful:\s*(\d+)", line)
+    m = re.search(r"Successful:\s*(\d+)", clean_line)
     if m:
         s["successful_iterations"] = int(m.group(1))
-    m = re.search(r"Failed:\s*(\d+)", line)
+    m = re.search(r"Failed:\s*(\d+)", clean_line)
     if m:
         s["failed_iterations"] = int(m.group(1))
-    m = re.search(r"Total Iterations:\s*(\d+)", line)
+    m = re.search(r"Total Iterations:\s*(\d+)", clean_line)
     if m:
         s["iterations"] = int(m.group(1))
+    m = re.search(r"CG namespace live log file:\s*(.+)$", clean_line)
+    if m:
+        p = str(m.group(1) or "").strip()
+        if p:
+            arr = list(s.get("cg_live_log_paths") or [])
+            if p not in arr:
+                arr.append(p)
+            s["cg_live_log_paths"] = arr
 
-    if "All iterations completed successfully" in line:
+    def _phase_from_line(txt: str) -> str:
+        rules = [
+            ("setting up kubeconfig", "Setup kubeconfig"),
+            ("validating prerequisites on pc", "Validate prerequisites"),
+            ("checking prerequisites", "Validate prerequisites"),
+            ("querying backfill status", "Backfill status query"),
+            ("updating backfill status", "Backfill status update"),
+            ("creating job:", "Create job"),
+            ("monitoring data loader job", "Monitor data-loader"),
+            ("monitoring iteration", "Monitor data-loader"),
+            ("running post-completion checks", "Post completion checks"),
+            ("monitoring post-completion workflows", "Post-completion workflows"),
+            ("watching downstream pods", "Post-completion workflows"),
+            ("wait after completion", "Wait after completion"),
+            ("waiting downstream pods", "Wait after completion"),
+            ("script completed successfully", "Completed"),
+            ("all data loader jobs completed successfully", "Completed"),
+        ]
+        low = txt.lower()
+        for needle, phase in rules:
+            if needle in low:
+                return phase
+        return ""
+
+    def _parse_ts(txt: str) -> dt.datetime | None:
+        m_dt = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", txt)
+        if not m_dt:
+            return None
+        try:
+            return dt.datetime.strptime(m_dt.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=dt.timezone.utc)
+        except ValueError:
+            return None
+
+    ts = _parse_ts(clean_line)
+    phase = _phase_from_line(clean_line)
+
+    # Iteration-level timing (each "Iteration X of N" run duration)
+    iter_runs = dict(s.get("iteration_run_durations_sec") or {})
+    iter_trigger = dict(s.get("iteration_trigger_sec") or {})
+    iter_state = dict(s.get("_iteration_timing_state") or {})
+    current_iter = int(iter_state.get("current_iteration") or 0)
+    current_iter_started = str(iter_state.get("started_at") or "").strip()
+    iter_header = re.search(r"Iteration\s+(\d+)\s+of\s+(\d+)", clean_line)
+    if iter_header:
+        new_iter = int(iter_header.group(1))
+        s["current_iteration"] = new_iter
+        s["iterations"] = int(iter_header.group(2))
+        if ts:
+            if current_iter and current_iter_started and current_iter != new_iter:
+                try:
+                    t0 = dt.datetime.fromisoformat(current_iter_started.replace("Z", "+00:00"))
+                    iter_runs[str(current_iter)] = max(0.0, (ts - t0).total_seconds())
+                except (TypeError, ValueError):
+                    pass
+            if current_iter != new_iter:
+                iter_state["current_iteration"] = new_iter
+                iter_state["started_at"] = ts.isoformat()
+        elif current_iter != new_iter:
+            # Some script lines print "Iteration X of N" without timestamp.
+            # Mark iteration change and anchor start on the first later line with timestamp.
+            iter_state["current_iteration"] = new_iter
+            iter_state["started_at"] = ""
+        current_iter = int(iter_state.get("current_iteration") or new_iter)
+        current_iter_started = str(iter_state.get("started_at") or "").strip()
+
+    if ts and current_iter and not current_iter_started:
+        iter_state["started_at"] = ts.isoformat()
+        current_iter_started = str(iter_state.get("started_at") or "").strip()
+
+    trig = re.search(r"Iteration\s+(\d+)\s+job\s+triggered\s+in\s+(\d+)\s+seconds", clean_line, flags=re.I)
+    if trig:
+        iter_trigger[str(int(trig.group(1)))] = int(trig.group(2))
+
+    if ts and "All data loader jobs completed successfully" in clean_line:
+        if current_iter and current_iter_started:
+            try:
+                t0 = dt.datetime.fromisoformat(current_iter_started.replace("Z", "+00:00"))
+                iter_runs[str(current_iter)] = max(0.0, (ts - t0).total_seconds())
+            except (TypeError, ValueError):
+                pass
+        iter_state["current_iteration"] = 0
+        iter_state["started_at"] = ""
+
+    if iter_runs:
+        s["iteration_run_durations_sec"] = iter_runs
+    if iter_trigger:
+        s["iteration_trigger_sec"] = iter_trigger
+    s["_iteration_timing_state"] = iter_state
+    step_durations = dict(s.get("step_durations_sec") or {})
+    timing_state = dict(s.get("_timing_state") or {})
+    current_phase = str(timing_state.get("current_phase") or "").strip()
+    current_phase_started = timing_state.get("phase_started_at")
+    if ts:
+        timing_state["last_ts"] = ts.isoformat()
+    if phase and ts:
+        if current_phase and current_phase_started and current_phase != phase:
+            try:
+                start_dt = dt.datetime.fromisoformat(str(current_phase_started).replace("Z", "+00:00"))
+                elapsed = max(0.0, (ts - start_dt).total_seconds())
+                step_durations[current_phase] = float(step_durations.get(current_phase, 0.0)) + elapsed
+            except (ValueError, TypeError):
+                pass
+        if current_phase != phase:
+            timing_state["current_phase"] = phase
+            timing_state["phase_started_at"] = ts.isoformat()
+
+    if step_durations:
+        s["step_durations_sec"] = step_durations
+    s["_timing_state"] = timing_state
+
+    if "All iterations completed successfully" in clean_line:
         s["status_text"] = "All iterations completed successfully"
-    elif "iteration(s) failed" in line:
-        s["status_text"] = line.strip()
+    elif "iteration(s) failed" in clean_line:
+        s["status_text"] = clean_line.strip()
 
-    s["last_log_line"] = line[-500:]
+    s["last_log_line"] = clean_line[-500:]
     s["last_update_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
     return s
+
+
+def _finalize_cg_data_loader_summary(summary: dict, finished_at_iso: str) -> dict:
+    """Close in-progress timing phase and remove parser-private fields."""
+    s = dict(summary or {})
+    step_durations = dict(s.get("step_durations_sec") or {})
+    timing_state = dict(s.get("_timing_state") or {})
+    current_phase = str(timing_state.get("current_phase") or "").strip()
+    started_iso = str(timing_state.get("phase_started_at") or "").strip()
+    last_ts_iso = str(timing_state.get("last_ts") or "").strip()
+    end_iso = last_ts_iso or finished_at_iso
+    if current_phase and started_iso and end_iso:
+        try:
+            t0 = dt.datetime.fromisoformat(started_iso.replace("Z", "+00:00"))
+            t1 = dt.datetime.fromisoformat(end_iso.replace("Z", "+00:00"))
+            elapsed = max(0.0, (t1 - t0).total_seconds())
+            step_durations[current_phase] = float(step_durations.get(current_phase, 0.0)) + elapsed
+        except (TypeError, ValueError):
+            pass
+    if step_durations:
+        s["step_durations_sec"] = {k: round(float(v), 2) for k, v in step_durations.items() if float(v) > 0}
+
+    iter_runs = dict(s.get("iteration_run_durations_sec") or {})
+    iter_state = dict(s.get("_iteration_timing_state") or {})
+    current_iter = int(iter_state.get("current_iteration") or 0)
+    started_iso_i = str(iter_state.get("started_at") or "").strip()
+    if current_iter and started_iso_i:
+        try:
+            t0 = dt.datetime.fromisoformat(started_iso_i.replace("Z", "+00:00"))
+            t1 = dt.datetime.fromisoformat((last_ts_iso or finished_at_iso).replace("Z", "+00:00"))
+            iter_runs[str(current_iter)] = max(0.0, (t1 - t0).total_seconds())
+        except (TypeError, ValueError):
+            pass
+    if iter_runs:
+        s["iteration_run_durations_sec"] = {k: round(float(v), 2) for k, v in iter_runs.items() if float(v) >= 0}
+        s["iteration_run_timings"] = [
+            {"iteration": int(k), "duration_sec": round(float(v), 2)}
+            for k, v in sorted(
+                ((k, v) for k, v in s["iteration_run_durations_sec"].items()),
+                key=lambda kv: int(str(kv[0]) or 0),
+            )
+        ]
+    s.pop("_timing_state", None)
+    s.pop("_iteration_timing_state", None)
+    return s
+
+
+def _derive_cg_data_loader_timing_summary_from_log_text(log_text: str) -> dict:
+    """Parse an existing CG data-loader run log and derive step timings."""
+    summary: dict[str, Any] = {}
+    for raw_line in str(log_text or "").splitlines():
+        summary = _update_cg_data_loader_summary_from_line(summary, raw_line)
+    return _finalize_cg_data_loader_summary(summary, dt.datetime.now(dt.timezone.utc).isoformat())
+
+
+def _extract_cg_live_log_paths(summary: dict | None) -> list[Path]:
+    paths: list[Path] = []
+    if not isinstance(summary, dict):
+        return paths
+    for raw in (summary.get("cg_live_log_paths") or []):
+        p = Path(str(raw or "").strip())
+        if not p:
+            continue
+        if not p.is_absolute():
+            p = (PROJECT_DIR / p).resolve()
+        else:
+            p = p.resolve()
+        try:
+            p.relative_to(PROJECT_DIR)
+        except ValueError:
+            continue
+        if p.is_file() and p not in paths:
+            paths.append(p)
+    return paths
+
+
+def _has_cg_data_loader_timing_record(run_id: str) -> bool:
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    try:
+        for rec in load_records(CG_DATA_LOADER_TIMINGS_FILE, max_lines=5000):
+            if str(rec.get("run_id") or "").strip() == rid:
+                return True
+    except Exception:
+        return False
+    return False
+
+
+def _cg_monitor_load_configs() -> list[dict]:
+    if not CG_MONITOR_CONFIG_FILE.is_file():
+        return []
+    try:
+        data = json.loads(CG_MONITOR_CONFIG_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[dict] = []
+    for row in data:
+        if isinstance(row, dict):
+            out.append(dict(row))
+    return out
+
+
+def _cg_monitor_save_configs(rows: list[dict]) -> None:
+    payload = json.dumps(rows, ensure_ascii=False, indent=2, sort_keys=True)
+    CG_MONITOR_CONFIG_FILE.write_text(payload + "\n", encoding="utf-8")
+
+
+def _cg_monitor_cfg_id(pc_ip: str) -> str:
+    return f"cgmon-{str(pc_ip or '').strip().replace('.', '-')}"
+
+
+def _cg_monitor_parse_summary_counts(log_text: str) -> dict[str, Any]:
+    txt = str(log_text or "")
+    m = re.search(r"PASS=(\d+)\s+WARN=(\d+)\s+CRITICAL=(\d+)\s+FAIL=(\d+)", txt)
+    counts = {
+        "pass": int(m.group(1)) if m else 0,
+        "warn": int(m.group(2)) if m else 0,
+        "critical": int(m.group(3)) if m else 0,
+        "fail": int(m.group(4)) if m else 0,
+    }
+    overall = ""
+    m2 = re.search(r"OVERALL:\s+([A-Z_]+)", txt)
+    if m2:
+        overall = str(m2.group(1) or "").strip()
+    counts["overall"] = overall
+    return counts
+
+
+def _cg_monitor_kubeconfig_for_pc(pc_ip: str, pc_user: str = "", pc_password: str = "") -> Path | None:
+    candidates = [
+        PROJECT_DIR / "kubeconfigs" / f"{pc_ip}_kubeconfig",
+        Path.home() / "kube" / "ss_kube",
+        Path.home() / "kube" / "si_kube",
+        Path.home() / ".kube" / "nc_kubeconfig",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+
+    # Global fallback: fetch kubeconfig from PC via mspctl and cache project-local.
+    user = (pc_user or CURATOR_PC_SSH_USER or "").strip()
+    password = str(pc_password or CURATOR_PC_SSH_PASSWORD or "")
+    if not (pc_ip and user and password):
+        return None
+    cache_dir = PROJECT_DIR / "kubeconfigs"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cached = cache_dir / f"{pc_ip}_kubeconfig"
+    cmd = [
+        "sshpass",
+        "-p",
+        password,
+        "ssh",
+        *CG_SSH_OPTIONS,
+        f"{user}@{pc_ip}",
+        "/usr/local/nutanix/cluster/bin/mspctl cls kubeconfig nc",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        txt = (res.stdout or "").strip()
+        if res.returncode == 0 and txt and ("apiVersion:" in txt or "clusters:" in txt):
+            cached.write_text(txt + "\n", encoding="utf-8")
+            return cached
+    except Exception:
+        return None
+    return None
+
+
+def _cg_monitor_prometheus_url_from_pc(pc_ip: str, pc_user: str = "", pc_password: str = "") -> str:
+    """Resolve Prometheus endpoint as NC cluster IP + NodePort via PC mspctl."""
+    user = (pc_user or CURATOR_PC_SSH_USER or "").strip()
+    password = str(pc_password or CURATOR_PC_SSH_PASSWORD or "")
+    if not (pc_ip and user and password):
+        return ""
+    remote_cmd = (
+        "set -o pipefail; "
+        "nc_ip=$( /usr/local/nutanix/cluster/bin/mspctl cls ssh nc --cmd "
+        "\"hostname -I | awk '{print \\$1}'\" 2>/dev/null | tr -s ' ' '\\n' | grep -m1 -E '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$' ); "
+        "np=$( /usr/local/nutanix/cluster/bin/mspctl cls ssh nc --cmd "
+        "\"kubectl get svc -n ntnx-system prometheus-automation -o jsonpath='{.spec.ports[?(@.port==9090)].nodePort}'\" 2>/dev/null | grep -m1 -E '[0-9]{4,5}' ); "
+        "if [ -z \"$np\" ]; then "
+        "np=$( /usr/local/nutanix/cluster/bin/mspctl cls ssh nc --cmd "
+        "\"kubectl get svc -n ntnx-system prometheus-k8s-nodeport-exposed -o jsonpath='{.spec.ports[?(@.port==9090)].nodePort}'\" 2>/dev/null | grep -m1 -E '[0-9]{4,5}' ); "
+        "fi; "
+        "if [ -n \"$nc_ip\" ] && [ -n \"$np\" ]; then echo \"https://$nc_ip:$np\"; fi"
+    )
+    cmd = [
+        "sshpass",
+        "-p",
+        password,
+        "ssh",
+        *CG_SSH_OPTIONS,
+        f"{user}@{pc_ip}",
+        remote_cmd,
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=45, check=False)
+        line = str(res.stdout or "").strip().splitlines()
+        if not line:
+            return ""
+        cand = line[-1].strip()
+        if re.match(r"^https?://\d+\.\d+\.\d+\.\d+:\d{2,5}$", cand):
+            return cand
+    except Exception:
+        return ""
+    return ""
+
+
+def _cg_monitor_run_once(cfg: dict) -> None:
+    cfg_id = str(cfg.get("id") or "")
+    pc_ip = str(cfg.get("pc_ip") or "")
+    started = dt.datetime.now(dt.timezone.utc)
+    run_id = f"{cfg_id}_{started.strftime('%Y%m%dT%H%M%S_%f')}"
+    log_path = CG_MONITOR_LOG_DIR / f"{run_id}.log"
+
+    kubeconfig_path = _cg_monitor_kubeconfig_for_pc(
+        pc_ip,
+        pc_user=str(cfg.get("pc_user") or ""),
+        pc_password=str(cfg.get("pc_password") or ""),
+    )
+    script_path = PROJECT_DIR / "monitor" / "scripts" / "cg_daily_health_checks.sh"
+
+    env = dict(os.environ)
+    env["CG_NAMESPACE"] = "ncm-cg"
+    env["KUBECONFIG_PATH"] = str(kubeconfig_path) if kubeconfig_path is not None else ""
+    env["NCM_BASE_URL"] = str(cfg.get("ncm_base_url") or f"https://{pc_ip}:9440")
+    token = str(cfg.get("ncm_token") or "")
+    if token:
+        env["NCM_TOKEN"] = token
+    prom_url = str(cfg.get("prometheus_base_url") or "").strip()
+    if not prom_url:
+        prom_url = _cg_monitor_prometheus_url_from_pc(
+            pc_ip,
+            pc_user=str(cfg.get("pc_user") or ""),
+            pc_password=str(cfg.get("pc_password") or ""),
+        )
+    if prom_url:
+        env["PROMETHEUS_BASE_URL"] = prom_url
+    prom_token = str(cfg.get("prometheus_token") or "")
+    if prom_token:
+        env["PROMETHEUS_TOKEN"] = prom_token
+    prom_window = str(cfg.get("prom_query_window") or "15m").strip() or "15m"
+    env["PROM_QUERY_WINDOW"] = prom_window
+    env["PROM_NS_LABEL"] = str(cfg.get("prom_namespace_label") or "ncm-cg").strip() or "ncm-cg"
+
+    status = "error"
+    error = ""
+    log_text = ""
+    try:
+        if not script_path.is_file():
+            raise FileNotFoundError(f"Monitor script missing: {script_path}")
+        with open(log_path, "w", encoding="utf-8") as fh:
+            fh.write(f"{started.isoformat()} [INFO] Starting CG monitor check for {pc_ip}\n")
+            if kubeconfig_path is None:
+                fh.write(f"{started.isoformat()} [ERROR] Could not resolve kubeconfig (local or via PC mspctl).\n")
+            else:
+                fh.write(f"{started.isoformat()} [INFO] Resolved kubeconfig: {kubeconfig_path}\n")
+            if prom_url:
+                fh.write(f"{started.isoformat()} [INFO] Resolved Prometheus URL: {prom_url}\n")
+            else:
+                fh.write(f"{started.isoformat()} [WARN] Could not auto-resolve Prometheus URL from PC.\n")
+            fh.flush()
+            proc = subprocess.run(
+                ["bash", str(script_path)],
+                cwd=str(PROJECT_DIR / "monitor"),
+                env=env,
+                stdout=fh,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False,
+                timeout=600,
+            )
+            if proc.returncode == 0:
+                status = "complete"
+            else:
+                status = "error"
+                error = f"Monitor script exited with code {proc.returncode}"
+        try:
+            log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            log_text = ""
+    except subprocess.TimeoutExpired:
+        status = "error"
+        error = "Monitor script timed out after 600 seconds"
+    except Exception as e:
+        status = "error"
+        error = str(e)
+
+    finished = dt.datetime.now(dt.timezone.utc)
+    summary_counts = _cg_monitor_parse_summary_counts(log_text)
+    prev_runs = [
+        r
+        for r in load_records(CG_MONITOR_HISTORY_FILE, max_lines=2000)
+        if isinstance(r, dict) and str((r or {}).get("cfg_id") or "") == cfg_id
+    ]
+    prev = prev_runs[0] if prev_runs else None
+    trend = {}
+    if isinstance(prev, dict):
+        trend = {
+            "prev_run_id": str(prev.get("id") or ""),
+            "prev_overall": str(prev.get("overall") or ""),
+            "overall_changed": str(prev.get("overall") or "") != str(summary_counts.get("overall") or ""),
+            "delta_warn": int(summary_counts.get("warn") or 0) - int(prev.get("warn") or 0),
+            "delta_critical": int(summary_counts.get("critical") or 0) - int(prev.get("critical") or 0),
+            "delta_fail": int(summary_counts.get("fail") or 0) - int(prev.get("fail") or 0),
+        }
+        try:
+            with open(log_path, "a", encoding="utf-8") as fh:
+                fh.write("\n============================================================\n")
+                fh.write("TREND VS PREVIOUS RUN\n")
+                fh.write("============================================================\n")
+                fh.write(
+                    f"Current overall={summary_counts.get('overall') or '-'} | Previous overall={trend.get('prev_overall') or '-'}\n"
+                )
+                fh.write(
+                    f"delta_warn={trend.get('delta_warn')} delta_critical={trend.get('delta_critical')} delta_fail={trend.get('delta_fail')}\n"
+                )
+        except OSError:
+            pass
+    append_record(
+        CG_MONITOR_HISTORY_FILE,
+        {
+            "id": run_id,
+            "cfg_id": cfg_id,
+            "pc_ip": pc_ip,
+            "status": status,
+            "error": error,
+            "started_at": started.isoformat(),
+            "finished_at": finished.isoformat(),
+            "duration_sec": max(0.0, (finished - started).total_seconds()),
+            "log_path": str(log_path),
+            "download_url": f"/download/cg_monitor/{run_id}",
+            "pass": int(summary_counts.get("pass") or 0),
+            "warn": int(summary_counts.get("warn") or 0),
+            "critical": int(summary_counts.get("critical") or 0),
+            "fail": int(summary_counts.get("fail") or 0),
+            "overall": str(summary_counts.get("overall") or ""),
+            "trend": trend,
+        },
+    )
+    with _cg_monitor_lock:
+        _cg_monitor_running.pop(cfg_id, None)
+
+
+def _cg_monitor_supervisor_loop() -> None:
+    while True:
+        now = dt.datetime.now(dt.timezone.utc)
+        try:
+            with _cg_monitor_lock:
+                rows = _cg_monitor_load_configs()
+                changed = False
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    if not bool(row.get("enabled", True)):
+                        continue
+                    cfg_id = str(row.get("id") or "")
+                    if not cfg_id or cfg_id in _cg_monitor_running:
+                        continue
+                    next_run_at = str(row.get("next_run_at") or "")
+                    due = True
+                    if next_run_at:
+                        try:
+                            due = dt.datetime.fromisoformat(next_run_at.replace("Z", "+00:00")) <= now
+                        except Exception:
+                            due = True
+                    if not due:
+                        continue
+                    freq = max(5, int(row.get("frequency_minutes") or 60))
+                    row["last_started_at"] = now.isoformat()
+                    row["next_run_at"] = (now + dt.timedelta(minutes=freq)).isoformat()
+                    _cg_monitor_running[cfg_id] = now.isoformat()
+                    threading.Thread(target=_cg_monitor_run_once, args=(dict(row),), daemon=True, name=f"cgmon-{cfg_id[:18]}").start()
+                    changed = True
+                if changed:
+                    _cg_monitor_save_configs(rows)
+        except Exception:
+            APP_LOGGER.exception("CG monitor supervisor loop error")
+        time.sleep(20)
+
+
+def _ensure_cg_monitor_supervisor() -> None:
+    global _cg_monitor_supervisor_started
+    with _cg_monitor_lock:
+        if _cg_monitor_supervisor_started:
+            return
+        t = threading.Thread(target=_cg_monitor_supervisor_loop, daemon=True, name="cg-monitor-supervisor")
+        t.start()
+        _cg_monitor_supervisor_started = True
 
 
 def _enqueue_cg_data_loader_run(
@@ -1477,12 +1994,14 @@ def _enqueue_cg_data_loader_run(
     backfill_hours: int = 8,
     wait_after_completion: int = 300,
     log_check_interval: int = 15,
+    collect_cg_namespace_logs_per_iteration: bool = True,
 ) -> str:
     """Start trigger_data_loader.sh as a background run."""
     if not CG_DATA_LOADER_SCRIPT_PATH.is_file():
         raise FileNotFoundError(f"CG data-loader script not found: {CG_DATA_LOADER_SCRIPT_PATH}")
 
     run_id, log_path = _allocate_run_id_and_path(pc_ip or "cg-data-loader")
+    cg_live_dir = (CG_LIVE_LOG_DIR / run_id).resolve()
     queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
     cancel_ev = threading.Event()
     nc_fqdn = _nc_fqdn_from_pc_ip(pc_ip)
@@ -1499,6 +2018,8 @@ def _enqueue_cg_data_loader_run(
         "backfill_hours": int(backfill_hours),
         "wait_after_completion": int(wait_after_completion),
         "log_check_interval": int(log_check_interval),
+        "collect_cg_namespace_logs_per_iteration": bool(collect_cg_namespace_logs_per_iteration),
+        "cg_live_log_dir": str(cg_live_dir),
     }
     with runs_lock:
         runs[run_id] = {
@@ -1519,6 +2040,7 @@ def _enqueue_cg_data_loader_run(
                 "successful_iterations": 0,
                 "failed_iterations": 0,
                 "status_text": "",
+                "collect_cg_namespace_logs_per_iteration": bool(collect_cg_namespace_logs_per_iteration),
             },
         }
 
@@ -1548,6 +2070,11 @@ def _enqueue_cg_data_loader_run(
             env["BACKFILL_HOURS"] = str(int(backfill_hours))
             env["WAIT_AFTER_COMPLETION"] = str(int(wait_after_completion))
             env["LOG_CHECK_INTERVAL"] = str(int(log_check_interval))
+            env["COLLECT_CG_NAMESPACE_LOGS_PER_ITERATION"] = "1" if collect_cg_namespace_logs_per_iteration else "0"
+            env["CG_NAMESPACE_LOG_TAIL_LINES"] = "120"
+            env["CG_NAMESPACE_LIVE_MAX_SECONDS"] = "28800"
+            env["CG_RUN_ID"] = run_id
+            env["CG_NAMESPACE_LIVE_LOG_DIR"] = str(cg_live_dir)
             with open(log_path, "w", encoding="utf-8") as log_fh:
                 log_fh.write(f"{start_ts.isoformat()} [INFO] Starting CG data-loader job: {' '.join(cmd)}\n")
                 log_fh.flush()
@@ -1616,7 +2143,8 @@ def _enqueue_cg_data_loader_run(
                     row.pop("process", None)
                     row.pop("thread", None)
                     row.pop("cancel_event", None)
-                    final_summary = dict(row.get("summary") or {})
+                    final_summary = _finalize_cg_data_loader_summary(dict(row.get("summary") or {}), finished_at)
+                    row["summary"] = final_summary
                 else:
                     final_summary = {}
 
@@ -1632,6 +2160,21 @@ def _enqueue_cg_data_loader_run(
                 "failed": int(final_summary.get("failed_iterations") or 0),
             }
             append_record(HISTORY_FILE, hist)
+            append_record(
+                CG_DATA_LOADER_TIMINGS_FILE,
+                {
+                    "run_id": run_id,
+                    "pc_host": pc_ip,
+                    "at": finished_at,
+                    "duration_sec": float(duration_sec),
+                    "step_durations_sec": final_summary.get("step_durations_sec") or {},
+                    "iteration_run_durations_sec": final_summary.get("iteration_run_durations_sec") or {},
+                    "iteration_run_timings": final_summary.get("iteration_run_timings") or [],
+                    "iterations": int(final_summary.get("iterations") or 0),
+                    "successful_iterations": int(final_summary.get("successful_iterations") or 0),
+                    "failed_iterations": int(final_summary.get("failed_iterations") or 0),
+                },
+            )
 
     t = threading.Thread(target=_worker, daemon=True, name=f"cg-dataloader-{run_id[:10]}")
     with runs_lock:
@@ -1655,6 +2198,8 @@ def _cfg_to_dict(cfg: SnapshotConfig) -> dict:
         "group_member_page": cfg.group_member_page,
         "sleep_before_task_poll_sec": cfg.sleep_before_task_poll_sec,
         "snapshot_trigger_mode": cfg.snapshot_trigger_mode,
+        "force_snapshot": bool(getattr(cfg, "force_snapshot", False)),
+        "snapshot_run_limit": str(getattr(cfg, "snapshot_run_limit", "") or ""),
         "skip_substrings": list(cfg.skip_substrings),
         "skip_regex_patterns": list(cfg.skip_regex_patterns),
         "target_vm_uuids": list(cfg.target_vm_uuids),
@@ -1675,6 +2220,8 @@ def _cfg_from_dict(d: dict) -> SnapshotConfig:
         group_member_page=int(d["group_member_page"]),
         sleep_before_task_poll_sec=float(d["sleep_before_task_poll_sec"]),
         snapshot_trigger_mode=d["snapshot_trigger_mode"],
+        force_snapshot=bool(d.get("force_snapshot", False)),
+        snapshot_run_limit=str(d.get("snapshot_run_limit") or "").strip(),
         skip_substrings=tuple(d.get("skip_substrings") or ()),
         skip_regex_patterns=tuple(d.get("skip_regex_patterns") or ()),
         target_vm_uuids=tuple(d.get("target_vm_uuids") or ()),
@@ -2968,6 +3515,9 @@ def start():
             error="Invalid recovery point type.",
         ), 400
 
+    force_snapshot = str(request.form.get("force_snapshot") or "").strip().lower() in ("1", "true", "on", "yes")
+    snapshot_run_limit = _disk_run_limit_from_payload(request.form)
+
     cfg = SnapshotConfig(
         base_url=base_url.rstrip("/"),
         pc_user=pc_user,
@@ -2981,13 +3531,22 @@ def start():
         task_soft_timeout_sec=max(1, task_soft_timeout_sec),
         group_member_page=max(1, group_member_page),
         sleep_before_task_poll_sec=max(0.0, sleep_before),
+        force_snapshot=force_snapshot,
+        snapshot_run_limit=snapshot_run_limit,
         skip_substrings=skip_subs,
         skip_regex_patterns=skip_rx,
     )
     target_vm_uuids = tuple(
         u.strip() for u in request.form.getlist("target_vm_uuids") if str(u).strip()
     )
-    if target_vm_uuids:
+    # Force snapshot must not be constrained by mirrored disk-preview UUID list.
+    if force_snapshot:
+        if target_vm_uuids:
+            APP_LOGGER.info(
+                "Force snapshot enabled; ignoring %d target_vm_uuids from form mirror.",
+                len(target_vm_uuids),
+            )
+    elif target_vm_uuids:
         cfg.target_vm_uuids = target_vm_uuids
 
     if request.form.get("schedule_enabled") == "1":
@@ -3309,6 +3868,9 @@ def api_start_snapshot_run():
     if rpt not in ("CRASH_CONSISTENT", "APPLICATION_CONSISTENT", RANDOM_CRASH_OR_APP):
         return jsonify({"ok": False, "message": "Invalid recovery_point_type."}), 400
 
+    force_snapshot = bool(p.get("force_snapshot"))
+    snapshot_run_limit = _disk_run_limit_from_payload(p)
+
     cfg = SnapshotConfig(
         base_url=base_url.rstrip("/"),
         pc_user=pc_user,
@@ -3322,6 +3884,8 @@ def api_start_snapshot_run():
         task_soft_timeout_sec=max(1, task_soft_timeout_sec),
         group_member_page=max(1, group_member_page),
         sleep_before_task_poll_sec=max(0.0, sleep_before),
+        force_snapshot=force_snapshot,
+        snapshot_run_limit=snapshot_run_limit,
         skip_substrings=skip_subs,
         skip_regex_patterns=skip_rx,
     )
@@ -3435,11 +3999,60 @@ def api_job(run_id: str):
         disk_log_for_console=disk_log_for_console,
     )
     summ = info.get("summary")
+    if jk == "cg_data_loader" and isinstance(summ, dict):
+        step_durations = summ.get("step_durations_sec")
+        iter_durations = summ.get("iteration_run_durations_sec")
+        if (not step_durations or not iter_durations):
+            src_text = text if (text and st in {"complete", "error", "aborted"}) else ""
+            if not src_text and path.is_file():
+                try:
+                    src_text = path.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    src_text = ""
+            derived = _derive_cg_data_loader_timing_summary_from_log_text(src_text) if src_text else {}
+            if derived.get("step_durations_sec"):
+                merged = dict(summ)
+                for k, v in derived.items():
+                    if k in (
+                        "step_durations_sec",
+                        "iteration_run_durations_sec",
+                        "iteration_run_timings",
+                        "iteration_trigger_sec",
+                        "status_text",
+                        "iterations",
+                        "current_iteration",
+                        "successful_iterations",
+                        "failed_iterations",
+                    ):
+                        if v not in (None, "", {}):
+                            merged[k] = v
+                summ = merged
+                with runs_lock:
+                    row = runs.get(run_id)
+                    if isinstance(row, dict):
+                        row["summary"] = merged
+                if not _has_cg_data_loader_timing_record(run_id):
+                    append_record(
+                        CG_DATA_LOADER_TIMINGS_FILE,
+                        {
+                            "run_id": run_id,
+                            "pc_host": info.get("pc_host"),
+                            "at": info.get("finished_at") or dt.datetime.now(dt.timezone.utc).isoformat(),
+                            "duration_sec": float((info.get("timing") or {}).get("duration_sec") or 0.0),
+                            "step_durations_sec": merged.get("step_durations_sec") or {},
+                            "iteration_run_durations_sec": merged.get("iteration_run_durations_sec") or {},
+                            "iteration_run_timings": merged.get("iteration_run_timings") or [],
+                            "iterations": int(merged.get("iterations") or 0),
+                            "successful_iterations": int(merged.get("successful_iterations") or 0),
+                            "failed_iterations": int(merged.get("failed_iterations") or 0),
+                        },
+                    )
     disk_mode = str(info.get("disk_op_mode") or "")
     if not disk_mode and isinstance(summ, dict):
         disk_mode = str(summ.get("disk_op_mode") or "")
     return jsonify(
         {
+            "run_id": run_id,
             "status": st,
             "error": info.get("error", ""),
             "log": text,
@@ -3457,8 +4070,27 @@ def api_job(run_id: str):
             "snapshot_progress": info.get("snapshot_progress"),
             "power_progress": info.get("power_progress"),
             "pipeline_progress": info.get("pipeline_progress"),
+            "cg_live_logs": [
+                {
+                    "path": str(p),
+                    "download_url": url_for("download_cg_live_log", run_id=run_id, file_idx=i),
+                }
+                for i, p in enumerate(_extract_cg_live_log_paths(summ), start=1)
+            ],
         }
     )
+
+
+@app.route("/download/cg_live/<run_id>/<int:file_idx>")
+def download_cg_live_log(run_id: str, file_idx: int):
+    info = _get_run_info(run_id)
+    if not info:
+        abort(404)
+    paths = _extract_cg_live_log_paths(info.get("summary"))
+    if file_idx < 1 or file_idx > len(paths):
+        abort(404)
+    p = paths[file_idx - 1]
+    return send_file(str(p), as_attachment=True, download_name=p.name)
 
 
 @app.route("/api/job/<run_id>/cancel", methods=["POST"])
@@ -4666,8 +5298,18 @@ def fetch_logs():
 @app.route("/cg")
 def cg_reports():
     """Render Cost Governance reports page."""
-    rows = [r for r in _index_recent_runs(200) if str(r.get("job_kind") or "") in ("cg_reports", "cg_data_loader")][:30]
-    return render_template("cg.html", cg_recent_jobs=rows)
+    _ensure_cg_monitor_supervisor()
+    raw_rows = [r for r in _index_recent_runs(200) if str(r.get("job_kind") or "") in ("cg_reports", "cg_data_loader")][:30]
+    rows: list[dict[str, Any]] = []
+    for row in raw_rows:
+        rr = dict(row or {})
+        run_id = str(rr.get("run_id") or "").strip()
+        rr["job_url"] = rr.get("job_url") or (url_for("job_status", run_id=run_id) if run_id else "")
+        rows.append(rr)
+    monitor_cfgs = _cg_monitor_load_configs()
+    monitor_history = load_records(CG_MONITOR_HISTORY_FILE, max_lines=120)
+    monitor_history = [r for r in monitor_history if isinstance(r, dict)][:30]
+    return render_template("cg.html", cg_recent_jobs=rows, cg_monitor_configs=monitor_cfgs, cg_monitor_history=monitor_history)
 
 
 @app.route("/additional")
@@ -4758,6 +5400,12 @@ def api_cg_data_loader_start():
         log_check_interval = int(payload.get("log_check_interval") or 15)
     except (TypeError, ValueError):
         log_check_interval = 15
+    collect_ns_logs = str(payload.get("collect_cg_namespace_logs_per_iteration") or "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
     iterations = max(1, min(100, iterations))
     sleep_duration = max(1, min(86400, sleep_duration))
@@ -4775,6 +5423,7 @@ def api_cg_data_loader_start():
             backfill_hours=backfill_hours,
             wait_after_completion=wait_after_completion,
             log_check_interval=log_check_interval,
+            collect_cg_namespace_logs_per_iteration=collect_ns_logs,
         )
     except FileNotFoundError as e:
         return jsonify({"ok": False, "message": str(e)}), 400
@@ -4877,6 +5526,12 @@ def cg_run_data_loader():
         wait_after_completion = max(1, min(3600, int(payload.get("wait_after_completion") or 300)))
     except (TypeError, ValueError):
         return jsonify({"success": False, "error": "iterations/sleep_duration/backfill_hours/wait_after_completion must be integers"}), 400
+    collect_ns_logs = str(payload.get("collect_cg_namespace_logs_per_iteration") or "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
     try:
         run_id = _enqueue_cg_data_loader_run(
@@ -4887,6 +5542,7 @@ def cg_run_data_loader():
             sleep_duration=sleep_duration,
             backfill_hours=backfill_hours,
             wait_after_completion=wait_after_completion,
+            collect_cg_namespace_logs_per_iteration=collect_ns_logs,
         )
     except FileNotFoundError as e:
         return jsonify({"success": False, "error": str(e)}), 400
@@ -4924,6 +5580,202 @@ def cg_abort_data_loader():
 
     _emit_cg_loader_status("error", "Data loader aborted by user")
     return jsonify({"success": True, "message": "Abort signal sent"})
+
+
+@app.route("/api/cg/monitor/configs")
+def api_cg_monitor_configs():
+    _ensure_cg_monitor_supervisor()
+    with _cg_monitor_lock:
+        return jsonify({"ok": True, "configs": _cg_monitor_load_configs()})
+
+
+@app.route("/api/cg/monitor/history")
+def api_cg_monitor_history():
+    rows = load_records(CG_MONITOR_HISTORY_FILE, max_lines=200)
+    pc_ip = str(request.args.get("pc_ip") or "").strip()
+    if pc_ip:
+        rows = [r for r in rows if str((r or {}).get("pc_ip") or "").strip() == pc_ip]
+    rows = [r for r in rows if isinstance(r, dict)][:60]
+    out: list[dict] = []
+    for row in rows:
+        rr = dict(row or {})
+        rid = str(rr.get("id") or "").strip()
+        if rid:
+            rr["view_url"] = f"/cg_monitor/{rid}"
+            rr["download_url"] = rr.get("download_url") or f"/download/cg_monitor/{rid}"
+        out.append(rr)
+    rows = out
+    return jsonify({"ok": True, "rows": rows})
+
+
+@app.route("/api/cg/monitor/upsert", methods=["POST"])
+def api_cg_monitor_upsert():
+    _ensure_cg_monitor_supervisor()
+    payload = request.get_json(silent=True) or {}
+    pc_ip = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip(), payload.get("nc_fqdn"))
+    if not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip (or nc_fqdn) is required"}), 400
+    try:
+        freq = max(5, min(1440, int(payload.get("frequency_minutes") or 60)))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "message": "frequency_minutes must be an integer"}), 400
+    enabled = bool(payload.get("enabled", True))
+    cfg_id = _cg_monitor_cfg_id(pc_ip)
+    now = dt.datetime.now(dt.timezone.utc)
+    with _cg_monitor_lock:
+        rows = _cg_monitor_load_configs()
+        idx = next((i for i, r in enumerate(rows) if str((r or {}).get("id") or "") == cfg_id), -1)
+        row = rows[idx] if idx >= 0 else {}
+        row = dict(row or {})
+        row.update(
+            {
+                "id": cfg_id,
+                "pc_ip": pc_ip,
+                "pc_user": str(payload.get("pc_user") or payload.get("username") or CURATOR_PC_SSH_USER).strip() or CURATOR_PC_SSH_USER,
+                "pc_password": str(payload.get("pc_password") or payload.get("password") or CURATOR_PC_SSH_PASSWORD),
+                "frequency_minutes": freq,
+                "enabled": enabled,
+                "ncm_base_url": str(payload.get("ncm_base_url") or f"https://{pc_ip}:9440"),
+                "ncm_token": str(payload.get("ncm_token") or row.get("ncm_token") or ""),
+                "prometheus_base_url": str(payload.get("prometheus_base_url") or row.get("prometheus_base_url") or ""),
+                "prometheus_token": str(payload.get("prometheus_token") or row.get("prometheus_token") or ""),
+                "prom_query_window": str(payload.get("prom_query_window") or row.get("prom_query_window") or "15m"),
+                "prom_namespace_label": str(payload.get("prom_namespace_label") or row.get("prom_namespace_label") or "ncm-cg"),
+                "updated_at": now.isoformat(),
+            }
+        )
+        if not row.get("next_run_at"):
+            row["next_run_at"] = now.isoformat()
+        if idx >= 0:
+            rows[idx] = row
+        else:
+            rows.append(row)
+        _cg_monitor_save_configs(rows)
+    return jsonify({"ok": True, "config": row})
+
+
+@app.route("/api/cg/monitor/toggle", methods=["POST"])
+def api_cg_monitor_toggle():
+    payload = request.get_json(silent=True) or {}
+    cfg_id = str(payload.get("id") or "").strip()
+    if not cfg_id:
+        return jsonify({"ok": False, "message": "id is required"}), 400
+    enabled = bool(payload.get("enabled"))
+    with _cg_monitor_lock:
+        rows = _cg_monitor_load_configs()
+        found = False
+        out = {}
+        for i, row in enumerate(rows):
+            if str((row or {}).get("id") or "") != cfg_id:
+                continue
+            rr = dict(row or {})
+            rr["enabled"] = enabled
+            rr["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            rows[i] = rr
+            out = rr
+            found = True
+            break
+        if not found:
+            return jsonify({"ok": False, "message": "Monitor config not found"}), 404
+        _cg_monitor_save_configs(rows)
+    return jsonify({"ok": True, "config": out})
+
+
+@app.route("/api/cg/monitor/run_once", methods=["POST"])
+def api_cg_monitor_run_once():
+    _ensure_cg_monitor_supervisor()
+    payload = request.get_json(silent=True) or {}
+    cfg_id = str(payload.get("id") or "").strip()
+    pc_ip = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip(), payload.get("nc_fqdn"))
+    if not cfg_id and pc_ip:
+        cfg_id = _cg_monitor_cfg_id(pc_ip)
+    if not cfg_id:
+        return jsonify({"ok": False, "message": "id or pc_ip is required"}), 400
+    with _cg_monitor_lock:
+        rows = _cg_monitor_load_configs()
+        row = next((dict(r) for r in rows if str((r or {}).get("id") or "") == cfg_id), None)
+        if not row:
+            if not pc_ip:
+                return jsonify({"ok": False, "message": "Monitor config not found"}), 404
+            # Auto-create config from current PC connection so Run Once works even before Save.
+            try:
+                freq = max(5, min(1440, int(payload.get("frequency_minutes") or 60)))
+            except (TypeError, ValueError):
+                freq = 60
+            now = dt.datetime.now(dt.timezone.utc).isoformat()
+            row = {
+                "id": cfg_id,
+                "pc_ip": pc_ip,
+                "pc_user": str(payload.get("pc_user") or payload.get("username") or CURATOR_PC_SSH_USER).strip() or CURATOR_PC_SSH_USER,
+                "pc_password": str(payload.get("pc_password") or payload.get("password") or CURATOR_PC_SSH_PASSWORD),
+                "frequency_minutes": freq,
+                "enabled": bool(payload.get("enabled", True)),
+                "ncm_base_url": str(payload.get("ncm_base_url") or f"https://{pc_ip}:9440"),
+                "ncm_token": str(payload.get("ncm_token") or ""),
+                "prometheus_base_url": str(payload.get("prometheus_base_url") or ""),
+                "prometheus_token": str(payload.get("prometheus_token") or ""),
+                "prom_query_window": str(payload.get("prom_query_window") or "15m"),
+                "prom_namespace_label": str(payload.get("prom_namespace_label") or "ncm-cg"),
+                "updated_at": now,
+                "next_run_at": now,
+            }
+            rows.append(row)
+            _cg_monitor_save_configs(rows)
+        if cfg_id in _cg_monitor_running:
+            return jsonify({"ok": False, "message": "A monitor run is already in progress for this PC"}), 409
+        _cg_monitor_running[cfg_id] = dt.datetime.now(dt.timezone.utc).isoformat()
+    threading.Thread(target=_cg_monitor_run_once, args=(row,), daemon=True, name=f"cgmon-once-{cfg_id[:18]}").start()
+    return jsonify({"ok": True, "message": "CG monitor run started"})
+
+
+@app.route("/api/cg/monitor/delete", methods=["POST"])
+def api_cg_monitor_delete():
+    payload = request.get_json(silent=True) or {}
+    cfg_id = str(payload.get("id") or "").strip()
+    if not cfg_id:
+        return jsonify({"ok": False, "message": "id is required"}), 400
+    with _cg_monitor_lock:
+        rows = _cg_monitor_load_configs()
+        new_rows = [r for r in rows if str((r or {}).get("id") or "").strip() != cfg_id]
+        if len(new_rows) == len(rows):
+            return jsonify({"ok": False, "message": "Monitor config not found"}), 404
+        _cg_monitor_save_configs(new_rows)
+        _cg_monitor_running.pop(cfg_id, None)
+    return jsonify({"ok": True, "message": "Monitor config deleted"})
+
+
+@app.route("/download/cg_monitor/<run_id>")
+def download_cg_monitor_log(run_id: str):
+    rows = load_records(CG_MONITOR_HISTORY_FILE, max_lines=5000)
+    row = next((r for r in rows if str((r or {}).get("id") or "").strip() == str(run_id or "").strip()), None)
+    if not isinstance(row, dict):
+        abort(404)
+    p = Path(str(row.get("log_path") or ""))
+    if not p.is_file():
+        abort(404)
+    return send_file(str(p), as_attachment=True, download_name=p.name)
+
+
+@app.route("/cg_monitor/<run_id>")
+def cg_monitor_log_page(run_id: str):
+    rows = load_records(CG_MONITOR_HISTORY_FILE, max_lines=5000)
+    row = next((r for r in rows if str((r or {}).get("id") or "").strip() == str(run_id or "").strip()), None)
+    if not isinstance(row, dict):
+        abort(404)
+    p = Path(str(row.get("log_path") or ""))
+    if not p.is_file():
+        abort(404)
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = "(could not read monitor log)"
+    return render_template(
+        "cg_monitor_log.html",
+        run_id=run_id,
+        row=row,
+        log_text=text,
+        download_url=f"/download/cg_monitor/{run_id}",
+    )
 
 
 @app.route("/api/list_filer_folders", methods=["GET"])
@@ -5073,6 +5925,182 @@ def api_vm_snapshot():
             "ok": False,
             "error": str(e)
         }), 500
+
+
+@app.route("/api/bulk_vm_snapshot", methods=["POST"])
+def api_bulk_vm_snapshot():
+    """Start bulk VM snapshot job for an explicit VM list."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    pc_user = str(payload.get("pc_user") or "").strip()
+    pc_password = str(payload.get("pc_password") or "")
+    vms = payload.get("vms") or []
+    recovery_point_type = str(payload.get("recovery_point_type") or "CRASH_CONSISTENT").strip().upper()
+    try:
+        expiration_days = max(1, int(payload.get("expiration_days") or 30))
+        task_timeout_sec = max(60, int(payload.get("task_timeout_sec") or 300))
+        loop_count = max(1, min(1000, int(payload.get("loop_count") or 1)))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "expiration_days, task_timeout_sec, loop_count must be integers"}), 400
+
+    if not all([pc_ip, pc_user, pc_password]):
+        return jsonify({"ok": False, "error": "pc_ip, pc_user, pc_password are required"}), 400
+    if recovery_point_type not in ("CRASH_CONSISTENT", "APPLICATION_CONSISTENT"):
+        return jsonify({"ok": False, "error": "recovery_point_type must be CRASH_CONSISTENT or APPLICATION_CONSISTENT"}), 400
+    if not isinstance(vms, list) or not vms:
+        return jsonify({"ok": False, "error": "vms must be a non-empty list"}), 400
+
+    norm_vms: list[dict[str, str]] = []
+    for row in vms:
+        if not isinstance(row, dict):
+            continue
+        vm_uuid = str(row.get("vm_uuid") or "").strip()
+        vm_name = str(row.get("vm_name") or vm_uuid).strip()
+        if vm_uuid:
+            norm_vms.append({"vm_uuid": vm_uuid, "vm_name": vm_name or vm_uuid})
+    if not norm_vms:
+        return jsonify({"ok": False, "error": "No valid vm_uuid entries found"}), 400
+
+    run_id, log_path = _allocate_run_id_and_path(f"{pc_ip}_rpsnap")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    total_attempts = len(norm_vms) * loop_count
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": f"https://{pc_ip}:9440",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "job_kind": "snapshot",
+            "summary": {
+                "target_vms": int(len(norm_vms)),
+                "loop_count": int(loop_count),
+                "target_total": int(total_attempts),
+                "processed": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "recovery_point_type": recovery_point_type,
+                "expiration_days": int(expiration_days),
+            },
+        }
+
+    def _worker() -> None:
+        logger = logging.getLogger(f"recovery_snapshot.{run_id}")
+        logger.setLevel(logging.DEBUG)
+        logger.handlers.clear()
+        logger.propagate = False
+
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(fh)
+        for handler in SNAPSHOT_LOGGER.handlers:
+            if isinstance(handler, logging.handlers.RotatingFileHandler):
+                logger.addHandler(handler)
+                break
+
+        with runs_lock:
+            runs[run_id]["status"] = "running"
+            runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        base_url = f"https://{pc_ip}:9440"
+        succ = 0
+        fail = 0
+        processed = 0
+        started_at = time.monotonic()
+        logger.info(
+            "Starting bulk VM snapshot: pc=%s, target_vms=%s, loop_count=%s, total_attempts=%s",
+            pc_ip,
+            len(norm_vms),
+            loop_count,
+            total_attempts,
+        )
+
+        try:
+            for loop_idx in range(loop_count):
+                logger.info("Loop %s/%s started", loop_idx + 1, loop_count)
+                for vm in norm_vms:
+                    vm_uuid = vm["vm_uuid"]
+                    vm_name = vm["vm_name"]
+                    snapshot_name = f"Snapshot_{vm_name}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    expiration_time = (dt.datetime.utcnow() + dt.timedelta(days=expiration_days)).isoformat() + "Z"
+                    snapshot_payload = {
+                        "name": snapshot_name,
+                        "recovery_point_type": recovery_point_type,
+                        "expiration_time": expiration_time,
+                    }
+                    endpoint = f"{base_url}/api/nutanix/v3/vms/{vm_uuid}/snapshot"
+                    try:
+                        response = requests.post(
+                            endpoint,
+                            auth=(pc_user, pc_password),
+                            json=snapshot_payload,
+                            verify=False,
+                            timeout=task_timeout_sec,
+                        )
+                        if response.status_code in (200, 201, 202):
+                            succ += 1
+                            task_uuid = ""
+                            try:
+                                rs = response.json()
+                                task_uuid = rs.get("task_uuid") or ((rs.get("status") or {}).get("execution_context") or {}).get("task_uuid") or ""
+                            except Exception:
+                                task_uuid = ""
+                            logger.info("✓ Snapshot submitted: vm=%s uuid=%s task=%s", vm_name, vm_uuid, task_uuid or "N/A")
+                        else:
+                            fail += 1
+                            logger.error("✗ Snapshot failed: vm=%s uuid=%s status=%s body=%s", vm_name, vm_uuid, response.status_code, response.text)
+                    except Exception as exc:
+                        fail += 1
+                        logger.error("✗ Snapshot exception: vm=%s uuid=%s err=%s", vm_name, vm_uuid, exc)
+
+                    processed += 1
+                    with runs_lock:
+                        rr = runs.get(run_id)
+                        if rr:
+                            sm = dict(rr.get("summary") or {})
+                            sm["processed"] = int(processed)
+                            sm["succeeded"] = int(succ)
+                            sm["failed"] = int(fail)
+                            rr["summary"] = sm
+
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            duration_sec = max(0.0, time.monotonic() - started_at)
+            with runs_lock:
+                runs[run_id]["status"] = "complete" if fail == 0 else "error"
+                runs[run_id]["finished_at"] = finished_at
+                sm = dict(runs[run_id].get("summary") or {})
+                sm["processed"] = int(processed)
+                sm["succeeded"] = int(succ)
+                sm["failed"] = int(fail)
+                sm["duration_sec"] = float(duration_sec)
+                runs[run_id]["summary"] = sm
+                if fail > 0:
+                    runs[run_id]["error"] = f"{fail} snapshot requests failed"
+            append_record(
+                HISTORY_FILE,
+                {
+                    "run_id": run_id,
+                    "job_kind": "snapshot",
+                    "pc_host": pc_ip,
+                    "pc_host_key": _pc_host_key(pc_ip),
+                    "at": finished_at,
+                    "duration_sec": float(duration_sec),
+                    "n_vms": int(total_attempts),
+                    "succeeded": int(succ),
+                    "failed": int(fail),
+                },
+            )
+        except Exception as exc:
+            logger.exception("Bulk VM snapshot job failed")
+            with runs_lock:
+                runs[run_id]["status"] = "error"
+                runs[run_id]["error"] = str(exc)
+                runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+    threading.Thread(target=_worker, daemon=True, name=f"rpsnap-{run_id[:10]}").start()
+    return jsonify({"ok": True, "run_id": run_id, "job_url": url_for("job_status", run_id=run_id)})
 
 
 @app.route("/api/vm_disk_operation", methods=["POST"])
@@ -7939,4 +8967,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("BULK_SNAP_PORT", "8765"))
     # threaded=False serializes HTTP handlers so Werkzeug access lines don't interleave on the terminal.
     threaded = os.environ.get("BULK_SNAP_THREADED", "1").strip().lower() not in ("0", "false", "no")
-    socketio.run(app, host=host, port=port, debug=False)
+    socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

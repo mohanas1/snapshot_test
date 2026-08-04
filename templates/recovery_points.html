@@ -820,22 +820,6 @@
     </a>
   </div>
 
-  <div class="recovery-health-widget" id="recoveryHealthWidget">
-    <div class="recovery-health-header">
-      <span>📡 Recovery Health</span>
-      <span id="recoveryNetPill" class="recovery-health-pill warn">idle</span>
-    </div>
-    <div class="recovery-health-grid">
-      <span class="recovery-health-label">PC</span><span id="healthPcIp">-</span>
-      <span class="recovery-health-label">HTTP</span><span id="healthHttp">-</span>
-      <span class="recovery-health-label">Latency</span><span id="healthLatency">-</span>
-      <span class="recovery-health-label">429 Count</span><span id="health429">0</span>
-      <span class="recovery-health-label">Cookie</span><span id="healthCookie">unknown</span>
-      <span class="recovery-health-label">Cookie Refresh</span><span id="healthCookieAt">-</span>
-      <span class="recovery-health-label">Last Error</span><span id="healthErr">-</span>
-    </div>
-  </div>
-
   <div class="body-content">
     <!-- Sidebar -->
     <div class="sidebar">
@@ -954,6 +938,9 @@
               
               <button id="bulkDeleteAllBtn" type="button" class="btn" style="background: #DC2626; color: white; margin-top: 1rem;" onclick="openBulkDeleteAllModal()">
                 🗑️ Bulk Delete All Recovery Points
+              </button>
+              <button id="bulkSnapshotAllBtn" type="button" class="btn" style="background: #2563EB; color: white; margin-top: 1rem; margin-left: 0.5rem;" onclick="openBulkSnapshotAllModal()">
+                📸 Bulk Snapshot Filtered VMs
               </button>
               </div>
             </div>
@@ -1234,51 +1221,8 @@
     let currentPage = 1;
     let perPage = 20;
     let totalPages = 1;
-    let recoveryHealthInterval = null;
     let sortColumn = 'reclaimable_bytes';
     let sortDirection = 'desc';
-
-    function truncateText(value, maxLen = 64) {
-      const text = String(value || '').trim();
-      if (!text) return '-';
-      return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
-    }
-
-    function applyHealthPill(status) {
-      const pill = document.getElementById('recoveryNetPill');
-      if (!pill) return;
-      pill.classList.remove('ok', 'warn', 'err');
-      const st = String(status || 'idle').toLowerCase();
-      if (st === 'ok' || st === 'complete') {
-        pill.classList.add('ok');
-      } else if (st === 'error') {
-        pill.classList.add('err');
-      } else {
-        pill.classList.add('warn');
-      }
-      pill.textContent = st || 'idle';
-    }
-
-    async function refreshRecoveryHealthWidget() {
-      try {
-        const response = await fetch('/api/recovery_health', { cache: 'no-store' });
-        if (!response.ok) return;
-        const payload = await response.json();
-        if (!payload.ok || !payload.health) return;
-        const h = payload.health;
-
-        document.getElementById('healthPcIp').textContent = h.last_pc_ip || '-';
-        document.getElementById('healthHttp').textContent = h.last_http_status ?? '-';
-        document.getElementById('healthLatency').textContent = h.last_latency_ms != null ? `${h.last_latency_ms} ms` : '-';
-        document.getElementById('health429').textContent = h.throttle_429_count ?? 0;
-        document.getElementById('healthCookie').textContent = h.cookie_status || 'unknown';
-        document.getElementById('healthCookieAt').textContent = h.cookie_last_refresh_iso || '-';
-        document.getElementById('healthErr').textContent = truncateText(h.last_error || h.cookie_last_error || '-', 80);
-        applyHealthPill(h.network_status);
-      } catch (_) {
-        // Keep widget best-effort and non-blocking.
-      }
-    }
     
     function updateStats() {
       document.getElementById('statTotalVMs').textContent = stats.totalVMs || '-';
@@ -1883,8 +1827,6 @@
         });
       }
       updateSortIndicators();
-      refreshRecoveryHealthWidget();
-      recoveryHealthInterval = window.setInterval(refreshRecoveryHealthWidget, 5000);
 
       const wireFilter = (id, evt = 'input') => {
         const el = document.getElementById(id);
@@ -2233,6 +2175,11 @@
       </div>
       <div class="modal-body">
         <div id="confirmModalMessage" style="margin-bottom: 1.5rem; line-height: 1.8;"></div>
+        <div id="confirmLoopCountWrap" style="display: none; margin-bottom: 1rem;">
+          <label for="confirmLoopCount" style="display:block; font-weight:600; margin-bottom:0.35rem;">Loop Count</label>
+          <input type="number" id="confirmLoopCount" min="1" max="1000" value="1" style="max-width: 160px;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">How many times to run snapshot loop for selected VMs.</div>
+        </div>
         <div id="confirmModalStats" style="background: #FEF3C7; padding: 1rem; border-radius: 6px; border-left: 3px solid #F59E0B; display: none;">
           <div style="font-weight: 600; margin-bottom: 0.5rem;">Delete Summary:</div>
           <div id="confirmStatsContent"></div>
@@ -2525,18 +2472,28 @@
     // Confirmation Modal Variables
     let pendingAction = null;
     
-    function openConfirmModal(title, message, stats, onConfirm) {
+    function openConfirmModal(title, message, stats, onConfirm, options = {}) {
       document.getElementById('confirmModalTitle').textContent = title;
       document.getElementById('confirmModalMessage').innerHTML = message;
+      document.getElementById('confirmModalProceed').textContent = options.proceedLabel || 'Delete';
       
       const statsDiv = document.getElementById('confirmModalStats');
       const statsContent = document.getElementById('confirmStatsContent');
+      const loopWrap = document.getElementById('confirmLoopCountWrap');
+      const loopInput = document.getElementById('confirmLoopCount');
       
       if (stats) {
         statsContent.innerHTML = stats;
         statsDiv.style.display = 'block';
       } else {
         statsDiv.style.display = 'none';
+      }
+      if (options.showLoopCount) {
+        loopWrap.style.display = 'block';
+        loopInput.value = String(Math.max(1, parseInt(options.loopCountDefault || 1, 10) || 1));
+      } else {
+        loopWrap.style.display = 'none';
+        loopInput.value = '1';
       }
       
       pendingAction = onConfirm;
@@ -2551,9 +2508,14 @@
     async function executeConfirmedAction() {
       if (pendingAction) {
         const action = pendingAction;
+        const loopWrap = document.getElementById('confirmLoopCountWrap');
+        const loopInput = document.getElementById('confirmLoopCount');
+        const loopCount = (loopWrap && loopWrap.style.display !== 'none')
+          ? Math.max(1, Math.min(1000, parseInt(loopInput.value || '1', 10) || 1))
+          : 1;
         closeConfirmModal();
         try {
-          await Promise.resolve(action());
+          await Promise.resolve(action(loopCount));
         } catch (e) {
           alert(`❌ Action failed:\n${e && e.message ? e.message : e}`);
         }
@@ -2758,6 +2720,129 @@
       openConfirmModal('🗑️ Bulk Delete All Recovery Points', message, stats, async () => {
         await executeBulkDelete(filteredRecoveryPoints, 'All VMs', sizeFilter, concurrency, null, vmNamePatterns, minVmRecoveryPoints, maxVmRecoveryPoints);
       });
+    }
+
+    function getDefaultLoopCount() {
+      const ids = ['schedule_loop_count', 'loop_count', 'snapshot_loop_count'];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const v = parseInt(el.value || '1', 10);
+        if (Number.isFinite(v) && v > 0) return v;
+      }
+      return 1;
+    }
+
+    async function openBulkSnapshotAllModal() {
+      if (!allVMs || allVMs.length === 0) {
+        alert('No VMs available. Run analysis first.');
+        return;
+      }
+
+      let allRecoveryPoints = [];
+      allVMs.forEach((vm) => {
+        if (Array.isArray(vm.recovery_points) && vm.recovery_points.length > 0) {
+          allRecoveryPoints = allRecoveryPoints.concat(vm.recovery_points);
+        }
+      });
+      if (!allRecoveryPoints.length) {
+        alert('No recovery points found across VMs.');
+        return;
+      }
+
+      const sizeFilter = document.getElementById('size_filter').value;
+      const vmNamePatterns = readDeleteVmPatterns();
+      const minVmRecoveryPoints = readMinVmRecoveryPoints();
+      const maxVmRecoveryPoints = readMaxVmRecoveryPoints();
+      const filteredRecoveryPoints = filterRecoveryPointsClient(
+        allRecoveryPoints,
+        sizeFilter,
+        vmNamePatterns,
+        minVmRecoveryPoints,
+        maxVmRecoveryPoints
+      );
+      if (!filteredRecoveryPoints.length) {
+        alert('No filtered recovery points found to derive target VMs.');
+        return;
+      }
+
+      const vmNameToUuid = new Map();
+      [...(allVMs || []), ...(rawVMs || [])].forEach((vm) => {
+        const vmUuid = String(vm?.vm_uuid || vm?.ext_id || vm?.entity_id || '').trim();
+        const vmName = String(vm?.vm_name || '').trim().toLowerCase();
+        if (vmUuid && vmName && !vmNameToUuid.has(vmName)) {
+          vmNameToUuid.set(vmName, vmUuid);
+        }
+      });
+
+      const vmById = new Map();
+      filteredRecoveryPoints.forEach((rp) => {
+        let vmUuid = String(rp.vm_uuid || rp.vm_ext_id || rp.vm_id || '').trim();
+        const vmName = String(rp.vm_name || '').trim();
+        if (!vmUuid && vmName) {
+          vmUuid = String(vmNameToUuid.get(vmName.toLowerCase()) || '').trim();
+        }
+        if (!vmUuid) return;
+        if (!vmById.has(vmUuid)) vmById.set(vmUuid, vmName || vmUuid);
+      });
+
+      const targetVms = Array.from(vmById.entries()).map(([vm_uuid, vm_name]) => ({ vm_uuid, vm_name }));
+      if (!targetVms.length) {
+        alert('Could not derive VM UUIDs from filtered recovery points.');
+        return;
+      }
+
+      const message = `<strong style="color: #1D4ED8;">📸 Snapshot Bulk Action</strong><br>You are about to trigger snapshots for all filtered VMs.`;
+      const stats = `<div>• <strong>Target VMs:</strong> ${targetVms.length}</div><div>• <strong>Filter Source RPs:</strong> ${filteredRecoveryPoints.length}</div><div>• <strong>Size Filter:</strong> ${sizeFilter}</div><div>• <strong>VM Name Patterns:</strong> ${vmNamePatterns.length ? vmNamePatterns.join(', ') : 'None'}</div><div>• <strong>Min VM Recovery Points:</strong> ${minVmRecoveryPoints}</div><div>• <strong>Max VM Recovery Points:</strong> ${maxVmRecoveryPoints}</div>`;
+      openConfirmModal('📸 Bulk Snapshot Filtered VMs', message, stats, async (loopCount) => {
+        await executeBulkSnapshot(targetVms, loopCount);
+      }, {
+        showLoopCount: true,
+        loopCountDefault: getDefaultLoopCount(),
+        proceedLabel: 'Start Snapshot Job'
+      });
+    }
+
+    async function executeBulkSnapshot(targetVms, loopCount) {
+      const pcIp = document.getElementById('pc_ip').value;
+      const pcUser = document.getElementById('pc_user').value;
+      const pcPassword = document.getElementById('pc_password').value;
+      const expirationDays = parseInt(document.getElementById('snapshot_expiration_days')?.value || '30', 10) || 30;
+      const recoveryPointType = document.getElementById('snapshot_recovery_type')?.value || 'CRASH_CONSISTENT';
+      const taskTimeout = parseInt(document.getElementById('snapshot_task_timeout')?.value || '300', 10) || 300;
+
+      try {
+        const response = await fetch('/api/bulk_vm_snapshot', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            pc_ip: pcIp,
+            pc_user: pcUser,
+            pc_password: pcPassword,
+            vms: targetVms,
+            loop_count: loopCount,
+            expiration_days: expirationDays,
+            recovery_point_type: recoveryPointType,
+            task_timeout_sec: taskTimeout
+          })
+        });
+        const rawText = await response.text();
+        let result = {};
+        try { result = rawText ? JSON.parse(rawText) : {}; } catch (_) { result = {}; }
+        if (!response.ok || !result.ok) {
+          const detail = result.error || result.message || rawText || `HTTP ${response.status}`;
+          alert(`❌ Failed to start bulk snapshot job:\n${detail}`);
+          return;
+        }
+        const jobUrl = result.job_url || '';
+        if (jobUrl) {
+          window.location.assign(jobUrl);
+        } else {
+          alert(`✅ Bulk snapshot job started (${result.run_id || 'run created'})`);
+        }
+      } catch (error) {
+        alert(`❌ Failed to start bulk snapshot job:\n${error.message}`);
+      }
     }
     
     // Execute bulk delete as background job and open job page

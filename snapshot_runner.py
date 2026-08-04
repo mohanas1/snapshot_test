@@ -111,6 +111,10 @@ class SnapshotConfig:
     skip_regex_patterns: Tuple[str, ...] = ()
     # Optional explicit VM UUID allow-list (used by scheduled full pipeline handoff).
     target_vm_uuids: Tuple[str, ...] = ()
+    # If true, bypass VM name skip filters and per-VM snapshot cap checks.
+    force_snapshot: bool = False
+    # Optional VM target limit: integer count ("2500") or percent ("50%").
+    snapshot_run_limit: str = ""
 
     _compiled_regexes: Tuple[Any, ...] = field(default_factory=tuple, repr=False)
 
@@ -228,7 +232,7 @@ def list_all_vm_uuids(
                             name = str(vals[0])
                             break
                     break
-                if _vm_name_should_skip(name, cfg):
+                if not cfg.force_snapshot and _vm_name_should_skip(name, cfg):
                     ignored_by_name += 1
                     continue
                 seen[key] = name
@@ -515,32 +519,63 @@ def run_snapshots(
     if len(vms) > 15:
         log.info("  … +%d more", len(vms) - 15)
 
-    # Per-VM safety cap: do not create snapshots for VMs already at cap.
-    rp_counts = list_vm_recovery_point_counts(session, base, cfg, log=log)
-    eligible_vms: List[Tuple[str, Optional[str]]] = []
-    for vm_uuid, vm_name in vms:
-        cur = int(rp_counts.get(vm_uuid, 0))
-        if cur >= MAX_SNAPSHOTS_PER_VM:
-            ignored_by_cap += 1
+    if cfg.force_snapshot:
+        log.warning("Force snapshot mode is ON: bypassing name-skip and per-VM snapshot-cap filters.")
+    else:
+        # Per-VM safety cap: do not create snapshots for VMs already at cap.
+        rp_counts = list_vm_recovery_point_counts(session, base, cfg, log=log)
+        eligible_vms: List[Tuple[str, Optional[str]]] = []
+        for vm_uuid, vm_name in vms:
+            cur = int(rp_counts.get(vm_uuid, 0))
+            if cur >= MAX_SNAPSHOTS_PER_VM:
+                ignored_by_cap += 1
+                log.info(
+                    "Skipping VM %s… (%s): recovery points=%d reached cap=%d",
+                    vm_uuid[:8],
+                    vm_name or "?",
+                    cur,
+                    MAX_SNAPSHOTS_PER_VM,
+                )
+                continue
+            eligible_vms.append((vm_uuid, vm_name))
+
+        if ignored_by_cap:
+            tally["ignored"] += ignored_by_cap
             log.info(
-                "Skipping VM %s… (%s): recovery points=%d reached cap=%d",
-                vm_uuid[:8],
-                vm_name or "?",
-                cur,
+                "Per-VM snapshot cap applied: skipped %d VM(s) already at %d recovery points.",
+                ignored_by_cap,
                 MAX_SNAPSHOTS_PER_VM,
             )
-            continue
-        eligible_vms.append((vm_uuid, vm_name))
 
-    if ignored_by_cap:
-        tally["ignored"] += ignored_by_cap
+        vms = eligible_vms
+
+    raw_limit = str(cfg.snapshot_run_limit or "").strip()
+    if raw_limit:
+        total_before = len(vms)
+        if raw_limit.endswith("%"):
+            try:
+                pct = float(raw_limit[:-1].strip())
+            except (TypeError, ValueError):
+                pct = 0.0
+            pct = max(0.0, min(100.0, pct))
+            chosen = int((total_before * pct) / 100.0)
+            if pct > 0.0 and chosen == 0 and total_before > 0:
+                chosen = 1
+            vms = vms[:chosen]
+        else:
+            try:
+                n = int(raw_limit)
+            except (TypeError, ValueError):
+                n = total_before
+            n = max(0, min(total_before, n))
+            vms = vms[:n]
         log.info(
-            "Per-VM snapshot cap applied: skipped %d VM(s) already at %d recovery points.",
-            ignored_by_cap,
-            MAX_SNAPSHOTS_PER_VM,
+            "Snapshot run limit applied: %s => %d/%d VM(s) targeted.",
+            raw_limit,
+            len(vms),
+            total_before,
         )
 
-    vms = eligible_vms
     n_vms = len(vms)
 
     def _emit_sp(waiting: Optional[Dict[str, Any]] = None) -> None:

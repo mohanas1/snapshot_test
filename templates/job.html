@@ -1349,6 +1349,50 @@
       <div class="disk-summary-card"><div class="disk-summary-card-label">Successful</div><div class="disk-summary-card-value" id="cgdl-success">0</div></div>
       <div class="disk-summary-card"><div class="disk-summary-card-label">Failed</div><div class="disk-summary-card-value" id="cgdl-failed">0</div></div>
       <div class="disk-summary-card"><div class="disk-summary-card-label">Status</div><div class="disk-summary-card-value" id="cgdl-status-text" style="font-size:0.95rem;">—</div></div>
+      <div class="disk-summary-card"><div class="disk-summary-card-label">Current Job Time</div><div class="disk-summary-card-value" id="cgdl-elapsed">—</div></div>
+    </div>
+    <div style="margin-top: 0.9rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.55rem;">
+        <strong style="font-size:0.95rem;">CG Namespace Pod Live Logs</strong>
+      </div>
+      <table style="width:100%; margin-bottom:0.65rem; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">File Path</th>
+            <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Action</th>
+          </tr>
+        </thead>
+        <tbody id="cgdl-live-logs-body">
+          <tr><td colspan="2" class="meta" style="padding:0.45rem;">Waiting for live pod log files…</td></tr>
+        </tbody>
+      </table>
+      <strong style="font-size:0.95rem;">Step Timing Breakdown</strong>
+      <table style="width:100%; margin-top:0.5rem; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:0.45rem; border-bottom:1px solid var(--border-gray);">Step</th>
+            <th style="text-align:right; padding:0.45rem; border-bottom:1px solid var(--border-gray);">Duration</th>
+            <th style="text-align:left; padding:0.45rem; border-bottom:1px solid var(--border-gray);">Visual</th>
+          </tr>
+        </thead>
+        <tbody id="cgdl-timing-body">
+          <tr><td colspan="3" class="meta" style="padding:0.5rem;">Collecting step timings from log…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 0.9rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
+      <strong style="font-size:0.95rem;">Iteration Run Durations</strong>
+      <table style="width:100%; margin-top:0.5rem; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:0.45rem; border-bottom:1px solid var(--border-gray);">Iteration</th>
+            <th style="text-align:right; padding:0.45rem; border-bottom:1px solid var(--border-gray);">Duration</th>
+          </tr>
+        </thead>
+        <tbody id="cgdl-iteration-body">
+          <tr><td colspan="2" class="meta" style="padding:0.5rem;">Collecting iteration durations from log…</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
   {% endif %}
@@ -1442,6 +1486,10 @@
     const cgdlSuccess = document.getElementById('cgdl-success');
     const cgdlFailed = document.getElementById('cgdl-failed');
     const cgdlStatusText = document.getElementById('cgdl-status-text');
+    const cgdlElapsed = document.getElementById('cgdl-elapsed');
+    const cgdlTimingBody = document.getElementById('cgdl-timing-body');
+    const cgdlIterationBody = document.getElementById('cgdl-iteration-body');
+    const cgdlLiveLogsBody = document.getElementById('cgdl-live-logs-body');
     var diskVmCompletedCache = [];
     /** null = API order; 'desc' = slowest first; 'asc' = fastest first */
     var diskVmDoneSortMode = null;
@@ -2366,12 +2414,123 @@
       if (!(isCgDataLoaderJob || j.job_kind === 'cg_data_loader')) return;
       const d = (j && j.job_details) || {};
       const s = (j && j.summary) || {};
+      const formatSec = (sec) => {
+        const n = Number(sec || 0);
+        if (!Number.isFinite(n)) return '—';
+        if (n < 60) return n.toFixed(1) + 's';
+        const m = Math.floor(n / 60);
+        const s2 = Math.round(n % 60);
+        if (m < 60) return m + 'm ' + s2 + 's';
+        const h = Math.floor(m / 60);
+        const rm = m % 60;
+        return h + 'h ' + rm + 'm ' + s2 + 's';
+      };
       if (cgdlPcIp) cgdlPcIp.textContent = String(d.pc_ip || s.pc_ip || '—');
       if (cgdlIterations) cgdlIterations.textContent = String(Number(s.iterations || 0));
       if (cgdlCurrent) cgdlCurrent.textContent = String(Number(s.current_iteration || 0));
       if (cgdlSuccess) cgdlSuccess.textContent = String(Number(s.successful_iterations || 0));
       if (cgdlFailed) cgdlFailed.textContent = String(Number(s.failed_iterations || 0));
       if (cgdlStatusText) cgdlStatusText.textContent = String(s.status_text || 'Running');
+      if (cgdlLiveLogsBody) {
+        const logs = Array.isArray(j.cg_live_logs) ? j.cg_live_logs : [];
+        if (!logs.length) {
+          cgdlLiveLogsBody.innerHTML = '<tr><td colspan="2" class="meta" style="padding:0.45rem;">Waiting for live pod log files…</td></tr>';
+        } else {
+          cgdlLiveLogsBody.innerHTML = logs.map((row) => {
+            const p = String((row && row.path) || '');
+            const u = String((row && row.download_url) || '#');
+            return '<tr>'
+              + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray);"><code style="font-size:0.78rem;">' + escapeHtml(p) + '</code></td>'
+              + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray);"><a class="btn secondary" style="font-size:0.76rem; padding:0.24rem 0.5rem;" href="' + escapeHtml(u) + '">Download</a></td>'
+              + '</tr>';
+          }).join('');
+        }
+      }
+      if (cgdlElapsed) {
+        const runningSec = Number(j && j.elapsed_running_sec);
+        if (Number.isFinite(runningSec)) {
+          cgdlElapsed.textContent = formatElapsed(Math.max(0, Math.floor(runningSec)));
+        } else if (Number.isFinite(Number((s && s.duration_sec) || NaN))) {
+          cgdlElapsed.textContent = formatSec(Number(s.duration_sec));
+        } else {
+          cgdlElapsed.textContent = '—';
+        }
+      }
+      if (cgdlTimingBody) {
+        const timings = (s && s.step_durations_sec && typeof s.step_durations_sec === 'object')
+          ? s.step_durations_sec
+          : {};
+        const rows = Object.entries(timings)
+          .filter(([k, v]) => String(k || '').trim() && Number.isFinite(Number(v)))
+          .map(([k, v]) => [String(k), Number(v)])
+          .sort((a, b) => b[1] - a[1]);
+        if (!rows.length) {
+          cgdlTimingBody.innerHTML = '<tr><td colspan="3" class="meta" style="padding:0.5rem;">Collecting step timings from log…</td></tr>';
+        } else {
+          const maxSec = Math.max(...rows.map((x) => x[1]), 1);
+          const fmt = (sec) => {
+            if (sec < 60) return sec.toFixed(1) + 's';
+            const m = Math.floor(sec / 60);
+            const s2 = Math.round(sec % 60);
+            return m + 'm ' + s2 + 's';
+          };
+          cgdlTimingBody.innerHTML = rows.map(([name, sec]) => {
+            const pct = Math.max(3, Math.round((sec / maxSec) * 100));
+            return '<tr>'
+              + '<td style="padding:0.45rem; border-bottom:1px solid var(--border-gray);">' + escapeHtml(name) + '</td>'
+              + '<td style="padding:0.45rem; border-bottom:1px solid var(--border-gray); text-align:right; font-family:var(--font-mono);">' + fmt(sec) + '</td>'
+              + '<td style="padding:0.45rem; border-bottom:1px solid var(--border-gray);">'
+              + '<div style="height:10px; border-radius:999px; background:#E5E7EB; overflow:hidden;">'
+              + '<div style="height:100%; width:' + pct + '%; background:linear-gradient(90deg,#60A5FA,#2563EB);"></div>'
+              + '</div>'
+              + '</td>'
+              + '</tr>';
+          }).join('');
+        }
+      }
+      if (cgdlIterationBody) {
+        const runRows = Array.isArray(s.iteration_run_timings)
+          ? s.iteration_run_timings
+          : Object.entries((s && s.iteration_run_durations_sec) || {})
+              .map(([k, v]) => ({ iteration: Number(k), duration_sec: Number(v) }));
+        const filtered = runRows
+          .filter((r) => Number.isFinite(Number(r.iteration)) && Number.isFinite(Number(r.duration_sec)))
+          .sort((a, b) => Number(a.iteration) - Number(b.iteration));
+        const maybeState = (s && s._iteration_timing_state && typeof s._iteration_timing_state === 'object')
+          ? s._iteration_timing_state
+          : null;
+        const runningIter = Number(maybeState && maybeState.current_iteration);
+        const startedAt = String((maybeState && maybeState.started_at) || '');
+        let runningRow = null;
+        if (Number.isFinite(runningIter) && runningIter > 0 && startedAt) {
+          const startMs = Date.parse(startedAt);
+          if (Number.isFinite(startMs)) {
+            runningRow = {
+              iteration: runningIter,
+              duration_sec: Math.max(0, (Date.now() - startMs) / 1000),
+              running: true,
+            };
+          }
+        }
+        if (runningRow) {
+          const idx = filtered.findIndex((r) => Number(r.iteration) === Number(runningRow.iteration));
+          if (idx >= 0) filtered[idx] = runningRow;
+          else filtered.push(runningRow);
+          filtered.sort((a, b) => Number(a.iteration) - Number(b.iteration));
+        }
+        if (!filtered.length) {
+          cgdlIterationBody.innerHTML = '<tr><td colspan="2" class="meta" style="padding:0.5rem;">Collecting iteration durations from log…</td></tr>';
+        } else {
+          cgdlIterationBody.innerHTML = filtered.map((row) => {
+            const it = Number(row.iteration);
+            const label = row.running ? ('Iteration ' + it + ' (running)') : ('Iteration ' + it);
+            return '<tr>'
+              + '<td style="padding:0.45rem; border-bottom:1px solid var(--border-gray);">' + escapeHtml(label) + '</td>'
+              + '<td style="padding:0.45rem; border-bottom:1px solid var(--border-gray); text-align:right; font-family:var(--font-mono);">' + formatSec(Number(row.duration_sec || 0)) + '</td>'
+              + '</tr>';
+          }).join('');
+        }
+      }
     }
 
     async function fetchRunStatusLite(runId) {
