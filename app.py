@@ -45,6 +45,7 @@ from run_history import append_record, load_records
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -62,6 +63,10 @@ for _d in (RUN_LOG_DIR, CG_LIVE_LOG_DIR, FETCH_LOG_DIR, POWER_LOG_DIR, OPS_LOG_D
 LOG_JOBS_HISTORY_FILE = PROJECT_DIR / "data" / "log_jobs_history.jsonl"
 LOG_JOBS_HISTORY_FILE.parent.mkdir(exist_ok=True)
 
+# IPFIX traffic jobs history
+IPFIX_JOBS_HISTORY_FILE = PROJECT_DIR / "data" / "ipfix_jobs_history.jsonl"
+IPFIX_JOBS_HISTORY_FILE.parent.mkdir(exist_ok=True)
+
 # Setup SEPARATE log files for each operation type
 LOG_FILES = {
     'app': OPS_LOG_DIR / "app.log",              # General Flask app logs
@@ -69,9 +74,12 @@ LOG_FILES = {
     'diskops': OPS_LOG_DIR / "diskops.log",      # Disk operations (VM/disk runner)
     'recovery': OPS_LOG_DIR / "recovery_points.log",  # Recovery points operations
     'logs_fetch': OPS_LOG_DIR / "logs_fetch.log",     # Fluentd/Logbay log collection
+    'ipfix': OPS_LOG_DIR / "ipfix.log",          # IPFIX traffic testing (live & mock)
 }
 
 CG_REPORTS_SCRIPT_PATH = PROJECT_DIR.parent / "cost_governnance" / "cg_random_reports_download.py"
+IPFIX_SCRIPT_PATH = PROJECT_DIR / "ipfix_test.py"
+IPFIX_LIVE_SCRIPT_PATH = PROJECT_DIR / "ipfix_live.py"
 CG_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "trigger_data_loader_job.sh"
 CG_STREAM_DATA_LOADER_SCRIPT_PATH = PROJECT_DIR / "trigger_data_loader_job.sh"
 # Required binaries: sshpass + ssh (local Flask host), kubectl + mspctl (remote execution host).
@@ -143,6 +151,7 @@ SNAPSHOT_LOGGER = setup_operation_logger('bulk_ui.snapshots', LOG_FILES['snapsho
 DISKOPS_LOGGER = setup_operation_logger('bulk_ui.diskops', LOG_FILES['diskops'])
 RECOVERY_LOGGER = setup_operation_logger('bulk_ui.recovery', LOG_FILES['recovery'])
 LOGS_FETCH_LOGGER = setup_operation_logger('bulk_ui.logs_fetch', LOG_FILES['logs_fetch'])
+IPFIX_LOGGER = setup_operation_logger('bulk_ui.ipfix', LOG_FILES['ipfix'])
 
 # Configure Flask app logger to use APP_LOGGER handlers
 # Clear existing handlers and add APP_LOGGER's file handler
@@ -8956,6 +8965,942 @@ def api_recent_log_jobs():
     })
 
 
+IPFIX_PARALLEL_MODES = (
+    "sequential",
+    "same_vm",
+    "unique_vms",
+    "fan_out",
+    "fan_in",
+    "spread",
+    "first_to_all",
+    "all_to_first",
+    "randomized_mesh",
+    "client_server_pair",
+    "port_scan_burst",
+)
+IPFIX_PATTERN_BY_MODE = {"first_to_all": "1:all", "all_to_first": "all:1"}
+IPFIX_PATTERNS = ("1:1", "1:n", "n:1", "1:all", "all:1")
+
+
+def _ipfix_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value if value is not None else "").strip().lower()
+    if text in ("1", "true", "yes", "on"):
+        return True
+    if text in ("0", "false", "no", "off"):
+        return False
+    raise ValueError("parallel must be true or false")
+
+
+def _ipfix_positive_int(value: Any, name: str, low: int, high: int) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be an integer")
+    if number < low or number > high:
+        raise ValueError(f"{name} must be between {low} and {high}")
+    return number
+
+
+def _ipfix_expand_ports(raw: Any, name: str, limit: int = 1024) -> list[int]:
+    if isinstance(raw, list):
+        tokens: list[str] = []
+        for item in raw:
+            tokens.extend(str(item).replace(",", " ").split())
+    else:
+        tokens = str(raw or "").replace(",", " ").split()
+    ports: list[int] = []
+    seen: set[int] = set()
+    for token in tokens:
+        if "-" in token:
+            ends = token.split("-")
+            if len(ends) != 2 or not ends[0].isdigit() or not ends[1].isdigit():
+                raise ValueError(f"Invalid {name} range: {token}")
+            start, end = int(ends[0]), int(ends[1])
+            if not 1 <= start <= end <= 65535:
+                raise ValueError(f"{name} range {token} must stay inside 1-65535")
+            if len(ports) + (end - start + 1) > limit:
+                raise ValueError(f"{name} list is larger than {limit} ports")
+            for port in range(start, end + 1):
+                if port not in seen:
+                    seen.add(port)
+                    ports.append(port)
+            continue
+        port = _ipfix_positive_int(token, name, 1, 65535)
+        if len(ports) >= limit:
+            raise ValueError(f"{name} list is larger than {limit} ports")
+        if port not in seen:
+            seen.add(port)
+            ports.append(port)
+    if not ports:
+        raise ValueError(f"Enter at least one {name}")
+    return ports
+
+
+def _ipfix_port_spec(payload: dict[str, Any], prefix: str, name: str, empty_mode: str) -> str | None:
+    """Turn a port-mode form into one CLI value. empty_mode returns None."""
+    mode = str(payload.get(f"{prefix}_mode") or empty_mode).strip().lower()
+    if mode == empty_mode:
+        return None
+    if mode == "single":
+        return str(_ipfix_positive_int(payload.get(f"{prefix}_port"), name, 1, 65535))
+    if mode == "range":
+        start = _ipfix_positive_int(payload.get(f"{prefix}_from"), f"{name} start", 1, 65535)
+        end = _ipfix_positive_int(payload.get(f"{prefix}_to"), f"{name} end", 1, 65535)
+        if start > end:
+            raise ValueError(f"{name} range start must be less than or equal to the end")
+        if end - start + 1 > 1024:
+            raise ValueError(f"{name} range is larger than 1024 ports")
+        return f"{start}-{end}"
+    if mode == "list":
+        return ",".join(str(port) for port in _ipfix_expand_ports(payload.get(f"{prefix}_list"), name))
+    raise ValueError(f"{name} mode must be {empty_mode}, single, range, or list")
+
+
+def _ipfix_port_list(raw: Any, name: str) -> list[int]:
+    if isinstance(raw, list):
+        tokens = raw
+    else:
+        tokens = str(raw or "").replace(",", " ").split()
+    ports: list[int] = []
+    for token in tokens:
+        if str(token).strip() == "":
+            continue
+        port = _ipfix_positive_int(token, name, 1, 65535)
+        if port not in ports:
+            ports.append(port)
+    if not ports:
+        raise ValueError(f"Select at least one {name}")
+    return ports
+
+
+def _ipfix_token(value: Any, name: str) -> str:
+    text = str(value if value is not None else "").strip()
+    if not text or any(ch.isspace() for ch in text):
+        raise ValueError(f"{name} is required")
+    return text
+
+
+def _ipfix_selected_ips(raw: Any) -> list[str]:
+    import ipaddress
+
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("Fetch VMs and select at least two IP addresses")
+    addresses: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        token = str(item or "").strip()
+        if not token:
+            continue
+        try:
+            ip = str(ipaddress.ip_address(token))
+        except ValueError:
+            raise ValueError(f"Invalid selected VM IP: {token}")
+        if ip not in seen:
+            seen.add(ip)
+            addresses.append(ip)
+    if len(addresses) < 2:
+        raise ValueError("Select at least two VM IPs. A flow needs a source and a destination.")
+    return addresses
+
+
+def _write_ipfix_ip_file(addresses: list[str]) -> Path:
+    folder = DATA_DIR / "ipfix_vm_lists"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"selected_{uuid.uuid4().hex}.txt"
+    path.write_text(" ".join(addresses) + "\n", encoding="utf-8")
+    return path
+
+
+def _ipfix_memory_gib(entity: dict[str, Any]) -> float | None:
+    raw_bytes = entity.get("memoryCapacityInBytes")
+    if raw_bytes not in (None, ""):
+        try:
+            return round(int(raw_bytes) / (1024 ** 3), 2)
+        except (TypeError, ValueError):
+            return None
+    for key in ("memoryCapacityInMb", "memoryMb"):
+        raw_mb = entity.get(key)
+        if raw_mb in (None, ""):
+            continue
+        try:
+            return round(int(raw_mb) / 1024, 2)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _fetch_ipfix_vm_rows(pc_ip: str, username: str, password: str, page_size: int) -> dict[str, Any]:
+    """Page Prism the same way ipfix_test.py does and return one row per VM."""
+    import importlib
+    import ipaddress
+
+    import urllib3
+
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    try:
+        ipfix_test = importlib.import_module("ipfix_test")
+    except ImportError:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("ipfix_test", IPFIX_SCRIPT_PATH)
+        if spec is None or spec.loader is None:
+            raise ValueError(f"IPFIX script not found: {IPFIX_SCRIPT_PATH}")
+        ipfix_test = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ipfix_test)
+
+    started = time.perf_counter()
+    session = ipfix_test.prism_session(pc_ip, username, password)
+    host_warning = ""
+    hypervisors: dict[str, str] = {}
+    host_names: dict[str, str] = {}
+    try:
+        hosts_resp = session.get(
+            f"https://{pc_ip}:9440/PrismGateway/services/rest/v1/hosts",
+            timeout=60,
+        )
+        if hosts_resp.status_code != 200:
+            host_warning = f"hosts API failed status={hosts_resp.status_code}"
+        else:
+            for entity in hosts_resp.json().get("entities") or []:
+                host_uuid = str(entity.get("uuid") or "")
+                address = str(entity.get("hypervisorAddress") or "").strip()
+                if host_uuid and address:
+                    hypervisors[host_uuid] = address
+                if host_uuid:
+                    host_names[host_uuid] = str(entity.get("name") or "")
+            if not hypervisors:
+                host_warning = "hosts API returned no hypervisorAddress"
+    except requests.RequestException as exc:
+        host_warning = f"Could not reach the hosts API: {exc}"
+
+    url = f"https://{pc_ip}:9440/PrismGateway/services/rest/v1/vms"
+    page = 1
+    total_entities = None
+    rows: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    try:
+        while True:
+            resp = session.get(
+                url,
+                params={
+                    "count": page_size,
+                    "page": page,
+                    "sortCriteria": "-hypervisor_cpu_usage_ppm",
+                    "searchAttributeList": "vm_uuid",
+                    "projection": "basicInfo",
+                    "filterCriteria": ipfix_test.VM_FILTER,
+                },
+                timeout=120,
+            )
+            if resp.status_code != 200:
+                raise ValueError(
+                    f"vms API failed at page={page} status={resp.status_code} body={resp.text[:300]}"
+                )
+            data = resp.json()
+            metadata = data.get("metadata") or {}
+            if total_entities is None:
+                total_entities = metadata.get("totalEntities")
+                if total_entities is None:
+                    raise ValueError("totalEntities missing in vms response")
+            entities = data.get("entities") or []
+            if not entities:
+                break
+            for entity in entities:
+                if not isinstance(entity, dict):
+                    continue
+                ips: list[str] = []
+                for raw_ip in entity.get("ipAddresses") or []:
+                    token = str(raw_ip or "").strip()
+                    if not token:
+                        continue
+                    try:
+                        ip = str(ipaddress.ip_address(token))
+                    except ValueError:
+                        continue
+                    if ip not in ips:
+                        ips.append(ip)
+                vm_uuid = str(entity.get("uuid") or "")
+                key = vm_uuid or (entity.get("vmName") or "") + "|" + ",".join(ips)
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                host_uuid = str(entity.get("hostUuid") or "")
+                vcpus = entity.get("numVCpus")
+                try:
+                    vcpus = int(vcpus) if vcpus not in (None, "") else None
+                except (TypeError, ValueError):
+                    vcpus = None
+                rows.append(
+                    {
+                        "uuid": vm_uuid,
+                        "name": str(entity.get("vmName") or ""),
+                        "ips": ips,
+                        "power_state": str(entity.get("powerState") or ""),
+                        "vcpus": vcpus,
+                        "memory_gib": _ipfix_memory_gib(entity),
+                        "host_name": str(entity.get("hostName") or host_names.get(host_uuid) or ""),
+                        "host_ip": hypervisors.get(host_uuid) or "",
+                        "hypervisor_type": str(entity.get("hypervisorType") or ""),
+                    }
+                )
+            end_index = metadata.get("endIndex") or 0
+            if end_index >= int(total_entities) or len(entities) < page_size:
+                break
+            page += 1
+    except requests.RequestException as exc:
+        raise ValueError(f"Could not reach Prism: {exc}") from exc
+
+    unique_ips: list[str] = []
+    seen_ips: set[str] = set()
+    powered_on = 0
+    hosts: set[str] = set()
+    for row in rows:
+        if str(row.get("power_state") or "").lower() == "on":
+            powered_on += 1
+        if row.get("host_ip"):
+            hosts.add(str(row["host_ip"]))
+        for ip in row["ips"]:
+            if ip not in seen_ips:
+                seen_ips.add(ip)
+                unique_ips.append(ip)
+    return {
+        "vms": rows,
+        "total_entities": int(total_entities or len(rows)),
+        "pages_fetched": page,
+        "unique_ips": len(unique_ips),
+        "with_ip": sum(1 for row in rows if row["ips"]),
+        "without_ip": sum(1 for row in rows if not row["ips"]),
+        "powered_on": powered_on,
+        "hypervisors": len(hosts),
+        "host_warning": host_warning,
+        "filter": ipfix_test.VM_FILTER,
+        "fetched_in_sec": round(time.perf_counter() - started, 2),
+    }
+
+
+def _load_ipfix_ip_file(raw_path: str) -> list[str]:
+    import ipaddress
+
+    text = str(raw_path or "").strip()
+    if not text:
+        raise ValueError("IP file is required")
+    candidate = Path(text)
+    if not candidate.is_file():
+        candidate = IPFIX_SCRIPT_PATH.parent / text
+    if not candidate.is_file():
+        raise ValueError(f"IP file not found: {text}")
+    addresses: list[str] = []
+    seen: set[str] = set()
+    for token in candidate.read_text(encoding="utf-8", errors="replace").replace(",", " ").split():
+        try:
+            ip = str(ipaddress.ip_address(token))
+        except ValueError:
+            raise ValueError(f"Invalid IP in {candidate.name}: {token}")
+        if ip not in seen:
+            seen.add(ip)
+            addresses.append(ip)
+    return addresses
+
+
+def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+    """Build ipfix_test.py or ipfix_live.py argv from the submitted form. Unused mode fields are omitted."""
+    if not isinstance(payload, dict):
+        raise ValueError("JSON body is required")
+
+    import ipaddress
+
+    # Determine traffic mode (live or mock)
+    traffic_mode = str(payload.get("traffic_mode") or "live").strip().lower()
+    if traffic_mode not in ("live", "mock"):
+        raise ValueError("traffic_mode must be 'live' or 'mock'")
+    
+    # Choose the appropriate script
+    script_path = IPFIX_LIVE_SCRIPT_PATH if traffic_mode == "live" else IPFIX_SCRIPT_PATH
+
+    pc_ip = _ipfix_token(payload.get("pc_ip"), "Prism IP")
+    username = _ipfix_token(payload.get("username"), "Prism username")
+    password = str(payload.get("password") or "")
+    if not password:
+        raise ValueError("Prism password is required")
+    selected_ips = _ipfix_selected_ips(payload.get("selected_ips"))
+
+    proto = str(payload.get("proto") or "").strip().lower()
+    if proto not in ("tcp", "udp", "both"):
+        raise ValueError("proto must be tcp, udp, or both")
+    source_spec = _ipfix_port_spec(payload, "source", "Source port", "auto")
+    dest_spec = _ipfix_port_spec(payload, "dest", "Destination port", "common")
+    timeout = _ipfix_positive_int(payload.get("timeout"), "timeout", 1, 86400)
+    status = str(payload.get("status") if payload.get("status") is not None else "").strip()
+    parallel_mode = str(payload.get("parallel_mode") or "").strip().lower()
+    if parallel_mode not in IPFIX_PARALLEL_MODES:
+        raise ValueError("parallel_mode must be one of " + ", ".join(IPFIX_PARALLEL_MODES))
+    parallel = _ipfix_bool(payload.get("parallel"))
+    update_existing = _ipfix_bool(payload.get("update_existing"))
+    inspect_only = _ipfix_bool(payload.get("inspect_only"))
+    cvm_user = _ipfix_token(payload.get("cvm_user"), "CVM user")
+    cvm_password = str(payload.get("cvm_password") or "")
+    host_ip = str(payload.get("host_ip") or "").strip()
+    if host_ip:
+        try:
+            host_ip = str(ipaddress.ip_address(host_ip))
+        except ValueError:
+            raise ValueError(f"Invalid host IP: {host_ip}")
+
+    # Build command based on traffic mode
+    if traffic_mode == "live":
+        # ipfix_live.py uses different arguments
+        cmd = [
+            sys.executable,
+            str(script_path),
+            "--proto",
+            proto,
+            "--parallel-mode",
+            parallel_mode,
+            "--parallel" if parallel else "--no-parallel",
+        ]
+    else:
+        # ipfix_test.py (mock mode) - original arguments
+        cmd = [
+            sys.executable,
+            str(script_path),
+            "--pc_ip",
+            pc_ip,
+            "--username",
+            username,
+            "--password",
+            password,
+            "--proto",
+            proto,
+            "--sport",
+            source_spec if source_spec and "-" not in source_spec and "," not in source_spec else "0",
+            "--timeout",
+            str(timeout),
+            "--status",
+            status,
+            "--parallel-mode",
+            parallel_mode,
+            "--parallel" if parallel else "--no-parallel",
+            "--cvm_user",
+            cvm_user,
+            "--update-existing" if update_existing else "--no-update-existing",
+        ]
+    summary: dict[str, Any] = {
+        "traffic_mode": traffic_mode,
+        "pc_ip": pc_ip,
+        "proto": proto,
+        "parallel_mode": parallel_mode,
+        "parallel": parallel,
+        "skip_fetch": True,
+        "vm_count": len(selected_ips),
+        "update_existing": update_existing,
+        "inspect_only": inspect_only,
+        "timeout": timeout,
+    }
+
+    # Handle pattern
+    locked_pattern = IPFIX_PATTERN_BY_MODE.get(parallel_mode)
+    if locked_pattern:
+        summary["pattern"] = locked_pattern
+    else:
+        pattern = str(payload.get("pattern") or "").strip().lower()
+        # Live mode supports "mesh" pattern, mock mode doesn't
+        valid_patterns = IPFIX_PATTERNS if traffic_mode == "mock" else ("mesh", "1:1", "1:n", "n:1", "1:all", "all:1")
+        if pattern not in valid_patterns:
+            raise ValueError(f"pattern must be one of {', '.join(valid_patterns)}")
+        cmd.extend(["--pattern", pattern])
+        summary["pattern"] = pattern
+        if pattern in ("1:n", "n:1"):
+            flow_n = _ipfix_positive_int(payload.get("n"), "n", 1, 100000)
+            cmd.extend(["--n", str(flow_n)])
+            summary["n"] = flow_n
+    
+    # Handle ports based on mode
+    if traffic_mode == "live":
+        # Live mode uses --ports, --tcp-ports, --udp-ports
+        if source_spec and ("-" in source_spec or "," in source_spec):
+            cmd.extend(["--sports", source_spec])
+            summary["source_ports"] = source_spec
+        
+        if dest_spec:
+            if proto == "both":
+                cmd.extend(["--tcp-ports", dest_spec, "--udp-ports", dest_spec])
+                summary["tcp_ports"] = dest_spec
+                summary["udp_ports"] = dest_spec
+            else:
+                cmd.extend(["--ports", dest_spec])
+            summary["dest_ports"] = dest_spec
+        else:
+            summary["dest_ports"] = "default (80,443,53,123,5201)"
+        
+        # Live mode: add duration (default 30 seconds)
+        duration = _ipfix_positive_int(payload.get("duration", 30), "duration", 1, 86400)
+        cmd.extend(["--duration", str(duration)])
+        summary["duration"] = duration
+        
+        # Live mode: add SSH credentials
+        ssh_user = str(payload.get("ssh_user", "root")).strip()
+        ssh_password = str(payload.get("ssh_password", "nutanix/4u")).strip()
+        cmd.extend(["--ssh-user", ssh_user])
+        if ssh_password:
+            cmd.extend(["--ssh-password", ssh_password])
+        summary["ssh_user"] = ssh_user
+        
+    else:
+        # Mock mode arguments
+        if source_spec and ("-" in source_spec or "," in source_spec):
+            cmd.extend(["--sports", source_spec])
+            summary["source_ports"] = source_spec
+        elif source_spec:
+            summary["source_ports"] = source_spec
+        else:
+            summary["source_ports"] = "auto-assign"
+        
+        if dest_spec:
+            if proto == "both":
+                cmd.extend(["--tcp-ports", dest_spec, "--udp-ports", dest_spec])
+                summary["tcp_ports"] = dest_spec
+                summary["udp_ports"] = dest_spec
+            else:
+                cmd.extend(["--dports", dest_spec])
+            summary["dest_ports"] = dest_spec
+        else:
+            summary["dest_ports"] = "common (80,443,22,3306,53,123,161)"
+        
+        if proto in ("tcp", "both"):
+            tcp_state = _ipfix_token(payload.get("tcp_state"), "tcp_state")
+            cmd.extend(["--tcp_state", tcp_state])
+            summary["tcp_state"] = tcp_state
+        
+        if host_ip:
+            cmd.extend(["--host_ip", host_ip])
+            summary["host_ip"] = host_ip
+        if cvm_password:
+            cmd.extend(["--cvm_password", cvm_password])
+        if inspect_only:
+            cmd.append("--inspect_only")
+    
+    # Thread count (both modes support this)
+    if parallel:
+        thread_count = _ipfix_positive_int(payload.get("thread_count"), "thread_count", 1, 10000)
+        cmd.extend(["--thread-count", str(thread_count)])
+        summary["thread_count"] = thread_count
+    
+    # Persistence mode / keep-alive
+    persistence_mode = str(payload.get("persistence_mode") or "oneshot").strip().lower()
+    if persistence_mode not in ("oneshot", "keepalive", "duration"):
+        raise ValueError("persistence_mode must be oneshot, keepalive, or duration")
+    summary["persistence_mode"] = persistence_mode
+    
+    if persistence_mode in ("keepalive", "duration"):
+        cmd.append("--keep-alive")
+        keepalive_interval = _ipfix_positive_int(payload.get("keepalive_interval"), "keepalive_interval", 10, 3600)
+        cmd.extend(["--keepalive-interval", str(keepalive_interval)])
+        summary["keepalive_interval"] = keepalive_interval
+        
+        if persistence_mode == "duration":
+            duration_limit = _ipfix_positive_int(payload.get("duration_limit"), "duration_limit", 60, 86400)
+            cmd.extend(["--duration-limit", str(duration_limit)])
+            summary["duration_limit"] = duration_limit
+    
+    # Write IP file and add to command
+    ips_file = str(_write_ipfix_ip_file(selected_ips))
+    if traffic_mode == "live":
+        # ipfix_live.py uses --ip-file
+        cmd.extend(["--ip-file", ips_file])
+    else:
+        # ipfix_test.py uses --ips_file and --skip_fetch
+        cmd.extend(["--ips_file", ips_file, "--skip_fetch"])
+    summary["ips_file"] = ips_file
+    return cmd, summary
+
+
+def _mask_ipfix_command(cmd: list[str]) -> list[str]:
+    masked: list[str] = []
+    hide_next = False
+    for part in cmd:
+        if hide_next:
+            masked.append("***")
+            hide_next = False
+            continue
+        masked.append(part)
+        if part in ("--password", "--cvm_password", "--ssh-password"):
+            hide_next = True
+    return masked
+
+
+def _read_ipfix_log(path: Path, limit: int = 200_000) -> tuple[str, bool]:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "", False
+    if len(text) <= limit:
+        return text, False
+    return text[-limit:], True
+
+
+def _enqueue_ipfix_run(cmd: list[str], summary: dict[str, Any]) -> str:
+    # Validate the appropriate script exists
+    traffic_mode = summary.get("traffic_mode", "live")
+    script_path = IPFIX_LIVE_SCRIPT_PATH if traffic_mode == "live" else IPFIX_SCRIPT_PATH
+    if not script_path.is_file():
+        raise FileNotFoundError(f"IPFIX script not found: {script_path}")
+    run_id, log_path = _allocate_run_id_and_path("ipfix")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": str(summary.get("pc_ip") or ""),
+            "pc_host_key": _pc_host_key(str(summary.get("pc_ip") or "")),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "ipfix",
+            "job_details": dict(summary),
+            "summary": dict(summary),
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+        try:
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+            shown = " ".join(_mask_ipfix_command(cmd))
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(f"{start_ts.isoformat()} [INFO] IPFIX {'live' if traffic_mode == 'live' else 'mock'} traffic job: {shown}\n")
+                log_fh.flush()
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(script_path.parent),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+                if proc.stdout is not None:
+                    while True:
+                        line = proc.stdout.readline()
+                        if line:
+                            log_fh.write(line)
+                            log_fh.flush()
+                        elif proc.poll() is not None:
+                            break
+                        if cancel_ev.is_set() and proc.poll() is None:
+                            # Check if this is a teardown with flush
+                            flush_requested = False
+                            with runs_lock:
+                                if run_id in runs:
+                                    flush_requested = runs[run_id].get("flush_on_stop", False)
+                            
+                            if flush_requested:
+                                log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Teardown requested; sending --flush-mock signal\n")
+                            else:
+                                log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Cancel requested; stopping process\n")
+                            log_fh.flush()
+                            
+                            # For keep-alive jobs with flush, send SIGUSR1 to trigger graceful cleanup
+                            if flush_requested:
+                                try:
+                                    import signal
+                                    proc.send_signal(signal.SIGUSR1)
+                                    log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Sent SIGUSR1 for graceful teardown with flow flush\n")
+                                    log_fh.flush()
+                                    # Wait a bit for graceful shutdown
+                                    try:
+                                        proc.wait(timeout=15)
+                                    except subprocess.TimeoutExpired:
+                                        log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [WARN] Graceful teardown timeout, forcing termination\n")
+                                        log_fh.flush()
+                                        proc.terminate()
+                                        try:
+                                            proc.wait(timeout=8)
+                                        except subprocess.TimeoutExpired:
+                                            proc.kill()
+                                except Exception as sig_exc:
+                                    log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] Signal error: {sig_exc}\n")
+                                    log_fh.flush()
+                                    proc.terminate()
+                                    try:
+                                        proc.wait(timeout=8)
+                                    except subprocess.TimeoutExpired:
+                                        proc.kill()
+                            else:
+                                proc.terminate()
+                                try:
+                                    proc.wait(timeout=8)
+                                except subprocess.TimeoutExpired:
+                                    proc.kill()
+                            break
+                exit_code = proc.wait(timeout=5)
+        except Exception as exc:
+            IPFIX_LOGGER.exception("IPFIX traffic job failed")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(exc)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            return
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    if row.get("status") != "error":
+                        if cancel_ev.is_set():
+                            row["status"] = "aborted"
+                            row["error"] = "Cancelled by user."
+                        elif exit_code == 0:
+                            row["status"] = "complete"
+                        else:
+                            row["status"] = "error"
+                            if not row.get("error"):
+                                row["error"] = f"IPFIX script exited with code {exit_code}"
+                    row["finished_at"] = finished_at
+                    row["timing"] = {"duration_sec": float(duration_sec)}
+                    row.pop("process", None)
+                    row.pop("thread", None)
+                    row.pop("cancel_event", None)
+                    
+                    # Save to history file
+                    history_record = {
+                        "run_id": run_id,
+                        "status": row["status"],
+                        "error": row.get("error", ""),
+                        "queued_at": row.get("queued_at", ""),
+                        "running_started_at": row.get("running_started_at", ""),
+                        "finished_at": finished_at,
+                        "duration_sec": float(duration_sec),
+                        "job_kind": "ipfix",
+                        "summary": row.get("summary", {}),
+                        "log_path": str(log_path),
+                    }
+                    try:
+                        append_record(IPFIX_JOBS_HISTORY_FILE, history_record)
+                    except Exception as save_exc:
+                        IPFIX_LOGGER.error(f"Failed to save IPFIX job to history: {save_exc}")
+            ips_path = Path(str(summary.get("ips_file") or ""))
+            if ips_path.is_file() and ips_path.parent == (DATA_DIR / "ipfix_vm_lists"):
+                try:
+                    ips_path.unlink()
+                except OSError:
+                    pass
+            append_record(
+                HISTORY_FILE,
+                {
+                    "run_id": run_id,
+                    "job_kind": "ipfix",
+                    "pc_host": str(summary.get("pc_ip") or ""),
+                    "pc_host_key": _pc_host_key(str(summary.get("pc_ip") or "")),
+                    "at": finished_at,
+                    "duration_sec": float(duration_sec),
+                    "parallel_mode": summary.get("parallel_mode"),
+                    "proto": summary.get("proto"),
+                    "pattern": summary.get("pattern"),
+                    "selected_ips": summary.get("selected_ips"),
+                    "succeeded": 1 if exit_code == 0 and not cancel_ev.is_set() else 0,
+                    "failed": 0 if exit_code == 0 and not cancel_ev.is_set() else 1,
+                },
+            )
+
+    thread = threading.Thread(target=_worker, daemon=True, name=f"ipfix-{run_id[:12]}")
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = thread
+    thread.start()
+    return run_id
+
+
+@app.route("/ipfix")
+def ipfix_traffic():
+    """Render the IPFIX traffic page."""
+    return render_template("ipfix.html")
+
+
+@app.route("/api/ipfix/vms", methods=["POST"])
+def api_ipfix_vms():
+    """Fetch Prism VMs with the same filter and paging as ipfix_test.py."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        pc_ip = _ipfix_token(payload.get("pc_ip"), "Prism IP")
+        username = _ipfix_token(payload.get("username"), "Prism username")
+        password = str(payload.get("password") or "")
+        if not password:
+            raise ValueError("Prism password is required")
+        page_size = _ipfix_positive_int(payload.get("page_size"), "page_size", 1, 5000)
+        result = _fetch_ipfix_vm_rows(pc_ip, username, password, page_size)
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        IPFIX_LOGGER.exception("Failed to fetch IPFIX VMs")
+        return jsonify({"ok": False, "message": str(exc)}), 500
+    result["ok"] = True
+    return jsonify(result)
+
+
+@app.route("/api/ipfix/vms/file", methods=["POST"])
+def api_ipfix_vms_file():
+    """Load VM IPs from a file into the same table used by Fetch VMs."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        addresses = _load_ipfix_ip_file(str(payload.get("ips_file") or ""))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except OSError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    return jsonify(
+        {
+            "ok": True,
+            "vms": [{"uuid": "", "name": "", "ips": [ip], "power_state": "", "vcpus": None, "memory_gib": None, "host_name": "", "host_ip": "", "hypervisor_type": ""} for ip in addresses],
+            "total_entities": len(addresses),
+            "pages_fetched": 0,
+            "unique_ips": len(addresses),
+            "with_ip": len(addresses),
+            "without_ip": 0,
+            "powered_on": 0,
+            "hypervisors": 0,
+            "host_warning": "",
+            "filter": "",
+            "fetched_in_sec": 0,
+            "source": "file",
+        }
+    )
+
+
+@app.route("/api/ipfix/start", methods=["POST"])
+def api_ipfix_start():
+    """Start ipfix_test.py with the form values for the selected parallel mode."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        cmd, summary = _build_ipfix_command(payload)
+        run_id = _enqueue_ipfix_run(cmd, summary)
+    except (ValueError, FileNotFoundError) as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        IPFIX_LOGGER.exception("Failed to start IPFIX traffic job")
+        return jsonify({"ok": False, "message": str(exc)}), 500
+    return jsonify({"ok": True, "run_id": run_id, "job_url": url_for("job_status", run_id=run_id)})
+
+
+@app.route("/api/ipfix/<run_id>")
+def api_ipfix_status(run_id: str):
+    info = _get_run_info(run_id)
+    if not info or str(info.get("job_kind") or "") != "ipfix":
+        return jsonify({"ok": False, "message": "IPFIX run not found"}), 404
+    text, truncated = _read_ipfix_log(Path(info["log_path"]))
+    return jsonify(
+        {
+            "ok": True,
+            "run_id": run_id,
+            "status": info.get("status") or "",
+            "error": info.get("error") or "",
+            "log": text,
+            "log_truncated": truncated,
+            "summary": info.get("summary"),
+        }
+    )
+
+
+@app.route("/api/ipfix/<run_id>/cancel", methods=["POST"])
+def api_ipfix_cancel(run_id: str):
+    with runs_lock:
+        info = runs.get(run_id)
+        if not info or str(info.get("job_kind") or "") != "ipfix":
+            return jsonify({"ok": False, "message": "IPFIX run not found"}), 404
+        ev = info.get("cancel_event")
+        status = str(info.get("status") or "").lower()
+        if not isinstance(ev, threading.Event):
+            if status in ("complete", "error", "aborted"):
+                return jsonify({"ok": False, "message": f"Run already finished ({status})."}), 400
+            return jsonify({"ok": False, "message": "This run cannot be cancelled."}), 400
+        ev.set()
+    return jsonify({"ok": True, "message": "Stop requested."})
+
+
+@app.route("/api/ipfix/<run_id>/teardown", methods=["POST"])
+def api_ipfix_teardown(run_id: str):
+    """Stop long-lived IPFIX job and optionally flush mock flows."""
+    payload = request.get_json(silent=True) or {}
+    flush_flows = payload.get("flush_flows", True)
+    
+    with runs_lock:
+        info = runs.get(run_id)
+        if not info or str(info.get("job_kind") or "") != "ipfix":
+            return jsonify({"ok": False, "message": "IPFIX run not found"}), 404
+        
+        summary = info.get("summary", {})
+        persistence_mode = summary.get("persistence_mode", "oneshot")
+        
+        # Only allow teardown for long-lived jobs
+        if persistence_mode not in ("keepalive", "duration"):
+            return jsonify({"ok": False, "message": "Teardown only applies to keep-alive or duration-limited jobs."}), 400
+        
+        status = str(info.get("status") or "").lower()
+        if status in ("complete", "error", "aborted"):
+            return jsonify({"ok": False, "message": f"Job already finished ({status})."}), 400
+        
+        ev = info.get("cancel_event")
+        if not isinstance(ev, threading.Event):
+            return jsonify({"ok": False, "message": "This job cannot be stopped."}), 400
+        
+        # Mark for flush if requested
+        if flush_flows:
+            info["flush_on_stop"] = True
+        
+        # Signal stop
+        ev.set()
+    
+    return jsonify({"ok": True, "message": "Teardown initiated. Job will stop and flows will be flushed." if flush_flows else "Stop requested."})
+
+
+@app.route("/api/ipfix/recent")
+def api_recent_ipfix_jobs():
+    """Get recent IPFIX traffic jobs (last 20)."""
+    history = load_records(IPFIX_JOBS_HISTORY_FILE, max_lines=100)
+    
+    # Merge with in-memory jobs
+    with runs_lock:
+        for run_id, job_info in runs.items():
+            if job_info.get("job_kind") == "ipfix":
+                # Add to history if not already there
+                if not any(r.get("run_id") == run_id for r in history):
+                    history.append({
+                        "run_id": run_id,
+                        "status": job_info.get("status", ""),
+                        "error": job_info.get("error", ""),
+                        "queued_at": job_info.get("queued_at", ""),
+                        "running_started_at": job_info.get("running_started_at", ""),
+                        "finished_at": job_info.get("finished_at", ""),
+                        "duration_sec": job_info.get("timing", {}).get("duration_sec", 0),
+                        "job_kind": "ipfix",
+                        "summary": job_info.get("summary", {}),
+                        "log_path": job_info.get("log_path", ""),
+                    })
+    
+    # Sort by queued time (most recent first) and take last 20
+    history.sort(key=lambda x: x.get("queued_at", ""), reverse=True)
+    recent_jobs = history[:20]
+    
+    return jsonify({
+        "success": True,
+        "jobs": recent_jobs
+    })
+
+
 if __name__ == "__main__":
     # 0.0.0.0: reachable via host FQDN/IP from other machines (firewall permitting).
     # Local-only: BULK_SNAP_HOST=127.0.0.1 python app.py
@@ -8964,7 +9909,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
     host = os.environ.get("BULK_SNAP_HOST", "0.0.0.0")
-    port = int(os.environ.get("BULK_SNAP_PORT", "8765"))
+    port = int(os.environ.get("BULK_SNAP_PORT", "8766"))
     # threaded=False serializes HTTP handlers so Werkzeug access lines don't interleave on the terminal.
     threaded = os.environ.get("BULK_SNAP_THREADED", "1").strip().lower() not in ("0", "false", "no")
     socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

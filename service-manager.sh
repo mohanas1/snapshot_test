@@ -2,7 +2,7 @@
 # Quick management script for bulk-snapshots-ui service
 
 SERVICE_NAME="bulk-snapshots-ui"
-PORT=8765
+PORT=8766
 
 # Function to kill any process running on the service port
 kill_port_process() {

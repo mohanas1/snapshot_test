@@ -959,7 +959,7 @@
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% elif info.get('job_kind') == 'ipfix' %}IPFIX Traffic Job{% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -975,7 +975,7 @@
         </div>
       </div>
       <a id="dl" class="btn disabled" href="{{ url_for('download', run_id=run_id) }}" download>Download log</a>
-      <a class="btn secondary" href="{{ url_for('index') }}">New run</a>
+      <a class="btn secondary" href="{% if info.get('job_kind') == 'ipfix' %}{{ url_for('ipfix_traffic') }}{% else %}{{ url_for('index') }}{% endif %}">New run</a>
     </div>
   </div>
 
@@ -997,7 +997,7 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
-  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader') %}
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix') %}
   <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Snapshot Run Info</strong>
     <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
@@ -1397,6 +1397,160 @@
   </div>
   {% endif %}
 
+  {% if info.get('job_kind') == 'ipfix' %}
+  <div id="ipfix-summary-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
+    <strong>IPFIX Traffic Job Configuration</strong>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+      {% set summary = info.get('summary', {}) %}
+      {% set traffic_mode = summary.get('traffic_mode', 'live') %}
+      <div class="disk-summary-card" style="{% if traffic_mode == 'live' %}border-left: 3px solid #3b82f6;{% else %}border-left: 3px solid #f59e0b;{% endif %}">
+        <div class="disk-summary-card-label">Traffic Mode</div>
+        <div class="disk-summary-card-value" style="{% if traffic_mode == 'live' %}color: #1e40af;{% else %}color: #92400e;{% endif %}">
+          {{ 'Live (Real Connections)' if traffic_mode == 'live' else 'Mock (Conntrack Injection)' }}
+        </div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Parallel Mode</div>
+        <div class="disk-summary-card-value">{{ summary.get('parallel_mode', '—') }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Protocol</div>
+        <div class="disk-summary-card-value">{{ summary.get('proto', '—').upper() }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">VMs Selected</div>
+        <div class="disk-summary-card-value">{{ summary.get('vm_count', '—') }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Thread Count</div>
+        <div class="disk-summary-card-value">{{ summary.get('thread_count', '—') }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Parallel Execution</div>
+        <div class="disk-summary-card-value">{{ 'Yes' if summary.get('parallel') else 'No' }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">TCP State</div>
+        <div class="disk-summary-card-value">{{ summary.get('tcp_state', '—') }}</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Timeout</div>
+        <div class="disk-summary-card-value">{{ summary.get('timeout', '—') }}s</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Update Existing</div>
+        <div class="disk-summary-card-value">{{ 'Yes' if summary.get('update_existing') else 'No' }}</div>
+      </div>
+      {% if summary.get('pattern') and summary.get('pattern') not in ('1:all', 'all:1') %}
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Pattern</div>
+        <div class="disk-summary-card-value">{{ summary.get('pattern', '—') }}</div>
+      </div>
+      {% endif %}
+      {% if summary.get('n') %}
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">N (for pattern)</div>
+        <div class="disk-summary-card-value">{{ summary.get('n', '—') }}</div>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
+      <strong style="font-size: 0.95rem;">Flow Execution Summary</strong>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
+        <div class="disk-summary-card" style="border-left: 3px solid #3b82f6;">
+          <div class="disk-summary-card-label">Expected Flows</div>
+          <div class="disk-summary-card-value" id="ipfix-expected-flows">—</div>
+        </div>
+        <div class="disk-summary-card" style="border-left: 3px solid #059669;">
+          <div class="disk-summary-card-label">Completed Flows</div>
+          <div class="disk-summary-card-value" id="ipfix-completed-flows">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Successful</div>
+          <div class="disk-summary-card-value" id="ipfix-successful-flows" style="color: #059669;">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Failed</div>
+          <div class="disk-summary-card-value" id="ipfix-failed-flows" style="color: #dc2626;">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Completion Rate</div>
+          <div class="disk-summary-card-value" id="ipfix-completion-rate">—</div>
+        </div>
+      </div>
+      <div style="margin-top: 0.75rem; overflow-x: auto;">
+        <table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Status</th>
+              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Flow</th>
+              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Detail</th>
+            </tr>
+          </thead>
+          <tbody id="ipfix-flow-rows">
+            <tr><td colspan="3" class="meta" style="padding:0.45rem;">Waiting for flow lines…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    {% if summary.get('source_ports') or summary.get('dest_ports') or summary.get('tcp_ports') or summary.get('udp_ports') %}
+    <div style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
+      <strong style="font-size: 0.95rem;">Port Configuration</strong>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
+        {% if summary.get('source_ports') %}
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Source Ports</div>
+          <div class="disk-summary-card-value" style="font-size: 0.85rem; line-height: 1.4;">{{ summary.get('source_ports', '—') }}</div>
+        </div>
+        {% endif %}
+        {% if summary.get('dest_ports') %}
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Destination Ports</div>
+          <div class="disk-summary-card-value" style="font-size: 0.85rem; line-height: 1.4;">{{ summary.get('dest_ports', '—') }}</div>
+        </div>
+        {% endif %}
+        {% if summary.get('tcp_ports') %}
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">TCP Ports</div>
+          <div class="disk-summary-card-value" style="font-size: 0.85rem; line-height: 1.4;">{{ summary.get('tcp_ports', '—') }}</div>
+        </div>
+        {% endif %}
+        {% if summary.get('udp_ports') %}
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">UDP Ports</div>
+          <div class="disk-summary-card-value" style="font-size: 0.85rem; line-height: 1.4;">{{ summary.get('udp_ports', '—') }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div id="ipfix-flow-stats" style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem; display: none;">
+      <strong style="font-size: 0.95rem;">Flow Statistics (from log)</strong>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Total Flows</div>
+          <div class="disk-summary-card-value" id="ipfix-total-flows">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Waves</div>
+          <div class="disk-summary-card-value" id="ipfix-waves">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Injection Duration</div>
+          <div class="disk-summary-card-value" id="ipfix-duration">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Success Rate</div>
+          <div class="disk-summary-card-value" id="ipfix-success-rate">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
 
   <script>
@@ -1405,7 +1559,8 @@
     const isDiskJob = {{ (info.get('job_kind') == 'disk') | tojson }};
     const isCgJob = {{ (info.get('job_kind') == 'cg_reports') | tojson }};
     const isCgDataLoaderJob = {{ (info.get('job_kind') == 'cg_data_loader') | tojson }};
-    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader')) | tojson }};
+    const isIpfixJob = {{ (info.get('job_kind') == 'ipfix') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -2580,6 +2735,125 @@
       setPipelineStageCard(pipelineSnapLinkEl, pipelineSnapStatusEl, pipelineSnapMetaEl, snapRunId, sj);
     }
 
+    // Parse IPFIX log to extract flow statistics.
+    // Mock conntrack lines look like "-> [SUCCESS] ... TCP src -> dst".
+    // Live VM lines look like "TCP 10.1.1.1:40000 -> 10.1.1.2:8000 ... duration=30s".
+    function parseIpfixLog(logText) {
+      if (!logText) return;
+      
+      const statsWrap = document.getElementById('ipfix-flow-stats');
+      
+      const builtMatch = logText.match(/Built (\d+) flows/);
+      const planMatch = logText.match(/Plan: (\d+) flows/);
+      let expectedFlows = 0;
+      if (builtMatch) expectedFlows = parseInt(builtMatch[1], 10);
+      else if (planMatch) expectedFlows = parseInt(planMatch[1], 10);
+      const expectedEl = document.getElementById('ipfix-expected-flows');
+      if (expectedEl && expectedFlows > 0) {
+        expectedEl.textContent = expectedFlows.toLocaleString();
+      }
+      if (statsWrap && expectedFlows > 0) {
+        document.getElementById('ipfix-total-flows').textContent = expectedFlows.toLocaleString();
+        statsWrap.style.display = 'block';
+      }
+      
+      const mockSuccess = (logText.match(/-> \[SUCCESS\]/g) || []).length;
+      const mockFailed = (logText.match(/-> \[FAILED/g) || []).length;
+      let liveSuccess = 0;
+      let liveFailed = 0;
+      const flowRows = [];
+      const liveRe = /^(TCP|UDP) (\S+) -> (\S+)\s+(.*)$/gm;
+      let liveMatch;
+      while ((liveMatch = liveRe.exec(logText)) !== null) {
+        const detail = liveMatch[4] || '';
+        const failed = detail.indexOf('error=') !== -1;
+        if (failed) liveFailed += 1;
+        else liveSuccess += 1;
+        flowRows.push({
+          status: failed ? 'Failed' : 'Running',
+          flow: liveMatch[1] + ' ' + liveMatch[2] + ' -> ' + liveMatch[3],
+          detail: detail,
+        });
+      }
+      const mockRe = /^ -> \[(SUCCESS|FAILED)[^\]]*\] \S+ \S+ conntrack (TCP|UDP) (\S+) -> (\S+)/gm;
+      let mockMatch;
+      while ((mockMatch = mockRe.exec(logText)) !== null) {
+        const ok = mockMatch[1] === 'SUCCESS';
+        flowRows.push({
+          status: ok ? 'Success' : 'Failed',
+          flow: mockMatch[2] + ' ' + mockMatch[3] + ' -> ' + mockMatch[4],
+          detail: ok ? '' : mockMatch[0],
+        });
+      }
+      const successCount = mockSuccess + liveSuccess;
+      const failureCount = mockFailed + liveFailed;
+      const totalCompleted = successCount + failureCount;
+      
+      const completedEl = document.getElementById('ipfix-completed-flows');
+      const successfulEl = document.getElementById('ipfix-successful-flows');
+      const failedEl = document.getElementById('ipfix-failed-flows');
+      const completionRateEl = document.getElementById('ipfix-completion-rate');
+      
+      if (completedEl && totalCompleted > 0) {
+        completedEl.textContent = totalCompleted.toLocaleString();
+      }
+      if (successfulEl && totalCompleted > 0) {
+        successfulEl.textContent = successCount.toLocaleString();
+      }
+      if (failedEl && totalCompleted > 0) {
+        failedEl.textContent = failureCount.toLocaleString();
+      }
+      if (completionRateEl && expectedFlows > 0 && totalCompleted > 0) {
+        const completionPercent = Math.round((totalCompleted / expectedFlows) * 100);
+        const successPercent = Math.round((successCount / totalCompleted) * 100);
+        completionRateEl.innerHTML = completionPercent + '% complete<br><span style="font-size:0.85rem; color: #6b7280;">(' + successPercent + '% success)</span>';
+      }
+
+      const rowsEl = document.getElementById('ipfix-flow-rows');
+      if (rowsEl && flowRows.length) {
+        const recent = flowRows.slice(-40);
+        rowsEl.innerHTML = recent.map(function (row) {
+          const color = row.status === 'Failed' ? '#dc2626' : '#059669';
+          return '<tr>'
+            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); color:' + color + ';">' + escapeHtml(row.status) + '</td>'
+            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); font-family:var(--font-mono);">' + escapeHtml(row.flow) + '</td>'
+            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray);">' + escapeHtml(row.detail) + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+      
+      const wavesMatches = logText.match(/Batch \d+\/(\d+)/g);
+      if (wavesMatches && wavesMatches.length > 0 && statsWrap) {
+        const lastMatch = wavesMatches[wavesMatches.length - 1];
+        const totalWaves = lastMatch.match(/Batch \d+\/(\d+)/);
+        if (totalWaves) {
+          document.getElementById('ipfix-waves').textContent = totalWaves[1];
+          statsWrap.style.display = 'block';
+        }
+      }
+      
+      // Extract injection duration from timestamps
+      const timestampMatches = logText.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+/g);
+      if (timestampMatches && timestampMatches.length >= 2 && statsWrap) {
+        try {
+          const startTime = new Date(timestampMatches[0]);
+          const endTime = new Date(timestampMatches[timestampMatches.length - 1]);
+          const durationSec = Math.round((endTime - startTime) / 1000);
+          if (durationSec > 0) {
+            document.getElementById('ipfix-duration').textContent = durationSec + 's';
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      // Update old success rate display
+      if (statsWrap && totalCompleted > 0) {
+        const successRate = Math.round((successCount / totalCompleted) * 100);
+        document.getElementById('ipfix-success-rate').textContent = successRate + '% (' + successCount + '/' + totalCompleted + ')';
+      }
+    }
+
     async function poll() {
       try {
         const r = await fetch(apiUrl);
@@ -2651,6 +2925,11 @@
         }
         if (!(j.job_kind === 'disk' || isDiskJob || j.job_kind === 'power')) {
           logEl.textContent = j.log || '(empty)';
+          
+          // Parse IPFIX log for flow statistics
+          if (j.job_kind === 'ipfix' || isIpfixJob) {
+            parseIpfixLog(j.log || '');
+          }
         }
         if (j.error) {
           errBox.style.display = 'block';

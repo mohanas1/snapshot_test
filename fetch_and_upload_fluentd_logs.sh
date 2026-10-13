@@ -31,6 +31,8 @@ OUTPUT_DIR="${4:-./pc_logs}"
 PC_USER="${PC_USER:-nutanix}"
 KUBECONFIG_DIR="./kubeconfigs"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FAST_LOG_TIME_FILTER_PY="${SCRIPT_DIR}/log_time_filter.py"
 
 # Filer configuration
 FILER_HOST="${FILER_HOST:-10.46.1.165}"
@@ -245,7 +247,8 @@ copy_pod_logs_selective() {
             local from_epoch="${FLUENTD_TIME_FROM_EPOCH:-}"
             local to_epoch="${FLUENTD_TIME_TO_EPOCH:-}"
             local prune_grace_sec=86400   # 24h grace on each side
-            local enable_folder_prune="${FLUENTD_ENABLE_FOLDER_PRUNE:-false}"
+            # Default enabled: scanning all folders is too expensive at scale.
+            local enable_folder_prune="${FLUENTD_ENABLE_FOLDER_PRUNE:-true}"
             if [ -n "$from_epoch" ] && [ -n "$to_epoch" ] && [ "$enable_folder_prune" = "true" ]; then
                 local prune_from=$((from_epoch - prune_grace_sec))
                 local prune_to=$((to_epoch + prune_grace_sec))
@@ -326,21 +329,31 @@ done | sort"
                 local active_last_seen_ts=""
                 local active_overlaps_window=0
                 if [ -n "$active_path" ]; then
-                    # Try to infer active file time span from log content timestamps.
+                    # Fast O(1)-style boundary probe:
+                    # read only head/tail chunks instead of scanning full file.
                     # Supports both:
                     # - 2026-08-03T12:40:54...
                     # - 2026/08/03 12:40:54...
                     local active_range_cmd="
-awk '
-match(\$0, /^([0-9]{4})[-\\/]([0-9]{2})[-\\/]([0-9]{2})[T ]([0-9]{2}):([0-9]{2}):([0-9]{2})/, a) {
-  ts = a[1] a[2] a[3] a[4] a[5] a[6]
-  if (first == \"\") first = ts
-  last = ts
+f='${active_path}'
+[ -f \"\$f\" ] || exit 0
+
+extract_first() {
+  grep -aEo '^[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}' | \
+  head -n 1 | tr -d '/:-T '
 }
-END {
-  if (first != \"\") print first \"|\" last
+
+extract_last() {
+  grep -aEo '[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}' | \
+  tail -n 1 | tr -d '/:-T '
 }
-' \"${active_path}\" 2>/dev/null"
+
+first=\$(head -c 8192 \"\$f\" 2>/dev/null | extract_first || true)
+last=\$(tail -c 8192 \"\$f\" 2>/dev/null | extract_last || true)
+
+if [ -n \"\$first\" ] && [ -n \"\$last\" ]; then
+  echo \"\$first|\$last\"
+fi"
                     local active_range
                     active_range=$(kubectl --kubeconfig="$kubeconfig_file" exec -n "$NAMESPACE" "$POD_NAME" -- sh -c "$active_range_cmd" 2>/dev/null || true)
                     if [ -n "$active_range" ] && [[ "$active_range" == *"|"* ]]; then
@@ -913,6 +926,8 @@ apply_time_filter_for_namespace() {
     local from_epoch="${FLUENTD_TIME_FROM_EPOCH:-}"
     local to_epoch="${FLUENTD_TIME_TO_EPOCH:-}"
     local filter_type="${FLUENTD_TIME_FILTER_TYPE:-recent}"
+    local max_workers="${FLUENTD_TIME_FILTER_WORKERS:-16}"
+    local block_size="${FLUENTD_TIME_FILTER_BLOCK_SIZE:-8192}"
 
     if [[ -z "$from_epoch" || -z "$to_epoch" ]]; then
         print_warning "No fluentd time window provided; skipping time filter for ${namespace}" >&2
@@ -920,9 +935,75 @@ apply_time_filter_for_namespace() {
     fi
 
     local pattern="kube.${namespace}.*"
+    local target_dirs=()
+    while IFS= read -r ns_dir; do
+        [ -z "$ns_dir" ] && continue
+        target_dirs+=("$ns_dir")
+    done < <(find "$logs_dir" -maxdepth 1 -type d -name "$pattern")
+
+    if [ ${#target_dirs[@]} -eq 0 ]; then
+        print_warning "Time filter [${namespace}] no matching namespace folders found" >&2
+        return 0
+    fi
+
     local total_seen=0
     local kept=0
     local removed=0
+    local py_enabled="${FLUENTD_USE_PY_FAST_FILTER:-true}"
+
+    if [ "$py_enabled" = "true" ] && command -v python3 >/dev/null 2>&1 && [ -f "$FAST_LOG_TIME_FILTER_PY" ]; then
+        local tmp_keep_file
+        tmp_keep_file="$(mktemp "/tmp/fluentd_keep_${namespace}.XXXXXX")"
+        print_info "Time filter [${namespace}] using Python fast filter (workers=${max_workers}, block=${block_size})" >&2
+
+        : > "$tmp_keep_file"
+        local py_failed=0
+        local target_root
+        for target_root in "${target_dirs[@]}"; do
+            if ! python3 "$FAST_LOG_TIME_FILTER_PY" "$target_root" \
+                --from-epoch "$from_epoch" \
+                --to-epoch "$to_epoch" \
+                --workers "$max_workers" \
+                --block-size "$block_size" >> "$tmp_keep_file" 2>/dev/null; then
+                py_failed=1
+                break
+            fi
+        done
+
+        if [ "$py_failed" -eq 0 ]; then
+
+            local keep_count
+            keep_count=$(wc -l < "$tmp_keep_file" | tr -d '[:space:]')
+            print_info "Time filter [${namespace}] keep-list produced ${keep_count} candidate file(s)" >&2
+
+            local tmp_all_file
+            local tmp_remove_file
+            tmp_all_file="$(mktemp "/tmp/fluentd_all_${namespace}.XXXXXX")"
+            tmp_remove_file="$(mktemp "/tmp/fluentd_remove_${namespace}.XXXXXX")"
+
+            for target_root in "${target_dirs[@]}"; do
+                find "$target_root" -type f \( -name "*.log" -o -name "*.log.*" \)
+            done | sort > "$tmp_all_file"
+            sort -u "$tmp_keep_file" -o "$tmp_keep_file"
+
+            total_seen=$(wc -l < "$tmp_all_file" | tr -d '[:space:]')
+            kept=$(wc -l < "$tmp_keep_file" | tr -d '[:space:]')
+            comm -23 "$tmp_all_file" "$tmp_keep_file" > "$tmp_remove_file" || true
+            removed=$(wc -l < "$tmp_remove_file" | tr -d '[:space:]')
+
+            while IFS= read -r remove_path; do
+                [ -z "$remove_path" ] && continue
+                rm -f "$remove_path"
+            done < "$tmp_remove_file"
+
+            rm -f "$tmp_all_file" "$tmp_remove_file" "$tmp_keep_file"
+            print_info "Time filter [${namespace}] window=${from_epoch}..${to_epoch} type=${filter_type} seen=${total_seen}, kept=${kept}, removed=${removed} (python_fast=true)" >&2
+            return 0
+        else
+            rm -f "$tmp_keep_file"
+            print_warning "Time filter [${namespace}] Python fast filter failed, falling back to bash filter" >&2
+        fi
+    fi
 
     while IFS= read -r ns_dir; do
         [ -z "$ns_dir" ] && continue
@@ -932,13 +1013,10 @@ apply_time_filter_for_namespace() {
             local base
             base="$(basename "$f")"
             local keep_file=0
-
-            # Active rolling file without timestamp suffix.
             if [[ "$base" == "file.log.log" ]]; then
                 if [[ "$filter_type" == "recent" ]]; then
                     keep_file=1
                 else
-                    # For custom window, include active file only if mtime is within window.
                     local mtime_epoch
                     mtime_epoch=$(stat -c %Y "$f" 2>/dev/null || echo "")
                     if [[ -n "$mtime_epoch" && "$mtime_epoch" -ge "$from_epoch" && "$mtime_epoch" -le "$to_epoch" ]]; then
@@ -963,7 +1041,7 @@ apply_time_filter_for_namespace() {
         done < <(find "$ns_dir" -type f -name "file.log.log*")
     done < <(find "$logs_dir" -maxdepth 1 -type d -name "$pattern")
 
-    print_info "Time filter [${namespace}] window=${from_epoch}..${to_epoch} type=${filter_type} seen=${total_seen}, kept=${kept}, removed=${removed}" >&2
+    print_info "Time filter [${namespace}] window=${from_epoch}..${to_epoch} type=${filter_type} seen=${total_seen}, kept=${kept}, removed=${removed} (python_fast=false)" >&2
 }
 
 compress_logs_by_namespace() {

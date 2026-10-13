@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPFIX Conntrack | Nutanix Operations</title>
+  <style>
+    :root {
+      --bg-main: #f6f8fb;
+      --card-bg: #ffffff;
+      --text-primary: #1f2937;
+      --text-muted: #6b7280;
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --border-gray: #e5e7eb;
+      --primary-blue: #3b82f6;
+      --danger: #dc2626;
+      --success: #059669;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-primary); }
+    .body-content { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; padding: 1rem 0; flex-shrink: 0; }
+    .sidebar-brand { padding: 0 1.2rem 1rem; font-weight: 700; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .sidebar-nav { padding: 1rem 0.6rem; }
+    .nav-group-title { color: #9ca3af; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; padding: 0 0.7rem 0.5rem; }
+    .nav-item { display: block; color: #d1d5db; text-decoration: none; padding: 0.68rem 0.7rem; border-radius: 8px; margin-bottom: 0.3rem; }
+    .nav-item:hover { background: #23234a; color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .main-content { flex: 1; padding: 1.5rem; min-width: 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-gray); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
+    h1 { margin: 0 0 0.3rem; font-size: 1.7rem; }
+    .sub { color: var(--text-muted); margin: 0 0 1rem; }
+    .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.9rem; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.5rem 0.62rem;
+      font-size: 0.92rem;
+      background: #fff;
+      color: #111827;
+      font-family: inherit;
+    }
+    .help { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.3rem; }
+    .var-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; color: #1d4ed8; }
+    .actions { margin-top: 1rem; display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
+    .btn { border: 1px solid transparent; border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: var(--primary-blue); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-secondary { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
+    .msg { font-size: 0.88rem; color: var(--text-muted); }
+    .msg.error { color: var(--danger); }
+    .msg.success { color: var(--success); }
+    .mode-panel { margin-top: 0.9rem; padding: 0.9rem; border: 1px solid #dbeafe; background: #f8fbff; border-radius: 10px; }
+    .check-row { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; }
+    .check-row input { width: auto; }
+    .port-grid { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.35rem; }
+    .port-grid label { display: flex; align-items: center; gap: 0.35rem; margin: 0; font-weight: 500; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.35rem 0.55rem; }
+    .port-grid input { width: auto; }
+    .range-row { display: flex; gap: 0.45rem; align-items: center; margin-top: 0.45rem; }
+    .range-row[hidden] { display: none; }
+    .range-row input { width: 8.5rem; }
+    .port-extra { margin-top: 0.45rem; max-width: 420px; }
+    .log-box {
+      margin: 0;
+      min-height: 220px;
+      max-height: 480px;
+      overflow: auto;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .cmd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 0.7rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .stats { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0; }
+    .stat { background: #f8fafc; border: 1px solid var(--border-gray); border-radius: 999px; padding: 0.25rem 0.65rem; font-size: 0.8rem; color: #374151; }
+    .table-tools { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.7rem; }
+    .table-tools input, .table-tools select { width: auto; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    th, td { border-bottom: 1px solid var(--border-gray); padding: 0.55rem 0.45rem; text-align: left; font-size: 0.86rem; vertical-align: top; }
+    th { background: #f8fafc; font-size: 0.78rem; letter-spacing: 0.02em; color: #4b5563; }
+    td input { width: auto; }
+    .badge { display: inline-block; border-radius: 999px; padding: 0.05rem 0.45rem; font-size: 0.75rem; font-weight: 700; background: #e5e7eb; color: #374151; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    .badge.on { background: #d1fae5; color: #065f46; }
+    .badge.off { background: #fee2e2; color: #991b1b; }
+    .pager { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+    .pager button { background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.3rem 0.55rem; cursor: pointer; }
+    .pager button.active { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
+    .pager button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .empty { color: var(--text-muted); padding: 1rem 0; }
+    .start-wrap { display: inline-flex; }
+    .start-wrap.blocked { cursor: not-allowed; }
+    .start-wrap.blocked .btn { pointer-events: none; }
+    
+    /* Modal styles */
+    .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+    .modal.show { display: block; }
+    .modal-content { background-color: #fefefe; margin: 3% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 900px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .modal-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-gray); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #007cba 0%, #0063a6 100%); color: white; }
+    .modal-header h2 { margin: 0; font-size: 1.3rem; }
+    .modal-close { color: white; font-size: 2rem; font-weight: 300; cursor: pointer; background: none; border: none; padding: 0; line-height: 1; opacity: 0.8; }
+    .modal-close:hover { opacity: 1; }
+    .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+    .mode-example { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-gray); }
+    .mode-example:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .mode-example h3 { margin: 0 0 0.5rem; color: var(--primary-blue); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .mode-example h3 code { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600; }
+    .mode-example .mode-desc { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.6; }
+    .mode-example .mode-use-case { background: #f0f9ff; border-left: 3px solid #3b82f6; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; }
+    .mode-example .mode-use-case strong { color: #1e40af; }
+    .mode-example .example-box { background: #f8fafc; border: 1px solid var(--border-gray); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.6; }
+    .mode-example .example-box .ex-title { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
+    .mode-example .example-box .ex-line { color: #6b7280; margin-left: 1rem; }
+    .mode-tag { display: inline-block; background: #dbeafe; color: #1e40af; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="body-content">
+    <div class="sidebar">
+      <div class="sidebar-brand">Nutanix Operations</div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="nav-item">Bulk Snapshots</a>
+        <a href="#" class="nav-item">Snapshot History</a>
+        <a href="#" class="nav-item">Disk Operations</a>
+        <a href="#" class="nav-item">VM Power Ops</a>
+        <a href="{{ url_for('recovery_points') }}" class="nav-item">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('ipfix_traffic') }}" class="nav-item active">IPFIX Traffic</a>
+        <a href="{{ url_for('cg_reports') }}" class="nav-item">CG</a>
+        <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
+      </nav>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h1>IPFIX Traffic Testing</h1>
+        <p class="sub">Generate IPFIX traffic flows using mock conntrack injection or live VM-to-VM connections.</p>
+      </div>
+
+      <form id="ipfix-form">
+        <div class="card">
+          <h2 class="section-title">Traffic Mode</h2>
+          <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+              <input type="radio" name="traffic-mode" id="mode-live" value="live" checked style="width: auto; cursor: pointer;" />
+              <span>Live (Real VM Connections)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+              <input type="radio" name="traffic-mode" id="mode-mock" value="mock" style="width: auto; cursor: pointer;" />
+              <span>Mock (Conntrack Injection)</span>
+            </label>
+          </div>
+          <div id="mode-description" class="help" style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-left: 3px solid #3b82f6; border-radius: 4px;">
+            <strong>Live Mode:</strong> Opens real TCP/UDP connections between VMs using SSH and Python sockets. Generates actual network traffic.
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="section-title">Prism</h2>
+          <div class="grid">
+            <div>
+              <label for="pc-ip">Prism IP</label>
+              <input id="pc-ip" type="text" value="10.120.132.47" required />
+            </div>
+            <div>
+              <label for="username">Username</label>
+              <input id="username" type="text" value="admin" required />
+            </div>
+            <div>
+              <label for="password">Password</label>
+              <input id="password" type="password" value="Nutanix.123" autocomplete="off" required />
+            </div>
+            <div id="page-size-group">
+              <label for="page-size"><span class="var-name">PAGE_SIZE</span></label>
+              <input id="page-size" type="number" min="1" max="5000" value="50" />
+            </div>
+            <div style="grid-column: 1 / -1;" class="actions">
+              <button id="fetch-btn" class="btn btn-secondary" type="button">Fetch VMs</button>
+              <span id="fetch-msg" class="msg"></span>
+            </div>
+            <div id="ips-file-group" style="grid-column: 1 / -1;">
+              <label for="ips-file">Or load an IP file</label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input id="ips-file" type="text" value="ips_on_host.txt" style="flex: 1; width: auto; min-width: 0;" />
+                <button id="load-file-btn" class="btn btn-secondary" type="button" style="width: auto; white-space: nowrap;">Load file</button>
+              </div>
+              <div class="help">Loads addresses into the table below. Ingestion uses the selected rows.</div>
+            </div>
+          </div>
+          <div id="vm-stats" class="stats"></div>
+          <div id="vm-warning" class="help"></div>
+          <div class="table-tools">
+            <input id="vm-search" type="search" placeholder="Search name, IP, or host" />
+            <label for="vm-page-size" style="margin: 0;">Rows</label>
+            <select id="vm-page-size">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            <span id="vm-count" class="help" style="margin: 0;"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                                    <th style="width: 42px;">
+                    <input id="vm-select-all-page" type="checkbox" title="Select all VMs on current page" style="margin-right: 0.3rem;" />
+                    <input id="vm-select-all" type="checkbox" title="Select all VMs with an IP address" />
+                  </th>
+                  <th>VM</th>
+                  <th>IP addresses</th>
+                  <th>Power</th>
+                  <th>vCPU</th>
+                  <th>Memory</th>
+                  <th>Hypervisor</th>
+                </tr>
+              </thead>
+              <tbody id="vm-body">
+                <tr><td colspan="7" class="empty">Fetch VMs to list them here.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="vm-pager" class="pager"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title">Flows</h2>
+          <div class="grid">
+            <div id="pattern-group">
+              <label for="pattern">Pattern</label>
+              <select id="pattern">
+                <option value="1:1" selected>1:1</option>
+                <option value="1:n">1:n</option>
+                <option value="n:1">n:1</option>
+                <option value="1:all">1:all</option>
+                <option value="all:1">all:1</option>
+              </select>
+            </div>
+            <div id="n-group" hidden>
+              <label for="flow-n">N</label>
+              <input id="flow-n" type="number" min="1" value="10" />
+              <div class="help">How many peers the 1:n or n:1 pattern uses.</div>
+            </div>
+            <div>
+              <label for="proto">Protocol</label>
+              <select id="proto">
+                <option value="tcp">tcp</option>
+                <option value="udp">udp</option>
+                <option value="both" selected>both</option>
+              </select>
+            </div>
+            <div>
+              <label for="source-mode">Source port</label>
+              <select id="source-mode">
+                <option value="auto" selected>Auto-assign</option>
+                <option value="single">Single port</option>
+                <option value="range">Range</option>
+                <option value="list">Custom list</option>
+              </select>
+              <div id="source-single-wrap" class="port-extra" hidden>
+                <input id="source-port" type="number" min="1" max="65535" value="8889" />
+              </div>
+              <div id="source-range-wrap" class="range-row" hidden>
+                <input id="source-from" type="number" min="1" max="65535" value="40000" />
+                <span>to</span>
+                <input id="source-to" type="number" min="1" max="65535" value="40010" />
+              </div>
+              <div id="source-list-wrap" class="port-extra" hidden>
+                <input id="source-list" type="text" placeholder="40000, 40001, 40010" />
+              </div>
+              <div class="help" id="source-help"></div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label for="dest-mode">Destination ports</label>
+              <select id="dest-mode">
+                <option value="common" selected>Common ports</option>
+                <option value="single">Single port</option>
+                <option value="range">Range</option>
+                <option value="list">Custom list</option>
+              </select>
+              <div id="dest-single-wrap" class="port-extra" hidden>
+                <input id="dest-port" type="number" min="1" max="65535" value="443" />
+              </div>
+              <div id="dest-range-wrap" class="range-row" hidden>
+                <input id="dest-from" type="number" min="1" max="65535" value="8000" />
+                <span>to</span>
+                <input id="dest-to" type="number" min="1" max="65535" value="8010" />
+              </div>
+              <div id="dest-list-wrap" class="port-extra" hidden>
+                <input id="dest-list" type="text" placeholder="80, 443, 8080-8085" />
+              </div>
+              <div class="help" id="dest-help"></div>
+            </div>
+            <div>
+              <label for="timeout">Timeout (seconds)</label>
+              <input id="timeout" type="number" min="1" max="86400" value="120" />
+            </div>
+            <div id="tcp-state-group">
+              <label for="tcp-state">TCP state</label>
+              <input id="tcp-state" type="text" value="ESTABLISHED" />
+            </div>
+            <div>
+              <label for="status">Status flags</label>
+              <input id="status" type="text" value="SEEN_REPLY,ASSURED" />
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div class="check-row">
+                <input id="update-existing" type="checkbox" checked />
+                <label for="update-existing" style="margin: 0;"><span class="var-name">UPDATE_EXISTING_CONNECTION</span></label>
+              </div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label for="persistence-mode">Persistence / Duration Mode</label>
+              <select id="persistence-mode">
+                <option value="oneshot" selected>One-shot (inject once and exit)</option>
+                <option value="keepalive">Sustained Keep-Alive (continuous refresh)</option>
+                <option value="duration">Custom Duration (time-limited keep-alive)</option>
+              </select>
+              <div class="help">Choose how long flows stay active. Keep-alive periodically refreshes flows to prevent kernel timeout.</div>
+            </div>
+            <div id="keepalive-interval-group" style="grid-column: 1 / -1;" hidden>
+              <label for="keepalive-interval">Keep-Alive Interval (seconds)</label>
+              <input id="keepalive-interval" type="number" min="10" max="3600" value="60" />
+              <div class="help">How often to refresh flows. Should be less than timeout value to prevent expiration.</div>
+            </div>
+            <div id="duration-limit-group" style="grid-column: 1 / -1;" hidden>
+              <label for="duration-limit">Duration Limit (seconds)</label>
+              <input id="duration-limit" type="number" min="60" max="86400" value="3600" />
+              <div class="help">How long to keep flows alive before automatic teardown (1 hour = 3600s, 24h = 86400s).</div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div class="check-row">
+                <input id="inspect-only" type="checkbox" />
+                <label for="inspect-only" style="margin: 0;">Inspect only</label>
+              </div>
+              <div class="help">Skip injection and only list matching conntrack entries.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title">Host SSH</h2>
+          <div class="grid">
+            <div>
+              <label for="host-ip">AHV host IP</label>
+              <input id="host-ip" type="text" placeholder="Leave empty to use hypervisorAddress" />
+              <div class="help">Empty uses the hypervisor address from the hosts API.</div>
+            </div>
+            <div>
+              <label for="cvm-user">CVM user</label>
+              <input id="cvm-user" type="text" value="nutanix" required />
+            </div>
+            <div>
+              <label for="cvm-password">CVM password</label>
+              <input id="cvm-password" value="RDMCluster.123" autocomplete="off" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title">Parallel mode</h2>
+          <div class="grid">
+            <div>
+              <label for="parallel-mode"><span class="var-name">PARALLEL_MODE</span></label>
+              <select id="parallel-mode">
+                <option value="sequential">sequential</option>
+                <option value="same_vm">same_vm</option>
+                <option value="unique_vms">unique_vms</option>
+                <option value="fan_out">fan_out</option>
+                <option value="fan_in">fan_in</option>
+                <option value="spread">spread</option>
+                <option value="first_to_all" selected>first_to_all</option>
+                <option value="all_to_first">all_to_first</option>
+                <option value="randomized_mesh">randomized_mesh (Chaos Mode)</option>
+                <option value="client_server_pair">client_server_pair (Tiered Mode)</option>
+                <option value="port_scan_burst">port_scan_burst (Security/IDS Test)</option>
+              </select>
+              <div style="margin-top: 0.5rem;">
+                <a href="#" id="mode-info-link" style="color: var(--primary-blue); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="opacity: 0.7;">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                  </svg>
+                  Learn about parallel modes with examples
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="mode-panel">
+            <div id="mode-detail" class="help" style="margin-top: 0;"></div>
+            <div id="mode-pattern" class="help"></div>
+            <div class="check-row" style="margin-top: 0.75rem;">
+              <input id="parallel-flag" type="checkbox" />
+              <label for="parallel-flag" id="parallel-label" style="margin: 0;"></label>
+            </div>
+            <div id="thread-group" style="margin-top: 0.85rem; max-width: 280px;">
+              <label for="thread-count" id="thread-label"></label>
+              <input id="thread-count" type="number" min="1" value="1" />
+            </div>
+          </div>
+          <div class="actions">
+            <span id="start-wrap" class="start-wrap blocked" title="Fetch VMs before starting ingestion.">
+              <button id="start-btn" class="btn btn-primary" type="submit" disabled>Start injection</button>
+            </span>
+            <button id="cancel-btn" class="btn btn-danger" type="button" hidden>Stop</button>
+            <a id="job-link" class="btn btn-secondary" hidden>Open job</a>
+            <span id="form-msg" class="msg"></span>
+          </div>
+        </div>
+      </form>
+
+      <div class="card">
+        <h2 class="section-title">Values sent</h2>
+        <div id="cmd-preview" class="cmd"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Run log</h2>
+        <pre id="run-log" class="log-box">Waiting to start.</pre>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Recent Jobs</h2>
+        <div id="history-msg" class="msg" style="display:none;"></div>
+        <div id="history-container">
+          <table id="history-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Run ID</th>
+                <th>Status</th>
+                <th>Mode</th>
+                <th>Protocol</th>
+                <th>VMs</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parallel Mode Info Modal -->
+  <div id="mode-info-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Parallel Mode Guide</h2>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="mode-example">
+          <h3><code>sequential</code></h3>
+          <p class="mode-desc">One flow finishes before the next starts. Flows are processed one at a time in order.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Testing basic connectivity, debugging flow injection, or when you need deterministic execution order.</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 4 VMs:</div>
+            <div class="ex-line">Flow 1: VM-A → VM-B:80 (completes)</div>
+            <div class="ex-line">Flow 2: VM-C → VM-D:443 (starts after Flow 1)</div>
+            <div class="ex-line">Flow 3: VM-A → VM-C:22 (starts after Flow 2)</div>
+            <div class="ex-line">→ One flow at a time, no parallelism</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>same_vm</code></h3>
+          <p class="mode-desc">One source and one destination VM, but multiple ports simultaneously. Flows sharing the same VM pair execute in parallel.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Testing multiple services on the same connection path (e.g., HTTP, HTTPS, SSH from one web server to one database).</div>
+          <div class="example-box">
+            <div class="ex-title">Example: VM-A sending to VM-B</div>
+            <div class="ex-line">Wave 1 (parallel):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:22</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:3306</div>
+            <div class="ex-line">→ All ports between same VM pair run together</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>unique_vms</code></h3>
+          <p class="mode-desc">Each running flow uses two VMs that no other flow is using. Ensures VM isolation across parallel flows.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Load testing where you want to ensure no VM is handling multiple flows concurrently (avoids resource contention).</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 8 VMs:</div>
+            <div class="ex-line">Wave 1 (parallel):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-C → VM-D:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-E → VM-F:22</div>
+            <div class="ex-line">Wave 2 (after Wave 1 completes):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-C:80 (VM-A reused)</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-G → VM-H:443 (new VMs)</div>
+            <div class="ex-line">→ No VM appears in multiple concurrent flows</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>fan_out</code></h3>
+          <p class="mode-desc">One source sends to several destinations at once. Each source VM fans out to multiple targets in parallel.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Simulating a load balancer, API gateway, or service mesh where one frontend distributes to many backends.</div>
+          <div class="example-box">
+            <div class="ex-title">Example: VM-A as source</div>
+            <div class="ex-line">Wave 1 (parallel from VM-A):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-C:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-D:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-E:80</div>
+            <div class="ex-line">→ Single source broadcasts to many destinations</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>fan_in</code></h3>
+          <p class="mode-desc">Several sources send to one destination at once, each on its own port. Many VMs converge to a single target.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Simulating many clients hitting one database/API server, or testing destination VM under load.</div>
+          <div class="example-box">
+            <div class="ex-title">Example: VM-D as destination</div>
+            <div class="ex-line">Wave 1 (parallel to VM-D):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-D:8001</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-B → VM-D:8002</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-C → VM-D:8003</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-E → VM-D:8004</div>
+            <div class="ex-line">→ Multiple sources converge to single destination (different ports)</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>spread</code></h3>
+          <p class="mode-desc">Any flows run at once; a VM may be in more than one flow. Maximum parallelism with no restrictions.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Stress testing, chaos engineering, simulating production-like traffic where VMs communicate freely.</div>
+          <div class="example-box">
+            <div class="ex-title">Example chaos:</div>
+            <div class="ex-line">All parallel (no restrictions):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-C:443 (VM-A in 2 flows)</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-D → VM-A:22 (VM-A as dest too)</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-B → VM-C:3306 (VM-B and VM-C reused)</div>
+            <div class="ex-line">→ No limits, VMs can be source/dest in multiple flows</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>first_to_all</code> <span class="mode-tag">Pattern Locked: 1:all</span></h3>
+          <p class="mode-desc">First IP in your selection sends every configured port to every other VM. One source floods all destinations.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Testing monitoring/visibility when a single compromised host scans your entire network.</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 5 VMs [VM-A, VM-B, VM-C, VM-D, VM-E]:</div>
+            <div class="ex-line">VM-A is source (first in list)</div>
+            <div class="ex-line">Parallel waves:</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:80, VM-A → VM-B:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-C:80, VM-A → VM-C:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-D:80, VM-A → VM-D:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-E:80, VM-A → VM-E:443</div>
+            <div class="ex-line">→ First VM sends to all others across all ports</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>all_to_first</code> <span class="mode-tag">Pattern Locked: all:1</span></h3>
+          <p class="mode-desc">Every other VM sends every configured port to the first IP. All sources target one destination.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Testing a central collector/aggregator, or simulating DDoS-like traffic to one target.</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 5 VMs [VM-A, VM-B, VM-C, VM-D, VM-E]:</div>
+            <div class="ex-line">VM-A is destination (first in list)</div>
+            <div class="ex-line">Parallel waves:</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-B → VM-A:80, VM-B → VM-A:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-C → VM-A:80, VM-C → VM-A:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-D → VM-A:80, VM-D → VM-A:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-E → VM-A:80, VM-E → VM-A:443</div>
+            <div class="ex-line">→ All VMs converge to first VM across all ports</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>randomized_mesh</code> <span class="mode-tag">Chaos Mode</span></h3>
+          <p class="mode-desc">Randomly selects source and destination pairs across the entire selected VM inventory to simulate dense, unstructured east-west traffic storms.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Security policy boundary testing, chaos engineering, simulating unpredictable microservices communication patterns.</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 6 VMs (randomized):</div>
+            <div class="ex-line">Shuffled flow order (unpredictable):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-D → VM-A:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-B → VM-F:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-E → VM-C:22</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-D:3306</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-C → VM-B:53</div>
+            <div class="ex-line">→ Random pairings simulate chaotic traffic patterns</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>client_server_pair</code> <span class="mode-tag">Tiered Mode</span></h3>
+          <p class="mode-desc">Splits selected VMs into two explicit pools (e.g., frontend vs. backend tiers) and enforces strict one-way communication from tier 1 to tier 2.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Validating specific microsegmentation rules, testing firewall policies between network tiers.</div>
+          <div class="example-box">
+            <div class="ex-title">Example with 8 VMs:</div>
+            <div class="ex-line">Clients (first half): VM-A, VM-B, VM-C, VM-D</div>
+            <div class="ex-line">Servers (second half): VM-E, VM-F, VM-G, VM-H</div>
+            <div class="ex-line">Allowed flows (clients → servers only):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-E:80</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-B → VM-F:443</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-C → VM-G:22</div>
+            <div class="ex-line">Blocked: VM-E → VM-A (reverse direction filtered)</div>
+            <div class="ex-line">→ One-way communication enforced between tiers</div>
+          </div>
+        </div>
+
+        <div class="mode-example">
+          <h3><code>port_scan_burst</code> <span class="mode-tag">Security/IDS Test</span></h3>
+          <p class="mode-desc">Cycles a single source IP through a wide sequential range of destination ports against a target host to test IPFIX log aggregation throughput and high-frequency alert triggers.</p>
+          <div class="mode-use-case"><strong>Use Case:</strong> Testing IDS/IPS detection, validating security monitoring tools, IPFIX collector performance under port scan scenarios.</div>
+          <div class="example-box">
+            <div class="ex-title">Example: VM-A scanning VM-B</div>
+            <div class="ex-line">Rapid port sweep (parallel batches):</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:1 (port 1)</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:2 (port 2)</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:3 (port 3)</div>
+            <div class="ex-line">&nbsp;&nbsp;• ... continues through port range</div>
+            <div class="ex-line">&nbsp;&nbsp;• VM-A → VM-B:65535 (last port)</div>
+            <div class="ex-line">→ Sequential port cycling simulates nmap-style scan</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MODES = {
+      sequential: { parallel: false, threadCount: 1, parallelName: "SEQUENTIAL_PARALLEL", threadName: "SEQUENTIAL_THREAD_COUNT", detail: "one flow at a time" },
+      same_vm: { parallel: true, threadCount: 5, parallelName: "SAME_VM_PARALLEL", threadName: "SAME_VM_THREAD_COUNT", detail: "one source and one destination, several ports at once" },
+      unique_vms: { parallel: true, threadCount: 5, parallelName: "UNIQUE_VMS_PARALLEL", threadName: "UNIQUE_VMS_THREAD_COUNT", detail: "each flow uses two VMs that no other flow is using" },
+      fan_out: { parallel: true, threadCount: 50, parallelName: "FAN_OUT_PARALLEL", threadName: "FAN_OUT_THREAD_COUNT", detail: "one source sends to several destinations at once" },
+      fan_in: { parallel: true, threadCount: 10, parallelName: "FAN_IN_PARALLEL", threadName: "FAN_IN_THREAD_COUNT", detail: "several sources send to one destination at once, each on its own port" },
+      spread: { parallel: true, threadCount: 5, parallelName: "SPREAD_PARALLEL", threadName: "SPREAD_THREAD_COUNT", detail: "any flows at once; a VM may be in more than one flow" },
+      first_to_all: { parallel: true, threadCount: 50, parallelName: "FIRST_TO_ALL_PARALLEL", threadName: "FIRST_TO_ALL_THREAD_COUNT", detail: "first IP sends every port to every other VM", pattern: "1:all" },
+      all_to_first: { parallel: true, threadCount: 50, parallelName: "ALL_TO_FIRST_PARALLEL", threadName: "ALL_TO_FIRST_THREAD_COUNT", detail: "every other VM sends every port to the first IP", pattern: "all:1" },
+      randomized_mesh: { parallel: true, threadCount: 50, parallelName: "RANDOMIZED_MESH_PARALLEL", threadName: "RANDOMIZED_MESH_THREAD_COUNT", detail: "Chaos Mode: randomly selects source and destination pairs across the entire selected VM inventory to simulate dense, unstructured east-west traffic storms for security policy boundary testing" },
+      client_server_pair: { parallel: true, threadCount: 50, parallelName: "CLIENT_SERVER_PAIR_PARALLEL", threadName: "CLIENT_SERVER_PAIR_THREAD_COUNT", detail: "Tiered Mode: splits selected VMs into two explicit pools (e.g., frontend vs. backend tiers) and enforces strict one-way communication maps from tier 1 to tier 2 to validate specific microsegmentation rules" },
+      port_scan_burst: { parallel: true, threadCount: 50, parallelName: "PORT_SCAN_BURST_PARALLEL", threadName: "PORT_SCAN_BURST_THREAD_COUNT", detail: "Security/IDS Test Mode: cycles a single source IP through a wide sequential range of destination ports against a target host to test IPFIX log aggregation throughput and high-frequency alert triggers under heavy load" }
+    };
+
+    const modeState = {};
+    Object.keys(MODES).forEach(function (name) {
+      modeState[name] = { parallel: MODES[name].parallel, threadCount: MODES[name].threadCount };
+    });
+
+    const parallelModeEl = document.getElementById("parallel-mode");
+    const parallelFlagEl = document.getElementById("parallel-flag");
+    const threadCountEl = document.getElementById("thread-count");
+    const threadGroupEl = document.getElementById("thread-group");
+    const formMsg = document.getElementById("form-msg");
+    const logEl = document.getElementById("run-log");
+    const startBtn = document.getElementById("start-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const jobLink = document.getElementById("job-link");
+    let activeRunId = "";
+    let pollTimer = null;
+    let currentMode = parallelModeEl.value;
+
+    function saveModeState() {
+      modeState[currentMode] = {
+        parallel: parallelFlagEl.checked,
+        threadCount: Number(threadCountEl.value) || 1
+      };
+    }
+
+    function activePattern() {
+      const locked = MODES[currentMode].pattern;
+      return locked || document.getElementById("pattern").value;
+    }
+
+    function showModeFields() {
+      const cfg = MODES[currentMode];
+      const state = modeState[currentMode];
+      document.getElementById("mode-detail").textContent = cfg.detail;
+      document.getElementById("parallel-label").textContent = cfg.parallelName;
+      document.getElementById("thread-label").innerHTML = '<span class="var-name">' + cfg.threadName + "</span>";
+      parallelFlagEl.checked = !!state.parallel;
+      threadCountEl.value = state.threadCount;
+      threadGroupEl.hidden = !state.parallel;
+      document.getElementById("pattern-group").hidden = !!cfg.pattern;
+      document.getElementById("mode-pattern").textContent = cfg.pattern ? "Pattern for this mode is " + cfg.pattern + "." : "";
+      document.getElementById("n-group").hidden = activePattern() !== "1:n" && activePattern() !== "n:1";
+    }
+
+    let vmRows = [];
+    let selectedKeys = new Set();
+    let lastMeta = null;
+    let vmLoaded = false;
+    let vmPage = 1;
+    let runActive = false;
+
+    function esc(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
+      });
+    }
+
+    function selectable(row) {
+      return row.ips && row.ips.length > 0;
+    }
+
+    function defaultSelected(row) {
+      if (!selectable(row)) return false;
+      const name = String(row.name || "").toLowerCase();
+      return !(name.startsWith("auto_pc_") || name.startsWith("nc") || name.startsWith("sql"));
+    }
+
+    function filteredRows() {
+      const query = document.getElementById("vm-search").value.trim().toLowerCase();
+      if (!query) return vmRows;
+      return vmRows.filter(function (row) {
+        const haystack = [row.name, row.power_state, row.host_name, row.host_ip, (row.ips || []).join(" ")].join(" ").toLowerCase();
+        return haystack.indexOf(query) !== -1;
+      });
+    }
+
+    function selectedIps() {
+      const ips = [];
+      const seen = {};
+      vmRows.forEach(function (row) {
+        if (!selectedKeys.has(row.key)) return;
+        (row.ips || []).forEach(function (ip) {
+          if (!seen[ip]) {
+            seen[ip] = true;
+            ips.push(ip);
+          }
+        });
+      });
+      return ips;
+    }
+
+    function startBlockReason() {
+      if (runActive) return "An ingestion run is already in progress.";
+      if (!vmLoaded) return "Fetch VMs before starting ingestion.";
+      if (!vmRows.length) return "No VMs were returned. Fetch again or load an IP file.";
+      const count = selectedIps().length;
+      if (!count) return "Select VMs before starting ingestion.";
+      if (count < 2) return "Select at least two VM IPs. A flow needs a source and a destination.";
+      return "";
+    }
+
+    function updateStartButton() {
+      const reason = startBlockReason();
+      const wrap = document.getElementById("start-wrap");
+      startBtn.disabled = !!reason;
+      wrap.classList.toggle("blocked", !!reason);
+      wrap.title = reason || ("Inject conntrack flows for " + selectedIps().length + " selected IP addresses.");
+    }
+
+    function renderStats() {
+      const ips = selectedIps();
+      const bits = [];
+      if (lastMeta) {
+        bits.push(["VMs", lastMeta.total_entities]);
+        bits.push(["With IP", lastMeta.with_ip]);
+        if (lastMeta.without_ip) bits.push(["No IP", lastMeta.without_ip]);
+        bits.push(["Unique IPs", lastMeta.unique_ips]);
+        if (lastMeta.powered_on) bits.push(["Powered on", lastMeta.powered_on]);
+        if (lastMeta.hypervisors) bits.push(["Hypervisors", lastMeta.hypervisors]);
+        if (lastMeta.fetched_in_sec) bits.push(["Fetched", lastMeta.fetched_in_sec + "s"]);
+      }
+      bits.push(["Selected", ips.length + " IPs"]);
+      document.getElementById("vm-stats").innerHTML = bits.map(function (pair) {
+        return '<span class="stat"><strong>' + esc(pair[0]) + "</strong> " + esc(pair[1]) + "</span>";
+      }).join("");
+      const notes = [];
+      if (lastMeta && lastMeta.filter) notes.push("Prism filter: " + lastMeta.filter + ".");
+      if (lastMeta && lastMeta.without_ip) notes.push(lastMeta.without_ip + " VMs have no IP address and stay unselected.");
+      if (lastMeta && lastMeta.host_warning) notes.push(lastMeta.host_warning);
+      if (vmLoaded) notes.push("Names starting with auto_pc_, nc, or sql are left unchecked. Ingestion uses only the selected IP addresses.");
+      document.getElementById("vm-warning").textContent = notes.join(" ");
+    }
+
+    function syncSelectAll() {
+      const rows = filteredRows().filter(selectable);
+      const box = document.getElementById("vm-select-all");
+      const chosen = rows.filter(function (row) { return selectedKeys.has(row.key); }).length;
+      box.checked = rows.length > 0 && chosen === rows.length;
+      box.indeterminate = chosen > 0 && chosen < rows.length;
+      box.disabled = rows.length === 0;
+    }
+
+    function renderVmTable() {
+      const rows = filteredRows();
+      const pageSize = Number(document.getElementById("vm-page-size").value) || 25;
+      const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+      if (vmPage > pages) vmPage = pages;
+      if (vmPage < 1) vmPage = 1;
+      const start = (vmPage - 1) * pageSize;
+      const slice = rows.slice(start, start + pageSize);
+      const body = document.getElementById("vm-body");
+      if (!vmLoaded) {
+        body.innerHTML = '<tr><td colspan="7" class="empty">Fetch VMs to list them here.</td></tr>';
+      } else if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="7" class="empty">No VMs match this search.</td></tr>';
+      } else {
+        body.innerHTML = slice.map(function (row) {
+          const power = String(row.power_state || "");
+          const powerClass = power.toLowerCase() === "on" ? "on" : (power.toLowerCase() === "off" ? "off" : "");
+          const host = [row.host_name, row.host_ip].filter(Boolean).join(" · ");
+          return "<tr>" +
+            '<td><input type="checkbox" data-key="' + esc(row.key) + '"' +
+            (selectedKeys.has(row.key) ? " checked" : "") +
+            (selectable(row) ? "" : " disabled") +
+            "></td>" +
+            "<td>" + esc(row.name || "—") + (row.hypervisor_type ? '<div class="help">' + esc(row.hypervisor_type) + "</div>" : "") + "</td>" +
+            "<td>" + esc((row.ips || []).join(", ") || "No IP") + "</td>" +
+            "<td>" + (power ? '<span class="badge ' + powerClass + '">' + esc(power) + "</span>" : "—") + "</td>" +
+            "<td>" + esc(row.vcpus == null ? "—" : row.vcpus) + "</td>" +
+            "<td>" + esc(row.memory_gib == null ? "—" : row.memory_gib + " GiB") + "</td>" +
+            "<td>" + esc(host || "—") + "</td>" +
+            "</tr>";
+        }).join("");
+      }
+      const from = rows.length ? start + 1 : 0;
+      const to = Math.min(start + pageSize, rows.length);
+      document.getElementById("vm-count").textContent = rows.length ? ("Showing " + from + "–" + to + " of " + rows.length) : "";
+      const pager = document.getElementById("vm-pager");
+      pager.innerHTML = "";
+      if (rows.length > pageSize) {
+        const prev = document.createElement("button");
+        prev.type = "button";
+        prev.textContent = "Previous";
+        prev.disabled = vmPage === 1;
+        prev.addEventListener("click", function () { vmPage -= 1; renderVmTable(); });
+        pager.appendChild(prev);
+        const windowStart = Math.max(1, vmPage - 2);
+        const windowEnd = Math.min(pages, windowStart + 4);
+        for (let number = windowStart; number <= windowEnd; number += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = String(number);
+          if (number === vmPage) button.className = "active";
+          button.addEventListener("click", function () { vmPage = number; renderVmTable(); });
+          pager.appendChild(button);
+        }
+        const next = document.createElement("button");
+        next.type = "button";
+        next.textContent = "Next";
+        next.disabled = vmPage === pages;
+        next.addEventListener("click", function () { vmPage += 1; renderVmTable(); });
+        pager.appendChild(next);
+      }
+      syncSelectAll();
+      renderStats();
+    }
+
+    function acceptVms(data) {
+      vmRows = (data.vms || []).map(function (row, index) {
+        const copy = Object.assign({}, row);
+        copy.ips = copy.ips || [];
+        copy.key = (copy.uuid || "row") + "-" + index;
+        return copy;
+      });
+      selectedKeys = new Set();
+      vmRows.forEach(function (row) {
+        if (defaultSelected(row)) selectedKeys.add(row.key);
+      });
+      lastMeta = data;
+      vmLoaded = true;
+      vmPage = 1;
+      document.getElementById("vm-search").value = "";
+      renderVmTable();
+      updateStartButton();
+      previewCommand();
+    }
+
+    function showPortInputs(prefix) {
+      const mode = document.getElementById(prefix + "-mode").value;
+      ["single", "range", "list"].forEach(function (name) {
+        document.getElementById(prefix + "-" + name + "-wrap").hidden = mode !== name;
+      });
+    }
+
+    function portSpec(prefix) {
+      const mode = document.getElementById(prefix + "-mode").value;
+      if (mode === "auto" || mode === "common") return "";
+      if (mode === "single") return String(document.getElementById(prefix + "-port").value || "");
+      if (mode === "range") return document.getElementById(prefix + "-from").value + "-" + document.getElementById(prefix + "-to").value;
+      return document.getElementById(prefix + "-list").value.trim();
+    }
+
+    function showRelatedFields() {
+      const proto = document.getElementById("proto").value;
+      document.getElementById("tcp-state-group").hidden = proto === "udp";
+      showPortInputs("source");
+      showPortInputs("dest");
+      
+      // Show/hide persistence mode fields
+      const persistenceMode = document.getElementById("persistence-mode").value;
+      document.getElementById("keepalive-interval-group").hidden = !(persistenceMode === "keepalive" || persistenceMode === "duration");
+      document.getElementById("duration-limit-group").hidden = persistenceMode !== "duration";
+      const sourceHelp = {
+        auto: "Each flow gets the next source port from 40000 upward.",
+        single: "Every flow uses this source port.",
+        range: "Flows walk this inclusive range, then wrap. Maximum 1024 ports.",
+        list: "Comma-separated ports, or a range such as 40000-40010. Flows walk them in order."
+      };
+      const common = proto === "udp"
+        ? "UDP 53, 123, 161."
+        : (proto === "tcp" ? "TCP 80, 443, 22, 3306." : "TCP 80, 443, 22, 3306 and UDP 53, 123, 161.");
+      const destHelp = {
+        common: "Uses the common ports for the selected protocol: " + common,
+        single: "Every selected protocol uses this destination port.",
+        range: "Every selected protocol uses each port in this inclusive range. Maximum 1024 ports.",
+        list: "Comma-separated ports, or a range such as 8000-8010. Applied to every selected protocol."
+      };
+      document.getElementById("source-help").textContent = sourceHelp[document.getElementById("source-mode").value] || "";
+      document.getElementById("dest-help").textContent = destHelp[document.getElementById("dest-mode").value] || "";
+    }
+
+    function shellQuote(value) {
+      return "'" + String(value).replace(/'/g, "'\\''") + "'";
+    }
+
+    function previewCommand() {
+      const state = modeState[currentMode];
+      const trafficMode = document.querySelector('input[name="traffic-mode"]:checked').value;
+      const scriptName = trafficMode === "live" ? "ipfix_live.py" : "ipfix_test.py";
+      const parts = ["python3 " + scriptName];
+      parts.push("--pc_ip " + shellQuote(document.getElementById("pc-ip").value.trim()));
+      parts.push("--username " + shellQuote(document.getElementById("username").value.trim()));
+      if (document.getElementById("password").value) parts.push("--password '***'");
+      const ips = selectedIps();
+      parts.push("--skip_fetch");
+      parts.push("--ips_file <" + ips.length + " selected IPs>");
+      const locked = MODES[currentMode].pattern;
+      if (!locked) {
+        const pattern = document.getElementById("pattern").value;
+        parts.push("--pattern " + pattern);
+        if (pattern === "1:n" || pattern === "n:1") parts.push("--n " + String(document.getElementById("flow-n").value || ""));
+      }
+      const proto = document.getElementById("proto").value;
+      parts.push("--proto " + proto);
+      const sourceMode = document.getElementById("source-mode").value;
+      const sourceValue = portSpec("source");
+      if (sourceMode === "single") parts.push("--sport " + sourceValue);
+      else if (sourceMode === "range" || sourceMode === "list") parts.push("--sports " + shellQuote(sourceValue));
+      else parts.push("--sport 0");
+      const destMode = document.getElementById("dest-mode").value;
+      const destValue = portSpec("dest");
+      if (destMode !== "common") {
+        if (proto === "both") {
+          parts.push("--tcp-ports " + shellQuote(destValue));
+          parts.push("--udp-ports " + shellQuote(destValue));
+        } else {
+          parts.push("--dports " + shellQuote(destValue));
+        }
+      }
+      parts.push("--timeout " + String(document.getElementById("timeout").value || ""));
+      if (proto !== "udp") parts.push("--tcp_state " + shellQuote(document.getElementById("tcp-state").value.trim()));
+      parts.push("--status " + shellQuote(document.getElementById("status").value.trim()));
+      parts.push("--parallel-mode " + currentMode);
+      parts.push(state.parallel ? "--parallel" : "--no-parallel");
+      if (state.parallel) parts.push("--thread-count " + String(state.threadCount));
+      const hostIp = document.getElementById("host-ip").value.trim();
+      if (hostIp) parts.push("--host_ip " + shellQuote(hostIp));
+      parts.push("--cvm_user " + shellQuote(document.getElementById("cvm-user").value.trim()));
+      if (document.getElementById("cvm-password").value) parts.push("--cvm_password '***'");
+      parts.push(document.getElementById("update-existing").checked ? "--update-existing" : "--no-update-existing");
+      if (document.getElementById("inspect-only").checked) parts.push("--inspect_only");
+      
+      // Persistence mode
+      const persistenceMode = document.getElementById("persistence-mode").value;
+      if (persistenceMode === "keepalive") {
+        parts.push("--keep-alive");
+        parts.push("--keepalive-interval " + String(document.getElementById("keepalive-interval").value || ""));
+      } else if (persistenceMode === "duration") {
+        parts.push("--keep-alive");
+        parts.push("--keepalive-interval " + String(document.getElementById("keepalive-interval").value || ""));
+        parts.push("--duration-limit " + String(document.getElementById("duration-limit").value || ""));
+      }
+      
+      document.getElementById("cmd-preview").textContent = parts.join(" ");
+    }
+
+    function collectPayload() {
+      saveModeState();
+      const state = modeState[currentMode];
+      const body = {
+        traffic_mode: document.querySelector('input[name="traffic-mode"]:checked').value,
+        pc_ip: document.getElementById("pc-ip").value,
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+        selected_ips: selectedIps(),
+        proto: document.getElementById("proto").value,
+        source_mode: document.getElementById("source-mode").value,
+        source_port: Number(document.getElementById("source-port").value),
+        source_from: Number(document.getElementById("source-from").value),
+        source_to: Number(document.getElementById("source-to").value),
+        source_list: document.getElementById("source-list").value,
+        dest_mode: document.getElementById("dest-mode").value,
+        dest_port: Number(document.getElementById("dest-port").value),
+        dest_from: Number(document.getElementById("dest-from").value),
+        dest_to: Number(document.getElementById("dest-to").value),
+        dest_list: document.getElementById("dest-list").value,
+        timeout: Number(document.getElementById("timeout").value),
+        status: document.getElementById("status").value,
+        parallel_mode: currentMode,
+        parallel: state.parallel,
+        host_ip: document.getElementById("host-ip").value,
+        cvm_user: document.getElementById("cvm-user").value,
+        cvm_password: document.getElementById("cvm-password").value,
+        update_existing: document.getElementById("update-existing").checked,
+        inspect_only: document.getElementById("inspect-only").checked,
+        persistence_mode: document.getElementById("persistence-mode").value,
+        keepalive_interval: Number(document.getElementById("keepalive-interval").value),
+        duration_limit: Number(document.getElementById("duration-limit").value)
+      };
+      if (!MODES[currentMode].pattern) {
+        body.pattern = document.getElementById("pattern").value;
+        if (body.pattern === "1:n" || body.pattern === "n:1") body.n = Number(document.getElementById("flow-n").value);
+      }
+      if (body.proto === "tcp" || body.proto === "both") body.tcp_state = document.getElementById("tcp-state").value;
+      if (state.parallel) body.thread_count = Number(state.threadCount);
+      return body;
+    }
+
+    function refreshForm() {
+      showModeFields();
+      showRelatedFields();
+      previewCommand();
+      updateStartButton();
+    }
+
+    function setMessage(text, kind) {
+      formMsg.textContent = text || "";
+      formMsg.className = "msg" + (kind ? " " + kind : "");
+    }
+
+    async function pollRun() {
+      if (!activeRunId) return;
+      try {
+        const response = await fetch("/api/ipfix/" + encodeURIComponent(activeRunId));
+        const data = await response.json();
+        if (!response.ok) {
+          setMessage(data.message || "Could not read the run.", "error");
+          return;
+        }
+        const nearBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+        logEl.textContent = data.log || "";
+        if (nearBottom) logEl.scrollTop = logEl.scrollHeight;
+        const status = data.status || "";
+        setMessage("Status: " + status, status === "error" || status === "aborted" ? "error" : "success");
+        if (status === "queued" || status === "running") {
+          pollTimer = setTimeout(pollRun, 1500);
+        } else {
+          runActive = false;
+          cancelBtn.hidden = true;
+          updateStartButton();
+        }
+      } catch (err) {
+        setMessage(String(err), "error");
+        pollTimer = setTimeout(pollRun, 2500);
+      }
+    }
+
+    document.getElementById("ipfix-form").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const blocked = startBlockReason();
+      if (blocked) {
+        updateStartButton();
+        setMessage(blocked, "error");
+        return;
+      }
+      if (pollTimer) clearTimeout(pollTimer);
+      runActive = true;
+      updateStartButton();
+      setMessage("Starting…", "");
+      try {
+        const response = await fetch("/api/ipfix/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(collectPayload())
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          runActive = false;
+          updateStartButton();
+          setMessage(data.message || "Start failed.", "error");
+          return;
+        }
+        activeRunId = data.run_id;
+        cancelBtn.hidden = false;
+        jobLink.hidden = false;
+        jobLink.href = data.job_url;
+        logEl.textContent = "Run " + data.run_id + " started.";
+        setMessage("Started " + data.run_id, "success");
+        pollRun();
+      } catch (err) {
+        runActive = false;
+        updateStartButton();
+        setMessage(String(err), "error");
+      }
+    });
+
+    cancelBtn.addEventListener("click", async function () {
+      if (!activeRunId) return;
+      cancelBtn.disabled = true;
+      try {
+        const response = await fetch("/api/ipfix/" + encodeURIComponent(activeRunId) + "/cancel", { method: "POST" });
+        const data = await response.json();
+        setMessage(data.message || "Stop requested.", response.ok ? "success" : "error");
+      } catch (err) {
+        setMessage(String(err), "error");
+      } finally {
+        cancelBtn.disabled = false;
+      }
+    });
+
+    ["input", "change"].forEach(function (eventName) {
+      document.getElementById("ipfix-form").addEventListener(eventName, function (event) {
+        if (event.target === parallelModeEl) return;
+        saveModeState();
+        refreshForm();
+      });
+    });
+
+    parallelModeEl.addEventListener("change", function () {
+      saveModeState();
+      currentMode = parallelModeEl.value;
+      refreshForm();
+    });
+
+    document.getElementById("vm-select-all").addEventListener("change", function () {
+      const turnOn = this.checked;
+      filteredRows().forEach(function (row) {
+        if (!selectable(row)) return;
+        if (turnOn) selectedKeys.add(row.key);
+        else selectedKeys.delete(row.key);
+      });
+      renderVmTable();
+      updateStartButton();
+      previewCommand();
+    });
+
+    document.getElementById("vm-body").addEventListener("change", function (event) {
+      const box = event.target;
+      if (!box || !box.dataset || !box.dataset.key) return;
+      if (box.checked) selectedKeys.add(box.dataset.key);
+      else selectedKeys.delete(box.dataset.key);
+      syncSelectAll();
+      renderStats();
+      updateStartButton();
+      previewCommand();
+    });
+
+    document.getElementById("vm-search").addEventListener("input", function () {
+      vmPage = 1;
+      renderVmTable();
+    });
+
+    document.getElementById("vm-page-size").addEventListener("change", function () {
+      vmPage = 1;
+      renderVmTable();
+    });
+
+    document.getElementById("persistence-mode").addEventListener("change", function () {
+      refreshForm();
+    });
+
+    // Traffic mode toggle
+    const modeDescEl = document.getElementById("mode-description");
+    document.querySelectorAll('input[name="traffic-mode"]').forEach(function(radio) {
+      radio.addEventListener("change", function() {
+        if (this.value === "live") {
+          modeDescEl.innerHTML = "<strong>Live Mode:</strong> Opens real TCP/UDP connections between VMs using SSH and Python sockets. Generates actual network traffic.";
+          modeDescEl.style.borderLeftColor = "#3b82f6";
+          modeDescEl.style.background = "#f0f9ff";
+        } else {
+          modeDescEl.innerHTML = "<strong>Mock Mode:</strong> Injects mock conntrack entries into the hypervisor kernel without sending actual packets. Fast and lightweight.";
+          modeDescEl.style.borderLeftColor = "#f59e0b";
+          modeDescEl.style.background = "#fffbeb";
+        }
+        previewCommand();
+      });
+    });
+
+    async function loadVmSource(url, body, busyText) {
+      const fetchBtn = document.getElementById("fetch-btn");
+      const loadBtn = document.getElementById("load-file-btn");
+      const fetchMsg = document.getElementById("fetch-msg");
+      fetchBtn.disabled = true;
+      loadBtn.disabled = true;
+      fetchMsg.className = "msg";
+      fetchMsg.textContent = busyText;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          fetchMsg.className = "msg error";
+          fetchMsg.textContent = data.message || "Could not load VMs.";
+          return;
+        }
+        acceptVms(data);
+        const count = (data.vms || []).length;
+        fetchMsg.className = "msg success";
+        fetchMsg.textContent = count
+          ? (count + " VMs loaded. auto_pc_*, nc*, and sql* are left unchecked.")
+          : "No VMs were returned.";
+      } catch (err) {
+        fetchMsg.className = "msg error";
+        fetchMsg.textContent = String(err);
+      } finally {
+        fetchBtn.disabled = false;
+        loadBtn.disabled = false;
+      }
+    }
+
+    document.getElementById("fetch-btn").addEventListener("click", function () {
+      loadVmSource("/api/ipfix/vms", {
+        pc_ip: document.getElementById("pc-ip").value,
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+        page_size: Number(document.getElementById("page-size").value)
+      }, "Fetching VMs from Prism…");
+    });
+
+    document.getElementById("load-file-btn").addEventListener("click", function () {
+      loadVmSource("/api/ipfix/vms/file", {
+        ips_file: document.getElementById("ips-file").value
+      }, "Loading IP file…");
+    });
+
+    refreshForm();
+
+    const params = new URLSearchParams(window.location.search);
+    const existing = params.get("run");
+    if (existing) {
+      activeRunId = existing;
+      cancelBtn.hidden = false;
+      jobLink.hidden = false;
+      jobLink.href = "/job/" + encodeURIComponent(existing);
+      startBtn.disabled = true;
+      pollRun();
+    }
+
+    // Load job history
+    async function loadJobHistory() {
+      const historyMsg = document.getElementById("history-msg");
+      const historyTable = document.getElementById("history-table");
+      const historyBody = document.getElementById("history-body");
+      
+      try {
+        const response = await fetch("/api/ipfix/recent");
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+          historyMsg.style.display = "block";
+          historyMsg.className = "msg error";
+          historyMsg.textContent = "Failed to load job history.";
+          return;
+        }
+        
+        const jobs = data.jobs || [];
+        if (jobs.length === 0) {
+          historyMsg.style.display = "block";
+          historyMsg.className = "msg";
+          historyMsg.textContent = "No previous jobs found.";
+          historyTable.style.display = "none";
+          return;
+        }
+        
+        historyMsg.style.display = "none";
+        historyTable.style.display = "table";
+        historyBody.innerHTML = "";
+        
+        jobs.forEach(function(job) {
+          const row = document.createElement("tr");
+          const summary = job.summary || {};
+          
+          // Status badge
+          let statusClass = "badge";
+          if (job.status === "complete") statusClass += " badge-success";
+          else if (job.status === "error" || job.status === "aborted") statusClass += " badge-danger";
+          else if (job.status === "running") statusClass += " badge-info";
+          
+          // Format timestamp
+          const startTime = job.running_started_at || job.queued_at || "";
+          const startDisplay = startTime ? new Date(startTime).toLocaleString() : "—";
+          
+          // Duration
+          const duration = job.duration_sec ? Math.round(job.duration_sec) + "s" : "—";
+          
+          // VM count
+          const vmCount = summary.vm_count || "—";
+          
+          // Check if it's a long-lived job
+          const isLongLived = summary.persistence_mode === "keepalive" || summary.persistence_mode === "duration";
+          const isRunning = job.status === "running" || job.status === "queued";
+          
+          // Build actions cell
+          let actionsHtml = "<a href='/job/" + encodeURIComponent(job.run_id) + "' class='btn btn-secondary' style='padding:0.3rem 0.6rem; font-size:0.8rem'>View</a>";
+          if (isLongLived && isRunning) {
+            actionsHtml += " <button class='btn btn-danger' style='padding:0.3rem 0.6rem; font-size:0.8rem; margin-left:0.3rem' onclick='teardownJob(\"" + job.run_id + "\")'>Teardown</button>";
+          }
+          
+          // Traffic mode badge
+          const trafficMode = summary.traffic_mode || "live";
+          const modeBadge = trafficMode === "live" 
+            ? "<span class='badge badge-info' style='margin-right:0.3rem'>Live</span>" 
+            : "<span class='badge' style='margin-right:0.3rem; background:#fbbf24; color:#78350f'>Mock</span>";
+          
+          row.innerHTML = 
+            "<td><code style='font-size:0.75rem'>" + (job.run_id || "").substring(0, 8) + "</code></td>" +
+            "<td><span class='" + statusClass + "'>" + (job.status || "unknown") + "</span></td>" +
+            "<td>" + modeBadge + (summary.parallel_mode || "—") + "</td>" +
+            "<td>" + (summary.proto || "—") + "</td>" +
+            "<td>" + vmCount + "</td>" +
+            "<td style='font-size:0.75rem'>" + startDisplay + "</td>" +
+            "<td>" + duration + "</td>" +
+            "<td>" + actionsHtml + "</td>";
+          
+          historyBody.appendChild(row);
+        });
+      } catch (err) {
+        historyMsg.style.display = "block";
+        historyMsg.className = "msg error";
+        historyMsg.textContent = "Error loading history: " + String(err);
+      }
+    }
+    
+    // Load history on page load
+    loadJobHistory();
+
+    // Teardown long-lived job
+    async function teardownJob(runId) {
+      if (!confirm("This will stop the job and flush all injected mock flows. Continue?")) {
+        return;
+      }
+      
+      try {
+        const response = await fetch("/api/ipfix/" + encodeURIComponent(runId) + "/teardown", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ flush_flows: true })
+        });
+        const data = await response.json();
+        
+        if (response.ok && data.ok) {
+          alert("Teardown initiated. The job will stop and flows will be flushed.");
+          loadJobHistory(); // Refresh the table
+        } else {
+          alert("Teardown failed: " + (data.message || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Error during teardown: " + String(err));
+      }
+    }
+    window.teardownJob = teardownJob; // Make it globally accessible for onclick
+
+    // Modal functionality
+    const modal = document.getElementById("mode-info-modal");
+    const modeInfoLink = document.getElementById("mode-info-link");
+    const modalCloseBtn = document.getElementById("modal-close-btn");
+
+    modeInfoLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      modal.classList.add("show");
+    });
+
+    modalCloseBtn.addEventListener("click", function() {
+      modal.classList.remove("show");
+    });
+
+    window.addEventListener("click", function(e) {
+      if (e.target === modal) {
+        modal.classList.remove("show");
+      }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" && modal.classList.contains("show")) {
+        modal.classList.remove("show");
+      }
+    });
+  </script>
+</body>
+</html>
