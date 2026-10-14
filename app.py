@@ -4007,6 +4007,12 @@ def api_job(run_id: str):
         job_kind=jk,
         disk_log_for_console=disk_log_for_console,
     )
+
+    skipped_vms_summary = {}
+    if jk == "ipfix" and st in {"complete", "error", "aborted"}:
+        full_log_text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+        skipped_vms_summary = _parse_skipped_vms_from_log(full_log_text)
+
     summ = info.get("summary")
     if jk == "cg_data_loader" and isinstance(summ, dict):
         step_durations = summ.get("step_durations_sec")
@@ -4075,6 +4081,7 @@ def api_job(run_id: str):
             "log_path": str(info.get("log_path") or ""),
             "job_details": info.get("job_details"),
             "summary": summ,
+            "skipped_vms_summary": skipped_vms_summary,
             "disk_progress": info.get("disk_progress"),
             "snapshot_progress": info.get("snapshot_progress"),
             "power_progress": info.get("power_progress"),
@@ -8977,6 +8984,7 @@ IPFIX_PARALLEL_MODES = (
     "randomized_mesh",
     "client_server_pair",
     "port_scan_burst",
+    "nn",
 )
 IPFIX_PATTERN_BY_MODE = {"first_to_all": "1:all", "all_to_first": "all:1"}
 IPFIX_PATTERNS = ("1:1", "1:n", "n:1", "1:all", "all:1")
@@ -9304,6 +9312,19 @@ def _load_ipfix_ip_file(raw_path: str) -> list[str]:
     return addresses
 
 
+def _parse_skipped_vms_from_log(log_text: str) -> dict[str, int]:
+    """Parses the log text to extract skipped VM counts by reason."""
+    skipped_reasons: dict[str, int] = {}
+    pattern = re.compile(r"""  - (\d+) VM(?:s)? due to (.*)""")
+    for line in log_text.splitlines():
+        match = pattern.match(line)
+        if match:
+            count = int(match.group(1))
+            reason = match.group(2).strip()
+            skipped_reasons[reason] = skipped_reasons.get(reason, 0) + count
+    return skipped_reasons
+
+
 def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
     """Build ipfix_test.py or ipfix_live.py argv from the submitted form. Unused mode fields are omitted."""
     if not isinstance(payload, dict):
@@ -9359,6 +9380,8 @@ def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, 
             "--parallel-mode",
             parallel_mode,
             "--parallel" if parallel else "--no-parallel",
+            "--timeout",
+            str(timeout),
         ]
     else:
         # ipfix_test.py (mock mode) - original arguments
@@ -9408,7 +9431,10 @@ def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, 
         # Live mode supports "mesh" pattern, mock mode doesn't
         valid_patterns = IPFIX_PATTERNS if traffic_mode == "mock" else ("mesh", "1:1", "1:n", "n:1", "1:all", "all:1")
         if pattern not in valid_patterns:
-            raise ValueError(f"pattern must be one of {', '.join(valid_patterns)}")
+            if traffic_mode == "live" and pattern == "nn":
+                summary["pattern"] = pattern
+            else:
+                raise ValueError(f"pattern must be one of {', '.join(valid_patterns)}")
         cmd.extend(["--pattern", pattern])
         summary["pattern"] = pattern
         if pattern in ("1:n", "n:1"):
@@ -9435,7 +9461,7 @@ def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, 
             summary["dest_ports"] = "default (80,443,53,123,5201)"
         
         # Live mode: add duration (default 30 seconds)
-        duration = _ipfix_positive_int(payload.get("duration", 30), "duration", 1, 86400)
+        duration = _ipfix_positive_int(payload.get("duration", 1), "duration", 1, 86400)
         cmd.extend(["--duration", str(duration)])
         summary["duration"] = duration
         
@@ -9894,11 +9920,49 @@ def api_recent_ipfix_jobs():
     # Sort by queued time (most recent first) and take last 20
     history.sort(key=lambda x: x.get("queued_at", ""), reverse=True)
     recent_jobs = history[:20]
-    
+
     return jsonify({
         "success": True,
-        "jobs": recent_jobs
+        "jobs": recent_jobs,
     })
+
+
+@app.route("/api/running-jobs")
+def api_running_jobs():
+    """Return all currently running/queued jobs across every feature."""
+    active: list[dict] = []
+
+    # ── Snapshot / bulk / pipeline / ipfix jobs (in-memory runs dict) ──────
+    with runs_lock:
+        snapshot = list(runs.items())
+    for run_id, info in snapshot:
+        status = str(info.get("status") or "").strip().lower()
+        if status in ("queued", "running"):
+            active.append({
+                "run_id": run_id,
+                "feature": str(info.get("job_kind") or "snapshot"),
+                "status": status,
+                "started_at": str(
+                    info.get("running_started_at") or info.get("queued_at") or ""
+                ),
+                "pc_host": str(info.get("pc_host") or ""),
+            })
+
+    # ── Log-fetch jobs ──────────────────────────────────────────────────────
+    with _log_jobs_lock:
+        log_snap = list(_log_jobs.items())
+    for job_id, info in log_snap:
+        status = str(info.get("status") or "").strip().lower()
+        if status == "running":
+            active.append({
+                "run_id": job_id,
+                "feature": "log_fetch",
+                "status": status,
+                "started_at": str(info.get("start_time") or ""),
+                "pc_host": str(info.get("pc_ip") or ""),
+            })
+
+    return jsonify({"ok": True, "count": len(active), "jobs": active})
 
 
 if __name__ == "__main__":

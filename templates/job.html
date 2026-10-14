@@ -1479,20 +1479,38 @@
           <div class="disk-summary-card-value" id="ipfix-completion-rate">—</div>
         </div>
       </div>
-      <div style="margin-top: 0.75rem; overflow-x: auto;">
-        <table style="width:100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Status</th>
-              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Flow</th>
-              <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Detail</th>
-            </tr>
-          </thead>
-          <tbody id="ipfix-flow-rows">
-            <tr><td colspan="3" class="meta" style="padding:0.45rem;">Waiting for flow lines…</td></tr>
-          </tbody>
-        </table>
+      <div style="margin-top: 0.75rem;">
+        <button id="toggle-flows-btn" class="btn btn-secondary" type="button" style="margin-bottom: 0.5rem;">Show/Hide Flow Details</button>
+        <div id="ipfix-flow-details-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-gray); border-radius: 8px; padding: 0.5rem; display: none;">
+          <table style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Status</th>
+                <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Flow</th>
+                <th style="text-align:left; padding:0.4rem; border-bottom:1px solid var(--border-gray);">Detail</th>
+              </tr>
+            </thead>
+            <tbody id="ipfix-flow-rows">
+              <tr><td colspan="3" class="meta" style="padding:0.45rem;">Waiting for flow lines…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {% if info.get('skipped_vms_summary') %}
+      <div style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
+        <strong style="font-size: 0.95rem;">Skipped VMs Summary</strong>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
+          {% for reason, count in info.get('skipped_vms_summary', {}).items() %}
+          <div class="disk-summary-card">
+            <div class="disk-summary-card-label">{{ reason }}</div>
+            <div class="disk-summary-card-value">{{ count }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
     </div>
     
     {% if summary.get('source_ports') or summary.get('dest_ports') or summary.get('tcp_ports') or summary.get('udp_ports') %}
@@ -3035,5 +3053,23 @@
       </div>
     </div>
   </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const toggleButton = document.getElementById("toggle-flows-btn");
+      const flowDetailsContainer = document.getElementById("ipfix-flow-details-container");
+
+      if (toggleButton && flowDetailsContainer) {
+        toggleButton.addEventListener("click", function() {
+          if (flowDetailsContainer.style.display === "none") {
+            flowDetailsContainer.style.display = "block";
+            toggleButton.textContent = "Hide Flow Details";
+          } else {
+            flowDetailsContainer.style.display = "none";
+            toggleButton.textContent = "Show Flow Details";
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

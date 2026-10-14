@@ -314,7 +314,7 @@
             </div>
             <div>
               <label for="timeout">Timeout (seconds)</label>
-              <input id="timeout" type="number" min="1" max="86400" value="120" />
+              <input id="timeout" type="number" min="1" max="86400" value="10" />
             </div>
             <div id="tcp-state-group">
               <label for="tcp-state">TCP state</label>
@@ -338,6 +338,11 @@
                 <option value="duration">Custom Duration (time-limited keep-alive)</option>
               </select>
               <div class="help">Choose how long flows stay active. Keep-alive periodically refreshes flows to prevent kernel timeout.</div>
+            </div>
+            <div id="flow-duration-group" style="grid-column: 1 / -1;">
+              <label for="flow-duration">Flow Duration (seconds)</label>
+              <input id="flow-duration" type="number" min="1" max="3600" value="30" />
+              <div class="help">How long each TCP/UDP connection stays active sending data. TCP writes continuously, UDP sends one datagram every 10ms.</div>
             </div>
             <div id="keepalive-interval-group" style="grid-column: 1 / -1;" hidden>
               <label for="keepalive-interval">Keep-Alive Interval (seconds)</label>
@@ -395,6 +400,7 @@
                 <option value="randomized_mesh">randomized_mesh (Chaos Mode)</option>
                 <option value="client_server_pair">client_server_pair (Tiered Mode)</option>
                 <option value="port_scan_burst">port_scan_burst (Security/IDS Test)</option>
+                <option value="nn">nn (All to all IPs & ports)</option>
               </select>
               <div style="margin-top: 0.5rem;">
                 <a href="#" id="mode-info-link" style="color: var(--primary-blue); text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem;">
@@ -660,7 +666,8 @@
       all_to_first: { parallel: true, threadCount: 50, parallelName: "ALL_TO_FIRST_PARALLEL", threadName: "ALL_TO_FIRST_THREAD_COUNT", detail: "every other VM sends every port to the first IP", pattern: "all:1" },
       randomized_mesh: { parallel: true, threadCount: 50, parallelName: "RANDOMIZED_MESH_PARALLEL", threadName: "RANDOMIZED_MESH_THREAD_COUNT", detail: "Chaos Mode: randomly selects source and destination pairs across the entire selected VM inventory to simulate dense, unstructured east-west traffic storms for security policy boundary testing" },
       client_server_pair: { parallel: true, threadCount: 50, parallelName: "CLIENT_SERVER_PAIR_PARALLEL", threadName: "CLIENT_SERVER_PAIR_THREAD_COUNT", detail: "Tiered Mode: splits selected VMs into two explicit pools (e.g., frontend vs. backend tiers) and enforces strict one-way communication maps from tier 1 to tier 2 to validate specific microsegmentation rules" },
-      port_scan_burst: { parallel: true, threadCount: 50, parallelName: "PORT_SCAN_BURST_PARALLEL", threadName: "PORT_SCAN_BURST_THREAD_COUNT", detail: "Security/IDS Test Mode: cycles a single source IP through a wide sequential range of destination ports against a target host to test IPFIX log aggregation throughput and high-frequency alert triggers under heavy load" }
+      port_scan_burst: { parallel: true, threadCount: 50, parallelName: "PORT_SCAN_BURST_PARALLEL", threadName: "PORT_SCAN_BURST_THREAD_COUNT", detail: "Security/IDS Test Mode: cycles a single source IP through a wide sequential range of destination ports against a target host to test IPFIX log aggregation throughput and high-frequency alert triggers under heavy load" },
+      nn: { parallel: true, threadCount: 50, parallelName: "NN_PARALLEL", threadName: "NN_THREAD_COUNT", detail: "All IPs as sources and destinations, all source and destination ports", pattern: null }
     };
 
     const modeState = {};
@@ -803,6 +810,13 @@
       box.checked = rows.length > 0 && chosen === rows.length;
       box.indeterminate = chosen > 0 && chosen < rows.length;
       box.disabled = rows.length === 0;
+
+      const currentVisibleRows = vmBody.querySelectorAll('tr input[type="checkbox"]:not([disabled])');
+      const pageBox = document.getElementById("vm-select-all-page");
+      const pageChosen = Array.from(currentVisibleRows).filter(cb => cb.checked).length;
+      pageBox.checked = currentVisibleRows.length > 0 && pageChosen === currentVisibleRows.length;
+      pageBox.indeterminate = pageChosen > 0 && pageChosen < currentVisibleRows.length;
+      pageBox.disabled = currentVisibleRows.length === 0;
     }
 
     function renderVmTable() {
@@ -907,12 +921,16 @@
 
     function showRelatedFields() {
       const proto = document.getElementById("proto").value;
+      const trafficMode = document.querySelector('input[name="traffic-mode"]:checked').value;
+      
       document.getElementById("tcp-state-group").hidden = proto === "udp";
+      document.getElementById("flow-duration-group").hidden = trafficMode !== "live";
       showPortInputs("source");
       showPortInputs("dest");
       
       // Show/hide persistence mode fields
       const persistenceMode = document.getElementById("persistence-mode").value;
+      document.getElementById("flow-duration-group").hidden = persistenceMode !== "oneshot";
       document.getElementById("keepalive-interval-group").hidden = !(persistenceMode === "keepalive" || persistenceMode === "duration");
       document.getElementById("duration-limit-group").hidden = persistenceMode !== "duration";
       const sourceHelp = {
@@ -973,6 +991,9 @@
         }
       }
       parts.push("--timeout " + String(document.getElementById("timeout").value || ""));
+      if (trafficMode === "live") {
+        parts.push("--duration " + String(document.getElementById("flow-duration").value || "30"));
+      }
       if (proto !== "udp") parts.push("--tcp_state " + shellQuote(document.getElementById("tcp-state").value.trim()));
       parts.push("--status " + shellQuote(document.getElementById("status").value.trim()));
       parts.push("--parallel-mode " + currentMode);
@@ -1020,6 +1041,7 @@
         dest_to: Number(document.getElementById("dest-to").value),
         dest_list: document.getElementById("dest-list").value,
         timeout: Number(document.getElementById("timeout").value),
+        duration: Number(document.getElementById("flow-duration").value),
         status: document.getElementById("status").value,
         parallel_mode: currentMode,
         parallel: state.parallel,
@@ -1147,6 +1169,7 @@
       refreshForm();
     });
 
+
     document.getElementById("vm-select-all").addEventListener("change", function () {
       const turnOn = this.checked;
       filteredRows().forEach(function (row) {
@@ -1155,6 +1178,20 @@
         else selectedKeys.delete(row.key);
       });
       renderVmTable();
+      updateStartButton();
+      previewCommand();
+    });
+
+    document.getElementById("vm-select-all-page").addEventListener("change", function () {
+      const turnOn = this.checked;
+      const body = document.getElementById("vm-body");
+      // Select only currently visible and selectable rows
+      body.querySelectorAll('tr input[type="checkbox"]').forEach(function (box) {
+        if (box.disabled) return;
+        if (turnOn) selectedKeys.add(box.dataset.key);
+        else selectedKeys.delete(box.dataset.key);
+      });
+      renderVmTable(); // Re-render table to update individual checkboxes
       updateStartButton();
       previewCommand();
     });
@@ -1188,7 +1225,8 @@
     const modeDescEl = document.getElementById("mode-description");
     document.querySelectorAll('input[name="traffic-mode"]').forEach(function(radio) {
       radio.addEventListener("change", function() {
-        if (this.value === "live") {
+        const isLive = this.value === "live";
+        if (isLive) {
           modeDescEl.innerHTML = "<strong>Live Mode:</strong> Opens real TCP/UDP connections between VMs using SSH and Python sockets. Generates actual network traffic.";
           modeDescEl.style.borderLeftColor = "#3b82f6";
           modeDescEl.style.background = "#f0f9ff";
@@ -1197,6 +1235,8 @@
           modeDescEl.style.borderLeftColor = "#f59e0b";
           modeDescEl.style.background = "#fffbeb";
         }
+        // Show/hide flow duration field (only for Live mode)
+        document.getElementById("flow-duration-group").hidden = !isLive;
         previewCommand();
       });
     });

@@ -21,6 +21,8 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from dateutil import tz
 
 try:
     import paramiko
@@ -95,6 +97,10 @@ CLIENT_SERVER_PAIR_THREAD_COUNT = 10
 PORT_SCAN_BURST_PARALLEL = True
 PORT_SCAN_BURST_THREAD_COUNT = 10
 
+#nn mode - all source IPs to all destination IPs, all source ports to all destination ports
+NN_PARALLEL = True
+NN_THREAD_COUNT = 50
+
 PARALLEL_OPTIONS = {
     "sequential": {
         "parallel": SEQUENTIAL_PARALLEL,
@@ -146,11 +152,16 @@ PARALLEL_OPTIONS = {
         "thread_count": CLIENT_SERVER_PAIR_THREAD_COUNT,
         "detail": "first half of the VM list sends to the second half",
     },
-    "port_scan_burst": {
-        "parallel": PORT_SCAN_BURST_PARALLEL,
-        "thread_count": PORT_SCAN_BURST_THREAD_COUNT,
-        "detail": "one source and destination, ports spread across the batch",
-    },
+        "port_scan_burst": {
+            "parallel": PORT_SCAN_BURST_PARALLEL,
+            "thread_count": PORT_SCAN_BURST_THREAD_COUNT,
+            "detail": "one source and destination, ports spread across the batch",
+        },
+        "nn": {
+            "parallel": NN_PARALLEL,
+            "thread_count": NN_THREAD_COUNT,
+            "detail": "all source IPs to all destination IPs, all source ports to all destination ports",
+        },
 }
 PRINT_LOCK = threading.Lock()
 
@@ -158,7 +169,8 @@ PRINT_LOCK = threading.Lock()
 def log_line(message):
     """Print one status line without interleaving it with another thread."""
     with PRINT_LOCK:
-        print(message, flush=True)
+        now = datetime.now(tz=tz.tzlocal())
+        print("%s %s" % (now.isoformat(), message), flush=True)
 CLIENT_LOCKS = {}
 PORT_LOCKS = {}
 PORT_LOCKS_GUARD = threading.Lock()
@@ -246,6 +258,11 @@ port = int(sys.argv[2])
 timeout = int(sys.argv[3])
 if proto == "udp":
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except (AttributeError, OSError):
+        pass  # SO_REUSEPORT not available on all platforms
     sock.bind(("0.0.0.0", port))
     sock.settimeout(2)
     total = 0
@@ -265,6 +282,10 @@ if proto == "udp":
 else:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except (AttributeError, OSError):
+        pass  # SO_REUSEPORT not available on all platforms
     sock.bind(("0.0.0.0", port))
     sock.listen(1)
     sock.settimeout(timeout)
@@ -321,6 +342,11 @@ def report_source_port(sock):
 sport = int(sys.argv[8]) if len(sys.argv) > 8 else 0
 if proto == "udp":
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except (AttributeError, OSError):
+        pass  # SO_REUSEPORT not available on all platforms
     sock.bind(("", sport))
     src_port = report_source_port(sock)
     end = time.time() + duration
@@ -337,6 +363,11 @@ if proto == "udp":
         src_port, port, payload_label, sent, packets))
 else:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except (AttributeError, OSError):
+        pass  # SO_REUSEPORT not available on all platforms
     sock.bind(("", sport))
     sock.settimeout(15)
     sock.connect((dest, port))
@@ -390,6 +421,12 @@ def start_server(client, python_bin, use_iperf, proto, port, ready_timeout):
     """Listen on the destination VM. Return pid and log path."""
     log_path = "/tmp/vm_flow_srv_%s_%s.log" % (proto, port)
     run(client, "rm -f %s" % shlex.quote(log_path), timeout=15)
+    
+    # Kill any existing process on this port to prevent "Address already in use"
+    proto_flag = "tcp" if proto == "tcp" else "udp"
+    run(client, "fuser -k %s/%s 2>/dev/null || true" % (port, proto_flag), timeout=10)
+    time.sleep(0.3)  # Give kernel time to release the port
+    
     if use_iperf:
         command = "iperf3 -s -1 -p %s" % port
     else:
@@ -422,15 +459,20 @@ def start_client(client, python_bin, use_iperf, proto, dest_ip, port, duration, 
     return pid, log_path
 
 
-def read_source_port(client, log_path, timeout=15):
+def read_source_port(client, log_path, timeout=25):
     """Return the client source port once the remote log records it."""
     pattern = re.compile(r"(?:^|\n)src_port (\d+)\b|local \S+ port (\d+)")
     deadline = time.time() + timeout
+    attempts = 0
     while time.time() < deadline:
+        # Force filesystem sync on every 5th attempt
+        if attempts > 0 and attempts % 5 == 0:
+            run(client, "sync", timeout=5)
         match = pattern.search(read_remote_file(client, log_path))
         if match:
             return int(match.group(1) or match.group(2))
-        time.sleep(0.2)
+        time.sleep(0.3)
+        attempts += 1
     return None
 
 
@@ -580,6 +622,10 @@ def build_waves(mode, jobs, width):
             mixed = _interleave(group, lambda job: job[3])
             waves.extend(_chunk(mixed, width))
         return waves
+    if mode == "nn":
+        # For nn mode, jobs are already prepared with all combinations.
+        # We just need to chunk them into waves.
+        return _chunk(jobs, width)
     sys.exit("Unknown parallel mode %r. Choose one of: %s" % (
         mode, ", ".join(PARALLEL_OPTIONS)))
 
@@ -738,6 +784,12 @@ def build_directions(sessions, pattern, n):
         return [(sessions[0], dst) for dst in sessions[1:]]
     if pattern == "all:1":
         return [(src, sessions[0]) for src in sessions[1:]]
+    if pattern == "nn":
+        directions = []
+        for src in sessions:
+            for dst in sessions:
+                directions.append((src, dst))
+        return directions
     sys.exit("Unknown pattern %r" % pattern)
 
 
@@ -756,7 +808,7 @@ def main():
     parser.add_argument("--ssh-password", default="nutanix/4u",
                         help="SSH password for the VMs. Defaults to $VM_SSH_PASSWORD")
     parser.add_argument("--ssh-key", default=None, help="Private key for the VMs")
-    parser.add_argument("--pattern", choices=("mesh", "1:1", "1:n", "n:1", "1:all", "all:1"), default="mesh",
+    parser.add_argument("--pattern", choices=("mesh", "1:1", "1:n", "n:1", "1:all", "all:1", "nn"), default="mesh",
                         help="Which VM pairs talk. mesh is every pair in both directions. "
                              "1:all and all:1 use the first IP as the hub.")
     parser.add_argument("--n", type=int, default=10, help="How many peers for 1:n and n:1. Default: 10")
@@ -778,6 +830,7 @@ def main():
     parser.add_argument("--payload-max", type=int, default=PAYLOAD_RANDOM_MAX,
                         help="Largest random write. Default: %s" % PAYLOAD_RANDOM_MAX)
     parser.add_argument("--duration", type=int, default=1, help="Seconds of traffic per flow")
+    parser.add_argument("--timeout", type=int, default=20, help="SSH connection timeout in seconds")
     parser.add_argument("--traffic", choices=("auto", "iperf3", "python"), default="auto",
                         help="auto uses iperf3 when both VMs have it, otherwise Python sockets")
     parser.add_argument("--parallel-mode", default=PARALLEL_MODE, choices=tuple(PARALLEL_OPTIONS),
@@ -846,7 +899,7 @@ def main():
     sessions = [{"ip": ip, "client": None} for ip in vm_ips]
     python_bins = {}
     iperf_ok = {}
-    skipped_ips = set()
+    skipped_vm_reasons = {}
 
     def close_session(session):
         client = session.get("client")
@@ -860,18 +913,18 @@ def main():
 
     def connect_session(session):
         """Open SSH for one VM. An authentication failure removes the VM."""
-        if session["ip"] in skipped_ips:
+        if session["ip"] in skipped_vm_reasons:
             return
         log_line("Connecting to VM %s" % session["ip"])
         try:
             client = connect(session["ip"], args.ssh_user, args.ssh_password, args.ssh_key, args.timeout)
-        except (paramiko.AuthenticationException, TimeoutError) as exc:
-            skipped_ips.add(session["ip"])
-            log_line("Skipping VM %s: connection failed (%s)" % (session["ip"], exc))
+        except paramiko.AuthenticationException as exc:
+            skipped_vm_reasons[session["ip"]] = f"authentication failed ({exc})"
+            log_line("Skipping VM %s: authentication failed (%s)" % (session["ip"], exc))
             return
-        except Exception as exc:
-            skipped_ips.add(session["ip"])
-            log_line("Skipping VM %s: unexpected error during connection (%s)" % (session["ip"], exc))
+        except (TimeoutError, Exception) as exc:
+            skipped_vm_reasons[session["ip"]] = f"connection failed ({exc})"
+            log_line("Skipping VM %s: connection failed (%s)" % (session["ip"], exc))
             return
         session["client"] = client
         CLIENT_LOCKS[client] = threading.Lock()
@@ -884,21 +937,21 @@ def main():
                 python_bins[session["ip"]] = python_bin
                 iperf_ok[session["ip"]] = iperf
                 log_line("VM %s python=%s iperf3=%s" % (session["ip"], python_bin, iperf))
+                
+                # Clean up any orphaned server processes from previous aborted runs
+                log_line("Cleaning up orphaned processes on VM %s" % session["ip"])
+                run(client, "pkill -9 -f 'python.*PYTHON_SERVER' 2>/dev/null || true", timeout=10)
+                run(client, "pkill -9 -f 'iperf3 -s' 2>/dev/null || true", timeout=10)
+                # Also clean up test client processes that might be stuck
+                run(client, "pkill -9 -f 'python.*PYTHON_CLIENT' 2>/dev/null || true", timeout=10)
         except Exception:
             close_session(session)
             raise
 
     def use_sessions(needed):
-        """Keep SSH only for the VMs this batch will use."""
-        needed = [item for item in needed if item["ip"] not in skipped_ips]
-        needed_ips = {item["ip"] for item in needed}
-        closed = 0
-        for session in sessions:
-            if session["ip"] not in needed_ips and session["client"] is not None:
-                close_session(session)
-                closed += 1
-        if closed:
-            log_line("Closed SSH to %s VM%s not in this batch" % (closed, "" if closed == 1 else "s"))
+        """Keep SSH open for all VMs used in the entire job."""
+        needed = [item for item in needed if item["ip"] not in skipped_vm_reasons]
+        # Don't close any connections - keep them alive for reuse
         missing = [item for item in needed if item["client"] is None]
         if not missing:
             return
@@ -933,6 +986,18 @@ def main():
         print("Mode=%s parallel=%s thread_count=%s batches=%s" % (
             mode, parallel, thread_count, len(waves)))
         print(PARALLEL_OPTIONS[mode]["detail"])
+        
+        # Precompute all VMs used across all batches (for keep-alive mode)
+        all_used_ips = set()
+        if args.keep_alive:
+            for wave in waves:
+                for job in wave:
+                    all_used_ips.add(job[0]["ip"])
+                    all_used_ips.add(job[1]["ip"])
+            all_used_ips.discard(None)
+            log_line("Will use %s unique VM%s total across all batches - keeping connections alive" % 
+                     (len(all_used_ips), "" if len(all_used_ips) == 1 else "s"))
+        
         print("SSH opens only for the VMs in the current batch.")
 
         def run_job(job):
@@ -946,43 +1011,146 @@ def main():
 
         def usable_jobs(wave):
             return [job for job in wave
-                    if job[0]["ip"] not in skipped_ips and job[1]["ip"] not in skipped_ips]
+                    if job[0]["ip"] not in skipped_vm_reasons and job[1]["ip"] not in skipped_vm_reasons]
 
         def sessions_for(wave):
             needed = []
             seen = set()
             for job in wave:
                 for session in (job[0], job[1]):
-                    if session["ip"] in seen or session["ip"] in skipped_ips:
+                    if session["ip"] in seen or session["ip"] in skipped_vm_reasons:
                         continue
                     seen.add(session["ip"])
                     needed.append(session)
             return needed
 
-        if args.keep_alive:
+        def execute_keep_alive_mode():
+            """
+            Keep-alive mode: Each flow maintained by independent persistent worker.
+            Workers run in autonomous loops: send traffic → wait → repeat.
+            """
+            # Keep-alive mode: background worker threads with ThreadPoolExecutor
             signal.signal(signal.SIGUSR1, _request_teardown)
             signal.signal(signal.SIGTERM, _request_teardown)
-            log_line("Keep-alive on. Interval=%ss. Send SIGUSR1 or SIGTERM to stop." % args.keepalive_interval)
+            log_line("Keep-alive mode: autonomous background workers with continuous refresh")
+            log_line("Flow duration=%ss, Refresh interval=%ss. Send SIGUSR1 or SIGTERM to stop." % 
+                     (args.duration, args.keepalive_interval))
             if args.duration_limit:
                 log_line("Duration limit: %ss" % args.duration_limit)
 
-        started = time.time()
-        pass_number = 0
-        while True:
-            pass_number += 1
-            if _TEARDOWN_REQUESTED.is_set():
-                log_line("Stop requested before pass %s" % pass_number)
-                break
-            if args.keep_alive and args.duration_limit and (time.time() - started) >= args.duration_limit:
-                log_line("Duration limit reached before pass %s" % pass_number)
-                break
-            if pass_number > 1:
-                log_line("Keep-alive pass %s" % pass_number)
-            stop_passes = False
+            # Connect to all required VMs upfront for keep-alive mode
+            all_sessions_needed = [s for s in sessions if s["ip"] in all_used_ips and s["ip"] not in skipped_vm_reasons]
+            if all_sessions_needed:
+                log_line("Opening SSH connections to all %s VM%s" % 
+                         (len(all_sessions_needed), "" if len(all_sessions_needed) == 1 else "s"))
+                use_sessions(all_sessions_needed)
+
+            # Flatten all jobs into a single list for persistent workers
+            all_jobs = []
+            for wave in waves:
+                all_jobs.extend(usable_jobs(wave))
+            
+            log_line("Starting %s flow%s with ThreadPoolExecutor (max_workers=%s)" % (
+                len(all_jobs), "" if len(all_jobs) == 1 else "s", thread_count))
+            
+            started = time.time()
+            worker_results = {}
+            worker_results_lock = threading.Lock()
+            
+            def autonomous_worker(job_id, job):
+                """
+                Autonomous worker running in continuous loop.
+                Executes traffic for --duration, sleeps for --keepalive-interval, repeats.
+                """
+                src_item, dst_item, proto, port, sport = job
+                refresh_count = 0
+                worker_start = time.time()
+                last_result = None
+                
+                # Continuous autonomous loop
+                while not _TEARDOWN_REQUESTED.is_set():
+                    # Check duration limit
+                    if args.duration_limit and (time.time() - started) >= args.duration_limit:
+                        break
+                    
+                    # Execute traffic flow for configured --duration (e.g., 30s)
+                    try:
+                        refresh_count += 1
+                        last_result = flow_once(
+                            src_item, dst_item, python_bins, iperf_ok, proto, port,
+                            args.duration, args.payload_mode, payload_min, payload_max, args.traffic, sport)
+                    except Exception as e:
+                        last_result = {
+                            "error": str(e),
+                            "finished": False,
+                            "src_ip": src_item.get("ip"),
+                            "dst_ip": dst_item.get("ip"),
+                            "proto": proto
+                        }
+                    
+                    # Update results (thread-safe)
+                    with worker_results_lock:
+                        worker_results[job_id] = {
+                            "result": last_result,
+                            "refresh_count": refresh_count,
+                            "elapsed": time.time() - worker_start
+                        }
+                    
+                    # Check if we should continue
+                    if not args.keep_alive or _TEARDOWN_REQUESTED.is_set():
+                        break
+                    
+                    # Sleep/wait for keepalive-interval (e.g., 60s), checking teardown flag periodically
+                    for _ in range(args.keepalive_interval):
+                        if _TEARDOWN_REQUESTED.is_set():
+                            break
+                        time.sleep(1)  # Sleep in 1s increments to check teardown flag
+                
+                return job_id
+            
+            # Launch all workers as background threads using ThreadPoolExecutor
+            # Workers run autonomously without blocking or waiting for others
+            with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                log_line("Submitting %s autonomous worker%s to thread pool" % (
+                    len(all_jobs), "" if len(all_jobs) == 1 else "s"))
+                
+                # Submit all jobs to executor - they run autonomously
+                futures = [executor.submit(autonomous_worker, idx, job) 
+                          for idx, job in enumerate(all_jobs)]
+                
+                log_line("All workers submitted and running autonomously")
+                
+                # Wait for all workers to complete (or teardown signal)
+                for future in as_completed(futures):
+                    try:
+                        job_id = future.result()
+                    except Exception as e:
+                        log_line("Worker exception: %s" % str(e))
+            
+            # Collect results
+            results = []
+            log_line("All autonomous workers completed")
+            for job_id in sorted(worker_results.keys()):
+                info = worker_results[job_id]
+                if info["result"]:
+                    results.append(info["result"])
+                if info["refresh_count"] > 1:
+                    log_line("Flow %s: %s refresh cycle%s over %.1fs" % (
+                        job_id, info["refresh_count"], "" if info["refresh_count"] == 1 else "s",
+                        info["elapsed"]))
+            
+            return results
+
+        def execute_one_shot_mode():
+            """
+            One-shot mode: Original sequential batch execution.
+            Processes flows in waves with ThreadPoolExecutor.
+            """
+            results = []
+            started = time.time()
             for batch_index, wave in enumerate(waves, 1):
                 if _TEARDOWN_REQUESTED.is_set():
                     log_line("Stop requested, leaving remaining batches")
-                    stop_passes = True
                     break
                 pending = usable_jobs(wave)
                 if not pending:
@@ -1009,19 +1177,33 @@ def main():
                         for future in as_completed(futures):
                             results.append(future.result())
                 log_line("Batch %s/%s done" % (batch_index, batch_total))
-            if stop_passes or not args.keep_alive:
-                break
-            for _ in range(args.keepalive_interval):
-                if _TEARDOWN_REQUESTED.is_set():
-                    break
-                time.sleep(1)
-            if _TEARDOWN_REQUESTED.is_set():
-                log_line("Stop requested after pass %s" % pass_number)
-                break
-        if skipped_ips:
-            log_line("Removed %s VM%s after authentication failure: %s" % (
-                len(skipped_ips), "" if len(skipped_ips) == 1 else "s",
-                ", ".join(sorted(skipped_ips))))
+            
+            return results
+
+        # ===================================================================
+        # EXECUTION ROUTING: Keep-Alive vs One-Shot Mode
+        # ===================================================================
+        
+        if args.keep_alive:
+            # Route to dedicated keep-alive execution path
+            results = execute_keep_alive_mode()
+        else:
+            # Route to original one-shot sequential batch execution
+            results = execute_one_shot_mode()
+        
+        # ===================================================================
+        # POST-EXECUTION: Common cleanup and reporting (both modes)
+        # ===================================================================
+        
+        if skipped_vm_reasons:
+            reasons_count = {}
+            for ip, reason in skipped_vm_reasons.items():
+                reasons_count[reason] = reasons_count.get(reason, 0) + 1
+            
+            log_line("Removed %s VM%s after connection failures:" % (
+                len(skipped_vm_reasons), "" if len(skipped_vm_reasons) == 1 else "s"))
+            for reason, count in reasons_count.items():
+                log_line("  - %s VM%s due to %s" % (count, "" if count == 1 else "s", reason))
         print_summary(results)
         failures = [item for item in results if item["error"] or not item["finished"]]
         return 1 if failures else 0
