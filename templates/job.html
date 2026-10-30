@@ -959,7 +959,7 @@
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% elif info.get('job_kind') == 'ipfix' %}IPFIX Traffic Job{% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% elif info.get('job_kind') == 'ipfix' %}IPFIX Traffic Job{% elif info.get('job_kind') == 'sc_network_analyzer' %}SC Network Log Analyzer{% elif info.get('job_kind') == 'sc_security_analyzer' %}SC Security Reports Analyzer{% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -975,7 +975,7 @@
         </div>
       </div>
       <a id="dl" class="btn disabled" href="{{ url_for('download', run_id=run_id) }}" download>Download log</a>
-      <a class="btn secondary" href="{% if info.get('job_kind') == 'ipfix' %}{{ url_for('ipfix_traffic') }}{% else %}{{ url_for('index') }}{% endif %}">New run</a>
+      <a class="btn secondary" href="{% if info.get('job_kind') == 'ipfix' %}{{ url_for('ipfix_traffic') }}{% elif info.get('job_kind') in ('sc_network_analyzer', 'sc_security_analyzer') %}{{ url_for('sc_page') }}{% else %}{{ url_for('index') }}{% endif %}">New run</a>
     </div>
   </div>
 
@@ -997,7 +997,7 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
-  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix') %}
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer') %}
   <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Snapshot Run Info</strong>
     <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
@@ -1453,11 +1453,39 @@
         <div class="disk-summary-card-value">{{ summary.get('n', '—') }}</div>
       </div>
       {% endif %}
+      {% if summary.get('persistence_mode') == 'recurring' %}
+      <div class="disk-summary-card" style="border-left: 3px solid #8b5cf6;">
+        <div class="disk-summary-card-label">Mode</div>
+        <div class="disk-summary-card-value" style="color:#6d28d9;">Recurring ({{ summary.get('loop_count','?') }} loops)</div>
+      </div>
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Loop Gap</div>
+        <div class="disk-summary-card-value">{{ summary.get('loop_interval', '—') }}s</div>
+      </div>
+      {% elif summary.get('persistence_mode') in ('keepalive', 'duration') %}
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Keep-Alive Interval</div>
+        <div class="disk-summary-card-value">{{ summary.get('keepalive_interval', '—') }}s</div>
+      </div>
+      {% if summary.get('duration_limit') %}
+      <div class="disk-summary-card">
+        <div class="disk-summary-card-label">Duration Limit</div>
+        <div class="disk-summary-card-value">{{ summary.get('duration_limit') }}s</div>
+      </div>
+      {% endif %}
+      {% endif %}
     </div>
     
     <div style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem;">
       <strong style="font-size: 0.95rem;">Flow Execution Summary</strong>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
+      <!-- Progress bar -->
+      <div id="ipfix-progress-wrap" style="margin: 0.65rem 0 0.4rem; display:none;">
+        <div style="background:#e5e7eb; border-radius:999px; height:10px; overflow:hidden;">
+          <div id="ipfix-progress-bar" style="background:#3b82f6; height:100%; width:0%; transition:width 0.4s ease; border-radius:999px;"></div>
+        </div>
+        <div id="ipfix-progress-label" style="font-size:0.8rem; color:#6b7280; margin-top:0.25rem;"></div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.65rem; margin-top: 0.65rem;">
         <div class="disk-summary-card" style="border-left: 3px solid #3b82f6;">
           <div class="disk-summary-card-label">Expected Flows</div>
           <div class="disk-summary-card-value" id="ipfix-expected-flows">—</div>
@@ -1475,8 +1503,24 @@
           <div class="disk-summary-card-value" id="ipfix-failed-flows" style="color: #dc2626;">—</div>
         </div>
         <div class="disk-summary-card">
-          <div class="disk-summary-card-label">Completion Rate</div>
-          <div class="disk-summary-card-value" id="ipfix-completion-rate">—</div>
+          <div class="disk-summary-card-label">Batches Done</div>
+          <div class="disk-summary-card-value" id="ipfix-batches-done">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Elapsed</div>
+          <div class="disk-summary-card-value" id="ipfix-elapsed">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Rate (flows/min)</div>
+          <div class="disk-summary-card-value" id="ipfix-rate">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">ETA</div>
+          <div class="disk-summary-card-value" id="ipfix-eta">—</div>
+        </div>
+        <div class="disk-summary-card">
+          <div class="disk-summary-card-label">Success Rate</div>
+          <div class="disk-summary-card-value" id="ipfix-success-rate">—</div>
         </div>
       </div>
       <div style="margin-top: 0.75rem;">
@@ -1545,27 +1589,2395 @@
     </div>
     {% endif %}
 
-    <div id="ipfix-flow-stats" style="margin-top: 1rem; border-top: 1px solid var(--border-gray); padding-top: 0.75rem; display: none;">
-      <strong style="font-size: 0.95rem;">Flow Statistics (from log)</strong>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.65rem;">
-        <div class="disk-summary-card">
-          <div class="disk-summary-card-label">Total Flows</div>
-          <div class="disk-summary-card-value" id="ipfix-total-flows">—</div>
+    <div id="ipfix-flow-stats" style="display:none;"><!-- legacy compat --></div>
+  </div>
+  {% endif %}
+
+  {% if info.get('job_kind') == 'sc_network_analyzer' %}
+  {% set sc_summary = info.get('summary', {}) %}
+  {% set sc_result  = sc_summary.get('analysis_result', {}) %}
+  <div id="sc-analysis-wrap" style="margin-top:1rem;">
+
+  <!-- ══ Dashboard Controls Bar ═══════════════════════════════════════════ -->
+  <div id="scn-controls-bar">
+    <!-- Time Range -->
+    <div class="scn-ctrl-group">
+      <span class="scn-ctrl-label">Range</span>
+      <button class="scn-ctrl-btn" data-range="1"  onclick="scnSetRange(1)">1h</button>
+      <button class="scn-ctrl-btn" data-range="6"  onclick="scnSetRange(6)">6h</button>
+      <button class="scn-ctrl-btn" data-range="24" onclick="scnSetRange(24)">24h</button>
+      <button class="scn-ctrl-btn active" data-range="0" onclick="scnSetRange(0)">All</button>
+    </div>
+    <!-- Auto Refresh -->
+    <div class="scn-ctrl-group" style="border-left:1px solid #e5e7eb;padding-left:.8rem;">
+      <span class="scn-ctrl-label">Refresh</span>
+      <button class="scn-ctrl-btn" data-interval="5"  onclick="scnSetRefresh(5)">5s</button>
+      <button class="scn-ctrl-btn" data-interval="10" onclick="scnSetRefresh(10)">10s</button>
+      <button class="scn-ctrl-btn" data-interval="30" onclick="scnSetRefresh(30)">30s</button>
+      <button class="scn-ctrl-btn active" data-interval="0" onclick="scnSetRefresh(0)">Off</button>
+    </div>
+    <!-- Status -->
+    <div id="scn-refresh-status" style="display:none;">
+      <span id="scn-refresh-dot"></span>
+      <span id="scn-refresh-text">Auto-refreshing</span>
+    </div>
+    <!-- Job status badge -->
+    <div style="margin-left:auto;font-size:.77rem;color:#6b7280;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+      {% set _src = sc_result.get('source', {}) %}
+      {% if _src.get('analysis_since') or _src.get('analysis_until') %}
+      <span style="background:#fef3c7;color:#92400e;padding:.1rem .5rem;border-radius:4px;font-weight:600;white-space:nowrap;">
+        ⏱ {{ (_src.get('analysis_since') or 'start')[:16].replace('T',' ') }}Z
+        → {{ (_src.get('analysis_until') or 'now')[:16].replace('T',' ') }}{% if not _src.get('analysis_until') %}now{% endif %}
+      </span>
+      {% endif %}
+      <span>Job: </span>
+      <span style="font-weight:600;padding:.1rem .45rem;border-radius:4px;
+        {% set js = info.get('status','') %}
+        {% if js=='complete' %}background:#dcfce7;color:#15803d;
+        {% elif js in ('running','queued') %}background:#dbeafe;color:#1d4ed8;
+        {% elif js=='error' %}background:#fee2e2;color:#b91c1c;
+        {% else %}background:#f3f4f6;color:#374151;{% endif %}">
+        {{ info.get('status','—') }}
+      </span>
+      {% if info.get('timing') %}
+      <span style="color:#9ca3af;">{{ '%.0f'%(info['timing'].get('duration_sec',0)) }}s</span>
+      {% endif %}
+    </div>
+  </div>
+  <style>
+    /* ── Core layout ─────────────────────────────────────────────────────── */
+    .scn-sec{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.2rem;margin-bottom:1rem;}
+    .scn-sec-title{font-size:1rem;font-weight:700;margin:0 0 1rem;display:flex;align-items:center;gap:.5rem;}
+    .scn-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;}
+    /* ── Scrollable table container ──────────────────────────────────────── */
+    .table-scroll-container{max-height:450px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;}
+    .table-scroll-container table{border:none;}
+    .table-scroll-container thead th{position:sticky;top:0;z-index:2;background:#f3f4f6 !important;box-shadow:0 1px 0 #e5e7eb;}
+    .scn-kpi-card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem 1rem;transition:all 0.2s ease;cursor:default;position:relative;}
+    .scn-kpi-card.clickable{cursor:pointer;}
+    .scn-kpi-card.clickable:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.1);border-color:#3b82f6;}
+    .scn-kpi-label{font-size:.75rem;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem;}
+    .scn-kpi-value{font-size:1.45rem;font-weight:700;color:#111827;line-height:1;}
+    .scn-kpi-sub{font-size:.75rem;color:#9ca3af;margin-top:.2rem;}
+    .scn-canvas-wrap{position:relative;width:100%;overflow:hidden;}
+    .scn-canvas-wrap canvas{display:block;width:100%;height:auto;}
+    .scn-hbar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;}
+    .scn-hbar-lbl{min-width:110px;font-size:.8rem;color:#374151;flex-shrink:0;}
+    .scn-hbar-track{flex:1;background:#f3f4f6;border-radius:999px;height:16px;overflow:hidden;}
+    .scn-hbar-fill{height:100%;border-radius:999px;}
+    .scn-hbar-val{font-size:.8rem;font-weight:600;color:#374151;width:52px;text-align:right;flex-shrink:0;}
+    .scn-badge{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:700;}
+    .scn-warn{background:#fff5f5;border-color:#fca5a5;}
+
+    /* ── Dashboard Controls Bar ──────────────────────────────────────────── */
+    #scn-controls-bar{
+      position:sticky;top:60px;z-index:110;background:#fff;
+      border:1px solid #e2e8f0;border-radius:10px;padding:.55rem 1rem;
+      margin-bottom:.8rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;
+      box-shadow:0 2px 6px rgba(0,0,0,0.07);
+    }
+    .scn-ctrl-group{display:flex;align-items:center;gap:.35rem;}
+    .scn-ctrl-label{font-size:.72rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+    .scn-ctrl-btn{
+      padding:.22rem .55rem;border-radius:6px;border:1px solid #e5e7eb;background:#f8fafc;
+      font-size:.75rem;font-weight:600;color:#374151;cursor:pointer;transition:all .15s;
+      white-space:nowrap;
+    }
+    .scn-ctrl-btn:hover{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
+    .scn-ctrl-btn.active{background:#1e40af;border-color:#1e40af;color:#fff;}
+    #scn-refresh-status{font-size:.74rem;color:#6b7280;margin-left:auto;display:flex;align-items:center;gap:.35rem;}
+    #scn-refresh-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;
+      animation:scn-pulse 2s infinite;}
+    @keyframes scn-pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+    /* ── Backpressure / Health Panel ─────────────────────────────────────── */
+    .scn-bp-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin-top:.8rem;}
+    .scn-bp-card{border-radius:8px;padding:.65rem .8rem;border:1px solid #e5e7eb;background:#fff;}
+    .scn-bp-card.ok{border-left:4px solid #22c55e;background:#f0fdf4;}
+    .scn-bp-card.warn{border-left:4px solid #f59e0b;background:#fffbeb;}
+    .scn-bp-card.error{border-left:4px solid #dc2626;background:#fef2f2;}
+    .scn-bp-card.idle{border-left:4px solid #94a3b8;background:#f8fafc;}
+    .scn-bp-name{font-size:.75rem;font-weight:700;color:#374151;margin-bottom:.25rem;}
+    .scn-bp-value{font-size:.88rem;font-weight:700;color:#1f2937;margin-bottom:.2rem;}
+    .scn-bp-detail{font-size:.71rem;color:#6b7280;line-height:1.35;}
+    .scn-bp-bar{height:5px;border-radius:3px;background:#e5e7eb;margin-top:.35rem;overflow:hidden;}
+    .scn-bp-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+    .ok  .scn-bp-bar-fill{background:#22c55e;}
+    .warn .scn-bp-bar-fill{background:#f59e0b;}
+    .error .scn-bp-bar-fill{background:#dc2626;}
+    .idle .scn-bp-bar-fill{background:#94a3b8;}
+
+    /* ── E2E Latency cards ───────────────────────────────────────────────── */
+    .scn-lat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.6rem;margin-bottom:.7rem;}
+    .scn-lat-card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.55rem .7rem;text-align:center;}
+    .scn-lat-label{font-size:.7rem;color:#6b7280;font-weight:600;text-transform:uppercase;}
+    .scn-lat-val{font-size:1.3rem;font-weight:700;color:#1e40af;margin:.15rem 0;}
+    .scn-lat-unit{font-size:.68rem;color:#9ca3af;}
+
+    /* ── Error / Drop rate section ───────────────────────────────────────── */
+    .scn-drop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.7rem;}
+    .scn-drop-card{border:1px solid #e5e7eb;border-radius:8px;padding:.7rem .85rem;background:#fff;}
+    .scn-drop-header{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;}
+    .scn-drop-stage{font-weight:700;font-size:.83rem;color:#1f2937;}
+    .scn-drop-badge{font-size:.7rem;font-weight:700;padding:.1rem .38rem;border-radius:4px;}
+    .scn-drop-badge.clean{background:#dcfce7;color:#15803d;}
+    .scn-drop-badge.dirty{background:#fee2e2;color:#b91c1c;}
+    .scn-drop-badge.warn{background:#fef9c3;color:#854d0e;}
+    .scn-drop-stat{display:flex;justify-content:space-between;font-size:.77rem;color:#374151;padding:.12rem 0;border-bottom:1px solid #f3f4f6;}
+    .scn-drop-stat:last-child{border-bottom:none;}
+    .scn-drop-note{font-size:.72rem;color:#b91c1c;margin-top:.35rem;font-style:italic;}
+
+    /* ── Sticky action bar ───────────────────────────────────────────────── */
+    .scn-action-bar{position:sticky;top:65px;z-index:100;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+    .scn-action-bar-title{font-size:.9rem;font-weight:600;color:#374151;}
+    .scn-action-links{display:flex;gap:.5rem;flex-wrap:wrap;}
+    .scn-action-links .btn{font-size:.83rem;padding:.4rem .75rem;}
+
+    /* ── Tooltip system ──────────────────────────────────────────────────── */
+    #scn-tooltip{
+      position:fixed;z-index:9999;max-width:280px;background:#1e293b;color:#f1f5f9;
+      font-size:.78rem;line-height:1.45;padding:.55rem .8rem;border-radius:7px;
+      pointer-events:none;opacity:0;transition:opacity .15s ease;word-break:break-word;
+      box-shadow:0 4px 16px rgba(0,0,0,.25);
+    }
+    #scn-tooltip::before{
+      content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+      border:6px solid transparent;border-bottom-color:#1e293b;
+    }
+    #scn-tooltip.above::before{
+      bottom:auto;top:100%;border-bottom-color:transparent;border-top-color:#1e293b;
+    }
+    #scn-tooltip.visible{opacity:1;}
+
+    /* info icon */
+    .scn-info-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+      border-radius:50%;background:#6b7280;color:#fff;font-size:.65rem;font-weight:700;cursor:default;
+      flex-shrink:0;margin-left:.25rem;vertical-align:middle;}
+    .scn-info-icon:hover{background:#3b82f6;}
+
+    /* ── Error table pagination ──────────────────────────────────────────── */
+    .scn-error-filter{margin:.75rem 0;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;}
+    .scn-error-filter label{font-size:.82rem;font-weight:600;color:#374151;}
+    .scn-error-filter select{padding:.35rem .6rem;border:1px solid #e5e7eb;border-radius:6px;font-size:.82rem;background:#fff;cursor:pointer;}
+    .scn-error-pagination{display:flex;gap:.5rem;align-items:center;justify-content:center;margin-top:.75rem;}
+    .scn-error-pagination button{padding:.35rem .65rem;border:1px solid #e5e7eb;background:#fff;border-radius:6px;font-size:.8rem;cursor:pointer;transition:all .15s;}
+    .scn-error-pagination button:hover:not(:disabled){background:#f3f4f6;border-color:#3b82f6;}
+    .scn-error-pagination button:disabled{opacity:.4;cursor:not-allowed;}
+    .scn-error-pagination span{font-size:.82rem;color:#6b7280;}
+
+    /* flow-count badge inside error table */
+    .scn-flow-badge{display:inline-block;padding:.1rem .45rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;
+      border-radius:999px;font-size:.7rem;font-weight:700;white-space:nowrap;cursor:default;}
+
+    /* ── Receive Gaps severity colors ────────────────────────────────────── */
+    .scn-gap-mild  {background:#fffbeb;border-color:#fde68a;}
+    .scn-gap-warn  {background:#fff7ed;border-color:#fed7aa;}
+    .scn-gap-crit  {background:#fff1f2;border-color:#fecdd3;}
+    .scn-gap-mild .scn-gap-dur {color:#92400e;}
+    .scn-gap-warn .scn-gap-dur {color:#c2410c;}
+    .scn-gap-crit .scn-gap-dur {color:#be123c;}
+    /* Row-level severity (table) */
+    tr.scn-gap-mild td { background:#fffbeb; border-bottom:1px solid #fde68a; }
+    tr.scn-gap-warn td { background:#fff7ed; border-bottom:1px solid #fed7aa; }
+    tr.scn-gap-crit td { background:#fff1f2; border-bottom:1px solid #fecdd3; }
+    tr.scn-gap-mild .scn-gap-dur { color:#92400e; font-weight:700; }
+    tr.scn-gap-warn .scn-gap-dur { color:#c2410c; font-weight:700; }
+    tr.scn-gap-crit .scn-gap-dur { color:#be123c; font-weight:700; }
+    tr.scn-gap-mild:hover td { filter:brightness(.97); }
+    tr.scn-gap-warn:hover td { filter:brightness(.97); }
+    tr.scn-gap-crit:hover td { filter:brightness(.97); }
+
+    /* ── Hourly accordion ────────────────────────────────────────────────── */
+    .scn-hr-tbody tr.scn-hr-row{cursor:pointer;}
+    .scn-hr-tbody tr.scn-hr-row:hover td{background:#f0f9ff !important;}
+    .scn-hr-tbody tr.scn-hr-row td:first-child::before{
+      content:'▶';display:inline-block;font-size:.6rem;color:#9ca3af;margin-right:.4rem;
+      transition:transform .2s ease;vertical-align:middle;
+    }
+    .scn-hr-tbody tr.scn-hr-row.expanded td:first-child::before{transform:rotate(90deg);}
+    .scn-hr-subrow{display:none;}
+    .scn-hr-subrow.open{display:table-row;}
+    .scn-hr-subtable-wrap{background:#f8fafc;border-top:none;}
+    .scn-hr-subtable{width:100%;border-collapse:collapse;font-size:.74rem;}
+    .scn-hr-subtable th{background:#e0f2fe;color:#0369a1;padding:.32rem .5rem;border:1px solid #bae6fd;text-align:right;font-weight:600;}
+    .scn-hr-subtable th:first-child{text-align:left;}
+    .scn-hr-subtable td{padding:.3rem .5rem;border:1px solid #e0f2fe;text-align:right;color:#374151;}
+    .scn-hr-subtable td:first-child{text-align:left;font-family:monospace;font-size:.72rem;}
+    .scn-hr-subtable tr:nth-child(even) td{background:#f0f9ff;}
+    .scn-hr-loading{padding:.5rem .75rem;font-size:.78rem;color:#6b7280;font-style:italic;}
+
+    /* ── Column sorting ──────────────────────────────────────────────────── */
+    .sortable-th {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      white-space: nowrap;
+    }
+    .sortable-th:hover { background: #e8f0fe !important; color: #1e40af !important; }
+    .sortable-th .sort-ind {
+      display: inline-block;
+      width: 1em;
+      margin-left: .3em;
+      font-size: .72em;
+      vertical-align: middle;
+      opacity: .35;
+      transition: opacity .15s;
+    }
+    .sortable-th .sort-ind::after { content: "⇅"; }
+    .sortable-th[data-sort="asc"]  .sort-ind::after { content: "▲"; }
+    .sortable-th[data-sort="desc"] .sort-ind::after { content: "▼"; }
+    .sortable-th[data-sort="asc"]  .sort-ind,
+    .sortable-th[data-sort="desc"] .sort-ind { opacity: 1; color: #1e40af; }
+    .sortable-th[data-no-sort] { cursor: default; }
+    .sortable-th[data-no-sort]:hover { background: inherit !important; color: inherit !important; }
+    .sortable-th[data-no-sort] .sort-ind { display: none; }
+    /* ─────────────────────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .scn-action-bar{flex-direction:column;align-items:stretch;top:120px;}
+      .scn-action-links{justify-content:stretch;}
+      .scn-action-links .btn{flex:1;}
+    }
+  </style>
+
+  <!-- Floating tooltip element (single, reused) -->
+  <div id="scn-tooltip" role="tooltip"></div>
+
+  {% if sc_result %}
+  {% set totals = sc_result.get('totals', {}) %}
+  {% set rate   = sc_result.get('rate_analysis', {}) %}
+  {% set src    = sc_result.get('source', {}) %}
+  {% set identity = sc_result.get('identity', {}) %}
+  {% set errs   = sc_result.get('error_log_entries', []) %}
+  {% set hourly = sc_result.get('hourly', []) %}
+  {% set daily  = sc_result.get('daily', []) %}
+  {% set hist   = sc_result.get('flows_histogram', []) %}
+  {% set regime = sc_result.get('volume_regime', {}) %}
+  {% set gaps   = sc_result.get('receive_gaps_outside_100_to_130_seconds', []) %}
+  {% set samples= sc_result.get('samples', {}) %}
+  {% set lagsum = totals.get('publish_lag_ms_summary', {}) %}
+  {% set fsum   = totals.get('flows_summary', {}) %}
+  {% set fref   = sc_result.get('fetch', {}) %}
+
+  <!-- ══ Sticky Action Bar ══════════════════════════════════════════════════ -->
+  {% if sc_summary.get('output_dir') %}
+  <div class="scn-action-bar">
+    <div class="scn-action-bar-title">📥 Export Analysis Reports</div>
+    <div class="scn-action-links">
+      <a href="{{ url_for('download_sc_analysis_file', run_id=run_id, filename='network_receiver_analysis.json') }}" class="btn btn-secondary">JSON Report</a>
+      <a href="{{ url_for('download_sc_analysis_file', run_id=run_id, filename='network_receiver_hourly.csv') }}" class="btn btn-secondary">Hourly CSV</a>
+      <a href="{{ url_for('download_sc_analysis_file', run_id=run_id, filename='network_receiver_batches.csv') }}" class="btn btn-secondary">Batches CSV</a>
+      <a href="{{ url_for('download_sc_analysis_file', run_id=run_id, filename='network_receiver_analysis.md') }}" class="btn btn-secondary">Markdown</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ 0. Pipeline Overview (multi-service) ══════════════════════════════ -->
+  {% set pipeline = sc_result.get('pipeline') %}
+  {% if pipeline %}
+  {% set stages     = pipeline.get('stages', []) %}
+  {% set pl_recv    = pipeline.get('receiver', {}) %}
+  {% set pl_nats    = pipeline.get('nats', {}) %}
+  {% set pl_dp      = pipeline.get('data_processor', {}) %}
+  {% set pl_diis    = pipeline.get('diis', {}) %}
+  {% set pl_status  = pipeline.get('overall_status', 'unknown') %}
+  {% set pl_cause   = pipeline.get('root_cause', '') %}
+  {% set pl_alerts  = pipeline.get('alerts', []) %}
+  {% set pl_tput    = pipeline.get('throughput_comparison', []) %}
+
+  <div class="scn-sec" id="scn-pipeline-section">
+    <!-- ── Section title ── -->
+    <div class="scn-sec-title">
+      🔗 End-to-End Pipeline Status
+      <span style="margin-left:auto;font-size:.8rem;font-weight:500;padding:.2rem .6rem;border-radius:12px;
+        {% if pl_status=='healthy' %}background:#dcfce7;color:#15803d;
+        {% elif pl_status=='degraded' %}background:#fee2e2;color:#b91c1c;
+        {% else %}background:#fef9c3;color:#92400e;{% endif %}">
+        {% if pl_status=='healthy' %}✅ Healthy
+        {% elif pl_status=='degraded' %}❌ Degraded
+        {% else %}⚠ Warning{% endif %}
+      </span>
+    </div>
+
+    <!-- ── Alert banners ── -->
+    {% for alert in pl_alerts %}
+    <div style="display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .85rem;margin-bottom:.5rem;border-radius:8px;font-size:.84rem;
+      {% if alert.get('level')=='error' %}background:#fef2f2;border:1px solid #fca5a5;
+      {% else %}background:#fffbeb;border:1px solid #fcd34d;{% endif %}">
+      <span style="font-size:1.1rem;line-height:1.3;">
+        {% if alert.get('level')=='error' %}🚨{% else %}⚠️{% endif %}
+      </span>
+      <div>
+        <div style="font-weight:700;{% if alert.get('level')=='error' %}color:#b91c1c;{% else %}color:#92400e;{% endif %}">
+          [{{ alert.get('stage','') }}] {{ alert.get('title','') }}
         </div>
-        <div class="disk-summary-card">
-          <div class="disk-summary-card-label">Waves</div>
-          <div class="disk-summary-card-value" id="ipfix-waves">—</div>
+        <div style="color:#374151;margin-top:.15rem;font-size:.8rem;">{{ alert.get('detail','') }}</div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- ── Pipeline flow bar ── -->
+    <div style="display:flex;align-items:stretch;gap:0;margin-bottom:1rem;overflow-x:auto;
+                border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;">
+      {% for st in stages %}
+      {% set sc = st.get('status','idle') %}
+      <div style="flex:1;min-width:120px;padding:.6rem .5rem;text-align:center;
+                  border-right:{% if not loop.last %}1px solid #e5e7eb{% else %}none{% endif %};">
+        <div style="font-size:1.2rem;margin-bottom:.15rem;">{{ st.get('icon','📦') }}</div>
+        <div style="font-size:.73rem;font-weight:700;color:#1f2937;line-height:1.3;">{{ st.get('label','') }}</div>
+        <div style="margin:.25rem 0;font-size:.7rem;font-weight:600;
+            {% if sc=='ok' %}color:#15803d;{% elif sc=='error' %}color:#b91c1c;{% elif sc=='warn' %}color:#92400e;{% else %}color:#6b7280;{% endif %}">
+          {% if sc=='ok' %}✅ OK{% elif sc=='error' %}❌ Error{% elif sc=='warn' %}⚠ Warn{% else %}⏸ Idle{% endif %}
         </div>
-        <div class="disk-summary-card">
-          <div class="disk-summary-card-label">Injection Duration</div>
-          <div class="disk-summary-card-value" id="ipfix-duration">—</div>
+        <div style="font-size:.68rem;color:#6b7280;">{{ st.get('metric','') }}</div>
+        {% if st.get('note') %}
+        <div style="font-size:.65rem;color:#b91c1c;margin-top:.15rem;font-style:italic;">{{ st['note'] }}</div>
+        {% endif %}
+      </div>
+      {% if not loop.last %}
+      <div style="display:flex;align-items:center;padding:0;color:#9ca3af;font-size:1.0rem;background:#f8fafc;">→</div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- ── Root cause box ── -->
+    {% if pl_cause %}
+    <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:.6rem .85rem;
+                margin-bottom:1rem;font-size:.84rem;">
+      <strong>🔍 Root Cause:</strong> {{ pl_cause }}
+    </div>
+    {% endif %}
+
+    <!-- ── Cross-pipeline throughput comparison chart ── -->
+    {% if pl_tput %}
+    <details open style="margin-bottom:1rem;">
+      <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:#1e40af;padding:.3rem 0;list-style:none;">
+        📊 Cross-Pipeline Throughput Comparison
+      </summary>
+      <div style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;">
+        <!-- Bar chart -->
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem;">
+          <div style="font-size:.78rem;color:#6b7280;margin-bottom:.5rem;">Stage throughput (log scale)</div>
+          <canvas id="scn-chart-pipeline-tput" style="width:100%;height:200px;display:block;"></canvas>
         </div>
-        <div class="disk-summary-card">
-          <div class="disk-summary-card-label">Success Rate</div>
-          <div class="disk-summary-card-value" id="ipfix-success-rate">—</div>
+        <!-- Table -->
+        <div class="table-scroll-container" style="max-height:260px;">
+          <table data-sortable style="width:100%;border-collapse:collapse;font-size:.8rem;">
+            <thead><tr>
+              <th style="text-align:left;padding:.3rem .5rem;border-bottom:2px solid #e5e7eb;color:#374151;">Stage</th>
+              <th style="text-align:right;padding:.3rem .5rem;border-bottom:2px solid #e5e7eb;color:#374151;">Value</th>
+              <th style="text-align:left;padding:.3rem .5rem;border-bottom:2px solid #e5e7eb;color:#374151;">Unit</th>
+            </tr></thead>
+            <tbody>
+            {% for row in pl_tput %}
+            <tr style="border-bottom:1px solid #f3f4f6;">
+              <td style="padding:.3rem .5rem;color:#1f2937;font-weight:500;">{{ row.get('stage') }}</td>
+              <td style="padding:.3rem .5rem;text-align:right;font-family:monospace;color:#1e40af;">{{ '{:,}'.format(row.get('value',0)) }}</td>
+              <td style="padding:.3rem .5rem;color:#6b7280;">{{ row.get('unit') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+    {% endif %}
+
+    <!-- ── Per-service detail cards ── -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.8rem;">
+
+      <!-- ── Receiver card ── -->
+      {% if pl_recv %}
+      <div style="background:#fff;border:1px solid #dbeafe;border-radius:8px;padding:.8rem;border-top:3px solid #3b82f6;">
+        <div style="font-weight:700;font-size:.86rem;color:#1e40af;margin-bottom:.5rem;">📥 Network Log Receiver</div>
+        <div style="font-size:.8rem;color:#374151;line-height:1.9;">
+          <div>Flows from PE: <strong>{{ '{:,}'.format(pl_recv.get('flows',0)) }}</strong></div>
+          <div>Batches received: <strong>{{ pl_recv.get('batches_received',0) }}</strong></div>
+          <div>Batches published: <strong>{{ pl_recv.get('batches_published',0) }}</strong></div>
+          {% if pl_recv.get('publish_ratio') is not none %}
+          <div>Publish ratio: <strong>{{ '%.1f'%(pl_recv.get('publish_ratio',0)*100) }}%</strong></div>
+          {% endif %}
+        </div>
+        {% if pl_recv.get('errors') %}
+        <div style="margin-top:.5rem;padding:.4rem .55rem;background:#fef2f2;border-radius:6px;font-size:.76rem;color:#b91c1c;">
+          {% for e in pl_recv.get('errors',[])[:3] %}
+          <div style="margin-bottom:.15rem;">⚠ {{ e[:90] }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- ── NATS card ── -->
+      {% if pl_nats.get('available') %}
+      <div style="background:#fff;border:1px solid #ede9fe;border-radius:8px;padding:.8rem;border-top:3px solid #7c3aed;">
+        <div style="font-weight:700;font-size:.86rem;color:#7c3aed;margin-bottom:.5rem;">📡 NATS JetStream</div>
+        <div style="font-size:.8rem;color:#374151;line-height:1.9;">
+          <div>IPFIX stream msgs: <strong>{{ '{:,}'.format(pl_nats.get('stream_msgs',0)) }}</strong></div>
+          <div>Total streams: <strong>{{ pl_nats.get('total_streams',0) }}</strong></div>
+          <div>Cluster leader: <strong>{{ pl_nats.get('cluster_leader') or '—' }}</strong></div>
+          {% if pl_nats.get('dns_failures', 0) > 0 %}
+          <div style="color:#b91c1c;font-weight:600;">⚠ DNS routing broken: {{ pl_nats.get('dns_failures') }} node(s) unresolvable — cluster split</div>
+          {% elif pl_nats.get('route_errors', 0) > 0 %}
+          <div style="color:#d97706;">⚠ Route errors (startup): {{ pl_nats.get('route_errors') }}</div>
+          {% endif %}
+          {% if pl_nats.get('consumer_offline') %}
+          <div style="color:#d97706;">⚠ IPFIXConsumer1 was offline (NDP subscription retries triggered)</div>
+          {% endif %}
+        </div>
+        {% if pl_nats.get('active_streams') %}
+        <details style="margin-top:.5rem;">
+          <summary style="cursor:pointer;font-size:.76rem;color:#6b7280;list-style:none;">▶ Top active streams ({{ pl_nats.get('active_streams')|length }})</summary>
+          <div class="table-scroll-container" style="max-height:180px;margin-top:.4rem;">
+            <table data-sortable style="width:100%;border-collapse:collapse;font-size:.74rem;">
+              <thead><tr>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;color:#374151;">Stream</th>
+                <th style="text-align:right;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;color:#374151;">Msgs</th>
+              </tr></thead>
+              <tbody>
+              {% for st2 in pl_nats.get('active_streams', []) %}
+              <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:.2rem .4rem;font-family:monospace;color:#1f2937;">{{ st2.get('name','') }}</td>
+                <td style="padding:.2rem .4rem;text-align:right;color:#1e40af;">{{ '{:,}'.format(st2.get('msgs',0)) }}</td>
+              </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        {% endif %}
+        {% if pl_nats.get('errors') or pl_nats.get('warnings') %}
+        <div style="margin-top:.5rem;padding:.4rem .55rem;background:#fef2f2;border-radius:6px;font-size:.76rem;color:#b91c1c;">
+          {% for e in (pl_nats.get('errors',[]) + pl_nats.get('warnings',[]))[:3] %}
+          <div style="margin-bottom:.15rem;">⚠ {{ e[:90] }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- ── Data Processor card ── -->
+      {% if pl_dp.get('available') %}
+      {% set dp_all_drop = pl_dp.get('all_messages_dropped', False) %}
+      <div style="background:#fff;border:1px solid {% if dp_all_drop %}#fecaca{% else %}#d1fae5{% endif %};
+                  border-radius:8px;padding:.8rem;border-top:3px solid {% if dp_all_drop %}#dc2626{% else %}#059669{% endif %};">
+        <div style="font-weight:700;font-size:.86rem;color:{% if dp_all_drop %}#dc2626{% else %}#059669{% endif %};margin-bottom:.5rem;">
+          ⚙️ Network Log Data Processor
+        </div>
+        <div style="font-size:.8rem;color:#374151;line-height:1.9;">
+          <div>Pipeline: <strong>{{ pl_dp.get('pipeline') or '—' }}</strong></div>
+          <div>Stream/Consumer: <strong>{{ pl_dp.get('stream') or '—' }} / {{ pl_dp.get('consumer') or '—' }}</strong></div>
+          <div>Subject: <strong style="font-family:monospace;">{{ pl_dp.get('subject') or '—' }}</strong></div>
+          <div>Workers: <strong>{{ pl_dp.get('workers') or '—' }}</strong></div>
+          <div>Subscribed: <strong>{{ '✅ yes' if pl_dp.get('subscription_active') else '❌ no' }}</strong></div>
+          {% if pl_dp.get('total_replicas', 0) > 0 %}
+          <div>Replicas subscribed:
+            <strong {% if pl_dp.get('subscribed_replicas',0) < pl_dp.get('total_replicas',0) %}style="color:#b91c1c;"{% endif %}>
+              {{ pl_dp.get('subscribed_replicas',0) }} / {{ pl_dp.get('total_replicas',0) }}
+            </strong>
+          </div>
+          {% endif %}
+          {% if pl_dp.get('subscription_failures', 0) > 0 %}
+          <div style="color:#d97706;">⚠ {{ pl_dp.get('subscription_failures') }} subscription failure(s) — consumer was offline</div>
+          {% endif %}
+          {% if pl_dp.get('no_responders_errors', 0) > 0 %}
+          <div style="color:#b91c1c;font-weight:600;">⚠ {{ pl_dp.get('no_responders_errors') }} 'no responders' errors — replica(s) cannot reach NATS</div>
+          {% endif %}
+          {# ── Consumed / processed / dropped ────────────────────────────── #}
+          {% if pl_dp.get('msgs_consumed') is not none %}
+          <div>Messages consumed: <strong>{{ pl_dp.get('msgs_consumed') }}</strong></div>
+          {% if pl_dp.get('msgs_successfully_processed') is not none and pl_dp.get('msgs_successfully_processed', 0) > 0 %}
+          <div style="color:#15803d;">✔ {{ pl_dp.get('msgs_successfully_processed') }} processed successfully</div>
+          {% endif %}
+          {% if pl_dp.get('msg_terminated', 0) > 0 %}
+          <div>Dropped (this run): <strong style="color:#b91c1c;">{{ pl_dp.get('msg_terminated') }}</strong>
+            <span style="font-size:.74rem;color:#6b7280;">(terminated/error)</span></div>
+          {% endif %}
+          {% else %}
+          <div>Messages consumed: <strong>{{ pl_dp.get('msg_terminated',0) }}</strong>
+            <span style="font-size:.74rem;color:#6b7280;">(terminated/dropped)</span></div>
+          {% endif %}
+          {% if pl_dp.get('msg_terminated_outside_window', 0) > 0 %}
+          <div style="font-size:.74rem;color:#6b7280;margin-top:.15rem;">
+            ℹ {{ pl_dp.get('msg_terminated_outside_window') }} terminated event(s) from earlier runs — excluded from this report
+          </div>
+          {% endif %}
+          {% if pl_dp.get('termination_rate_per_hour') and pl_dp.get('msg_terminated', 0) > 0 %}
+          <div>Drop rate: <strong>{{ pl_dp.get('termination_rate_per_hour') }}/hr</strong></div>
+          {% endif %}
+        </div>
+
+        <!-- Error code breakdown -->
+        {% if pl_dp.get('error_codes') %}
+        <div style="margin-top:.55rem;padding:.4rem .55rem;
+                    background:{% if dp_all_drop %}#fef2f2{% else %}#fffbeb{% endif %};
+                    border-radius:6px;font-size:.76rem;">
+          <div style="font-weight:700;color:#374151;margin-bottom:.3rem;">Error Breakdown:</div>
+          {% for code, cnt in pl_dp.get('error_codes',{}).items() %}
+          <div style="display:flex;justify-content:space-between;padding:.1rem 0;">
+            <span style="color:#b91c1c;font-family:monospace;">{{ code }}</span>
+            <span style="font-weight:700;color:#1f2937;">{{ cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Failing agent IDs -->
+        {% if pl_dp.get('failing_agent_ids') %}
+        <div style="margin-top:.5rem;padding:.4rem .55rem;background:#fff7ed;border-radius:6px;font-size:.74rem;">
+          <div style="font-weight:700;color:#92400e;margin-bottom:.25rem;">
+            ⚠ {{ pl_dp.get('unique_failing_agent_ids',0) }} failing agent ID(s):
+          </div>
+          {% for aid, cnt in pl_dp.get('failing_agent_ids',{}).items() %}
+          <div style="display:flex;justify-content:space-between;font-family:monospace;color:#374151;padding:.1rem 0;">
+            <span style="font-size:.72rem;">{{ aid }}</span>
+            <span style="color:#92400e;font-weight:600;">× {{ cnt }}</span>
+          </div>
+          {% endfor %}
+          <div style="color:#6b7280;font-size:.71rem;margin-top:.25rem;font-family:sans-serif;">
+            Register this cluster with the enrichment service to fix flow processing.
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Sample termination events -->
+        {% if pl_dp.get('termination_events') %}
+        <details style="margin-top:.5rem;">
+          <summary style="cursor:pointer;font-size:.76rem;color:#6b7280;list-style:none;">▶ Termination events ({{ pl_dp.get('msg_terminated',0) }} this run
+            {%- if pl_dp.get('msg_terminated_outside_window', 0) > 0 %}, +{{ pl_dp.get('msg_terminated_outside_window') }} historical{% endif -%}
+            , showing {{ pl_dp.get('termination_events',[])|length }})</summary>
+          <div class="table-scroll-container" style="max-height:200px;margin-top:.4rem;">
+            <table data-sortable style="width:100%;border-collapse:collapse;font-size:.72rem;">
+              <thead><tr>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Timestamp</th>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Error Code</th>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Agent ID</th>
+              </tr></thead>
+              <tbody>
+              {% for ev in pl_dp.get('termination_events', []) %}
+              <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:.2rem .4rem;color:#6b7280;">{{ ev.get('ts','')[:19] }}</td>
+                <td style="padding:.2rem .4rem;color:#b91c1c;font-family:monospace;">{{ ev.get('code','') }}</td>
+                <td style="padding:.2rem .4rem;color:#374151;font-family:monospace;font-size:.68rem;">{{ ev.get('agent_id','') }}</td>
+              </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- ── DIIS card ── -->
+      {% if pl_diis.get('available') %}
+      <div style="background:#fff;border:1px solid #fee2e2;border-radius:8px;padding:.8rem;border-top:3px solid #dc2626;">
+        <div style="font-weight:700;font-size:.86rem;color:#dc2626;margin-bottom:.5rem;">🗄 DIIS → ClickHouse</div>
+        <div style="font-size:.8rem;color:#374151;line-height:1.9;">
+          <div>CH table: <span style="font-family:monospace;font-size:.74rem;">{{ pl_diis.get('ch_table') or '—' }}</span></div>
+          <div>CH inserts:
+            <strong {% if pl_diis.get('ch_inserts',0)==0 %}style="color:#b91c1c;"{% endif %}>
+              {{ '{:,}'.format(pl_diis.get('ch_inserts',0)) }} rows
+            </strong>
+            {% if pl_diis.get('metrics_completed', 0) > 0 and pl_diis.get('ch_inserts',0) == 0 %}
+            <span style="color:#b91c1c;font-size:.75rem;"> (parser miss — {{ pl_diis.get('metrics_completed') }} completions seen)</span>
+            {% elif pl_diis.get('metrics_completed', 0) > 0 %}
+            <span style="font-size:.75rem;color:#6b7280;"> ({{ pl_diis.get('metrics_completed') }} batches completed)</span>
+            {% endif %}
+          </div>
+          <div>CH open connections: <strong {% if pl_diis.get('ch_max_open_connections',0)==0 %}style="color:#b91c1c;"{% endif %}>
+            {{ pl_diis.get('ch_max_open_connections',0) }}
+          </strong></div>
+          <div>CH idle connections: <strong>{{ pl_diis.get('ch_max_idle_connections',0) }}</strong></div>
+          <div>gRPC port: <strong>{{ pl_diis.get('grpc_port') or '—' }}</strong></div>
+          <div>Gauge updates: <strong>{{ '{:,}'.format(pl_diis.get('gauge_updates',0)) }}</strong></div>
+          {% if pl_diis.get('per_flow_byte_missing', 0) > 0 %}
+          <div style="color:#d97706;">⚠ PerFlowByte metric missing: {{ '{:,}'.format(pl_diis.get('per_flow_byte_missing',0)) }} flows</div>
+          {% endif %}
+          {% if pl_diis.get('ch_not_alive_count', 0) > 0 %}
+          <div style="color:#b91c1c;">⚠ CH not alive: {{ pl_diis.get('ch_not_alive_count') }} readiness failure(s)</div>
+          {% endif %}
+        </div>
+
+        <!-- CH Connection gauge mini-chart -->
+        {% if pl_diis.get('ch_open_series') %}
+        <div style="margin-top:.6rem;">
+          <div style="font-size:.74rem;color:#6b7280;margin-bottom:.25rem;">CH open connections over time:</div>
+          <canvas id="scn-chart-diis-ch-conn" style="width:100%;height:80px;display:block;"></canvas>
+        </div>
+        {% endif %}
+
+        {% if pl_diis.get('rate_limits') %}
+        <details style="margin-top:.5rem;">
+          <summary style="cursor:pointer;font-size:.76rem;color:#6b7280;list-style:none;">▶ gRPC rate limits ({{ pl_diis.get('rate_limits',{})|length }} methods)</summary>
+          <div class="table-scroll-container" style="max-height:160px;margin-top:.4rem;">
+            <table data-sortable style="width:100%;border-collapse:collapse;font-size:.72rem;">
+              <thead><tr>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Method</th>
+                <th style="text-align:right;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Count</th>
+                <th style="text-align:left;padding:.2rem .4rem;border-bottom:1px solid #e5e7eb;">Unit</th>
+              </tr></thead>
+              <tbody>
+              {% for method, cfg in pl_diis.get('rate_limits',{}).items() %}
+              <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:.2rem .4rem;font-family:monospace;color:#374151;font-size:.68rem;">{{ method }}</td>
+                <td style="padding:.2rem .4rem;text-align:right;">{{ cfg.get('count',0) }}</td>
+                <td style="padding:.2rem .4rem;color:#6b7280;">{{ cfg.get('unit','') }}</td>
+              </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        {% endif %}
+
+        {% if pl_diis.get('errors') %}
+        <div style="margin-top:.5rem;padding:.4rem .55rem;background:#fef2f2;border-radius:6px;font-size:.76rem;color:#b91c1c;">
+          {% for e in pl_diis.get('errors',[])[:3] %}
+          <div style="margin-bottom:.15rem;">⚠ {{ e[:90] }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>{# /grid #}
+
+    <!-- ── Backpressure & Health Panel ── -->
+    {% set bp = pipeline.get('backpressure', {}) %}
+    {% if bp.get('components') %}
+    <div style="margin-top:.9rem;border-top:1px solid #e5e7eb;padding-top:.9rem;">
+      <div style="font-size:.82rem;font-weight:700;color:#374151;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;">
+        ⚡ Component Health
+        <span style="font-size:.73rem;font-weight:500;padding:.12rem .45rem;border-radius:10px;
+          {% if bp.get('overall')=='ok' %}background:#dcfce7;color:#15803d;
+          {% elif bp.get('overall')=='warn' %}background:#fef9c3;color:#92400e;
+          {% else %}background:#fee2e2;color:#b91c1c;{% endif %}">
+          {{ bp.get('overall','?')|upper }}
+        </span>
+      </div>
+      <div class="scn-bp-panel">
+        {% for comp in bp.get('components', []) %}
+        <div class="scn-bp-card {{ comp.get('status','idle') }}">
+          <div class="scn-bp-name">{{ comp.get('icon','') }} {{ comp.get('name','') }}</div>
+          <div class="scn-bp-value">{{ comp.get('value','') }}</div>
+          <div class="scn-bp-detail">{{ comp.get('detail','') }}</div>
+          <div class="scn-bp-bar">
+            <div class="scn-bp-bar-fill" style="width:{{ comp.get('pct', 0)|int }}%;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# /scn-pipeline-section #}
+  {% endif %}{# /pipeline #}
+
+  <!-- ══ 0b. E2E Latency Tracking ══════════════════════════════════════════ -->
+  {% set e2e = (sc_result.get('pipeline') or {}).get('e2e_latency', {}) %}
+  {% if e2e and e2e.get('recv_to_nats_ms') %}
+  {% set lat = e2e.get('recv_to_nats_ms', {}) %}
+  <div class="scn-sec" id="scn-e2e-latency-section">
+    <div class="scn-sec-title">
+      ⏱ End-to-End Latency Tracking
+      {% if not e2e.get('full_e2e_available') %}
+      <span style="font-size:.72rem;font-weight:500;background:#fef9c3;color:#92400e;padding:.12rem .45rem;border-radius:8px;margin-left:.5rem;">
+        ⚠ Partial — Receiver → NATS only
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Latency percentile cards -->
+    <div class="scn-lat-grid">
+      {% for label, val in [('min', lat.get('min')), ('p50', lat.get('p50')), ('p95', lat.get('p95')), ('p99', lat.get('p99')), ('max', lat.get('max'))] %}
+      <div class="scn-lat-card" {% if label=='p99' %}style="border-color:#f59e0b;background:#fffbeb;"{% elif label=='max' %}style="border-color:#fca5a5;"{% endif %}>
+        <div class="scn-lat-label">{{ label }}</div>
+        <div class="scn-lat-val">{{ val if val is not none else '—' }}</div>
+        <div class="scn-lat-unit">ms</div>
+      </div>
+      {% endfor %}
+      {% if e2e.get('ndp_avg_processing_interval_sec') %}
+      <div class="scn-lat-card" style="border-color:#ddd6fe;">
+        <div class="scn-lat-label">NDP Interval</div>
+        <div class="scn-lat-val" style="color:#7c3aed;">{{ e2e.get('ndp_avg_processing_interval_sec') }}</div>
+        <div class="scn-lat-unit">sec avg</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Latency bar chart -->
+    <div style="margin-bottom:.6rem;">
+      <canvas id="scn-chart-e2e-lat" style="width:100%;height:90px;display:block;"></canvas>
+    </div>
+
+    {% if e2e.get('note') %}
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:.5rem .75rem;font-size:.79rem;color:#6b7280;">
+      ℹ️ {{ e2e['note'] }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ══ 0c. Error & Drop Rate ══════════════════════════════════════════════ -->
+  {% set ed = (sc_result.get('pipeline') or {}).get('error_drops', {}) %}
+  {% if ed and ed.get('stages') %}
+  <div class="scn-sec" id="scn-error-drops-section">
+    <div class="scn-sec-title">
+      🚫 Error & Drop Rate Visibility
+      <span style="margin-left:auto;font-size:.78rem;font-weight:500;color:#6b7280;">
+        Total drops: <strong style="color:{% if ed.get('total_drops',0)>0 %}#dc2626{% else %}#15803d{% endif %};">{{ ed.get('total_drops',0) }}</strong>
+        &nbsp;|&nbsp; Total errors: <strong style="color:{% if ed.get('total_errors',0)>0 %}#f59e0b{% else %}#15803d{% endif %};">{{ ed.get('total_errors',0) }}</strong>
+        &nbsp;|&nbsp; DLQ: <strong>{{ ed.get('dlq_events',0) }}</strong>
+      </span>
+    </div>
+
+    <!-- Per-stage drop counter cards -->
+    <div class="scn-drop-grid" style="margin-bottom:.9rem;">
+      {% for stage in ed.get('stages', []) %}
+      {% set has_drops = stage.get('drops', 0) > 0 or stage.get('errors', 0) > 0 %}
+      <div class="scn-drop-card">
+        <div class="scn-drop-header">
+          <span style="font-size:1.1rem;">{{ stage.get('icon','') }}</span>
+          <span class="scn-drop-stage">{{ stage.get('stage','') }}</span>
+          <span class="scn-drop-badge {{ 'dirty' if stage.get('drop_rate_pct',0) >= 50 else ('warn' if stage.get('drop_rate_pct',0) > 0 or stage.get('errors',0) > 0 else 'clean') }}">
+            {{ '%.1f'%stage.get('drop_rate_pct',0) }}% drops
+          </span>
+        </div>
+        <div class="scn-drop-stat"><span>Errors</span><strong>{{ stage.get('errors',0) }}</strong></div>
+        <div class="scn-drop-stat"><span>Drops</span><strong>{{ stage.get('drops',0) }}</strong></div>
+        <div class="scn-drop-stat"><span>Total processed</span><strong>{{ stage.get('total',0) }}</strong></div>
+        {% if stage.get('dlq', 0) > 0 %}
+        <div class="scn-drop-stat"><span>DLQ events</span><strong style="color:#b91c1c;">{{ stage.get('dlq',0) }}</strong></div>
+        {% endif %}
+        {% if stage.get('note') %}
+        <div class="scn-drop-note">{{ stage['note'] }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Drop rate bar chart -->
+    <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.7rem;">
+      <div style="font-size:.76rem;color:#6b7280;margin-bottom:.4rem;">Drop rate % per stage</div>
+      <canvas id="scn-chart-drop-rates" style="width:100%;height:100px;display:block;"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ 1. KPI Overview ════════════════════════════════════════════════════ -->
+  <div class="scn-sec">
+    <div class="scn-sec-title">📊 Overview — {{ (src.get('log_start') or '')[:10] }} → {{ (src.get('log_end') or '')[:10] }}</div>
+    <div class="scn-kpi">
+      <div class="scn-kpi-card" style="border-left:4px solid #3b82f6;"
+           data-tooltip="Total batches received from the network log receiver. 'Published' = batches that were successfully forwarded to the NATS subject.">
+        <div class="scn-kpi-label">Batches Received</div>
+        <div class="scn-kpi-value">{{ '{:,}'.format(totals.get('batches_received',0)) }}</div>
+        <div class="scn-kpi-sub">{{ '{:,}'.format(totals.get('batches_published',0)) }} published</div>
+      </div>
+      {% set unpaired = totals.get('batches_received',0) - totals.get('batches_published',0) %}
+      <div class="scn-kpi-card clickable" data-scroll-to="scn-identity-section"
+           data-tooltip="Batches that were received but have no matching publish record. Formula: Received − Published. A non-zero value may indicate NATS publish failures or dropped messages."
+           style="border-left:4px solid {% if unpaired>0 %}#dc2626{% else %}#059669{% endif %};" title="Click to view batch identity details">
+        <div class="scn-kpi-label">Unpaired Batches</div>
+        <div class="scn-kpi-value" style="color:{% if unpaired>0 %}#dc2626{% else %}#059669{% endif %};">{{ unpaired }}</div>
+        <div class="scn-kpi-sub">{{ '%.1f'%((unpaired/((totals.get('batches_received') or 1)))*100) }}% loss rate</div>
+      </div>
+      <div class="scn-kpi-card" style="border-left:4px solid #8b5cf6;"
+           data-tooltip="Cumulative flow records across all published batches. One 'flow' = one IPFIX/netflow record describing a network connection.">
+        <div class="scn-kpi-label">Total Flows</div>
+        <div class="scn-kpi-value">{{ '{:,}'.format(totals.get('flows',0)) }}</div>
+        <div class="scn-kpi-sub">{{ '%.3f'%totals.get('gibibytes',0) }} GiB</div>
+      </div>
+      <div class="scn-kpi-card" style="border-left:4px solid #f59e0b;"
+           data-tooltip="Publish lag = time between a batch being received and it being published to NATS. Median is the 50th percentile; p99 is the 99th percentile (worst 1% of batches).">
+        <div class="scn-kpi-label">Lag Median</div>
+        <div class="scn-kpi-value">{{ lagsum.get('median','—') }} ms</div>
+        <div class="scn-kpi-sub">p99: {{ lagsum.get('p99','—') }} ms</div>
+      </div>
+      <div class="scn-kpi-card"
+           data-tooltip="Average number of flow records published per minute across the entire log window. Calculated as total flows ÷ span_minutes.">
+        <div class="scn-kpi-label">Avg Flows/min</div>
+        <div class="scn-kpi-value">{{ '%.0f'%rate.get('avg_flows_per_minute',0) }}</div>
+        <div class="scn-kpi-sub">span: {{ '{:,}'.format(rate.get('span_minutes',0)|int) }} min</div>
+      </div>
+      <div class="scn-kpi-card" style="border-left:4px solid #f59e0b;"
+           data-tooltip="The single 1-minute window with the highest flow count. Useful for identifying traffic spikes or bursts that may have triggered NATS payload limit errors.">
+        <div class="scn-kpi-label">Peak Batch</div>
+        <div class="scn-kpi-value">{{ '{:,}'.format((rate.get('peak_minute') or {}).get('flows',0)) }}</div>
+        <div class="scn-kpi-sub">flows @ {{ ((rate.get('peak_minute') or {}).get('minute',''))[:13] }}</div>
+      </div>
+      <div class="scn-kpi-card"
+           data-tooltip="Total number of structured JSON log lines parsed. 'info' = informational entries; 'err' = error-level entries that indicate failures.">
+        <div class="scn-kpi-label">JSON Lines</div>
+        <div class="scn-kpi-value">{{ '{:,}'.format(src.get('json_lines',0)) }}</div>
+        <div class="scn-kpi-sub">info:{{ (src.get('levels') or {}).get('info',0) }} err:{{ (src.get('levels') or {}).get('error',0) }}</div>
+      </div>
+      <div class="scn-kpi-card clickable" data-scroll-to="scn-errors-section"
+           data-tooltip="Count of error/warning-level log entries found. These typically indicate NATS publish failures (e.g. 'maximum payload exceeded'). Click to jump to the error table."
+           style="border-left:4px solid {% if errs|length>0 %}#dc2626{% else %}#059669{% endif %};" title="Click to view error log entries">
+        <div class="scn-kpi-label">Errors</div>
+        <div class="scn-kpi-value" style="color:{% if errs|length>0 %}#dc2626{% else %}#059669{% endif %};">{{ errs|length }}</div>
+        <div class="scn-kpi-sub">log entries</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 2. Hourly Flows Chart (Canvas) ════════════════════════════════════ -->
+  {% if hourly %}
+  <div class="scn-sec">
+    <div class="scn-sec-title">📈 Hourly Flow Rate &amp; Publish Lag Over Time</div>
+    <div class="scn-canvas-wrap" style="height:260px;">
+      <canvas id="scn-chart-hourly" style="width:100%;height:260px;"></canvas>
+    </div>
+    <div style="display:flex;gap:1.2rem;margin-top:.6rem;font-size:.78rem;flex-wrap:wrap;">
+      <span><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px;margin-right:.3rem;vertical-align:middle;"></span>Flows (bars)</span>
+      <span><span style="display:inline-block;width:24px;height:3px;background:#f59e0b;margin-right:.3rem;vertical-align:middle;"></span>Lag median (ms, right axis)</span>
+      {% if regime.get('jump') %}
+      <span><span style="display:inline-block;width:2px;height:12px;background:#dc2626;margin-right:.3rem;vertical-align:middle;"></span>Volume jump @ {{ (regime.get('jump') or {}).get('to_hour','')[:13] }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ 3. Daily Breakdown Bars (Canvas) ══════════════════════════════════ -->
+  {% if daily %}
+  <div class="scn-sec">
+    <div class="scn-sec-title">📅 Daily Aggregated Flows &amp; Bytes</div>
+    <div class="scn-canvas-wrap" style="height:200px;">
+      <canvas id="scn-chart-daily" style="width:100%;height:200px;"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ 4. Two-column: Lag Percentiles + Batch Size Histogram ═════════════ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+
+    <!-- Lag percentile visual -->
+    <div class="scn-sec" style="margin-bottom:0;">
+      <div class="scn-sec-title">⏱ Publish Lag Percentiles (ms)</div>
+      {% if lagsum %}
+      <div class="scn-canvas-wrap" style="height:160px;">
+        <canvas id="scn-chart-lag-perc" style="width:100%;height:160px;"></canvas>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-top:.65rem;font-size:.78rem;text-align:center;">
+        {% for label, val in [('min', lagsum.get('min','—')), ('p50', lagsum.get('median','—')), ('p90', lagsum.get('p90','—')), ('p95', lagsum.get('p95','—')), ('p99', lagsum.get('p99','—')), ('max', lagsum.get('max','—'))] %}
+        <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:.35rem;">
+          <div style="color:#6b7280;font-size:.7rem;">{{ label }}</div>
+          <div style="font-weight:700;color:#111827;">{{ val }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Batch size histogram -->
+    {% if hist %}
+    <div class="scn-sec" style="margin-bottom:0;">
+      <div class="scn-sec-title">📦 Batch-Size Distribution (flows/batch)</div>
+      {% set max_count = hist | map(attribute='count') | max %}
+      {% for bin in hist %}
+      {% set pct = ((bin.get('count',0) / max_count * 100) if max_count > 0 else 0)|int %}
+      <div class="scn-hbar-row">
+        <div class="scn-hbar-lbl" style="font-family:monospace;font-size:.74rem;">{{ bin.get('range',bin.get('label','—')) }}</div>
+        <div class="scn-hbar-track">
+          <div class="scn-hbar-fill" style="width:{{ pct }}%;background:{% if pct>80 %}#3b82f6{% elif pct>30 %}#60a5fa{% else %}#bfdbfe{% endif %};"></div>
+        </div>
+        <div class="scn-hbar-val">{{ '{:,}'.format(bin.get('count',0)) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ 5. Volume Regime ════════════════════════════════════════════════════ -->
+  {% if regime.get('jump') and regime.get('windows') %}
+  {% set jump = regime.get('jump', {}) %}
+  <div class="scn-sec">
+    <div class="scn-sec-title">🔀 Volume Regime Change Detected</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-bottom:1rem;">
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.75rem 1rem;">
+        <div style="font-size:.75rem;color:#9a3412;font-weight:600;text-transform:uppercase;">Jump Point</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#c2410c;">{{ (jump.get('to_hour') or '')[:16] }}</div>
+        <div style="font-size:.78rem;color:#9a3412;margin-top:.25rem;">
+          {{ '%.0f'%jump.get('from_mean_flows',0) }} → {{ '%.0f'%jump.get('to_mean_flows',0) }} flows/batch mean
+        </div>
+      </div>
+      {% for w in regime.get('windows', []) %}
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem 1rem;">
+        <div style="font-size:.75rem;color:#6b7280;font-weight:600;text-transform:uppercase;">{{ 'Before Jump' if loop.first else 'After Jump' }}</div>
+        <div style="font-size:1.1rem;font-weight:700;">{{ '{:,}'.format(w.get('batches',0)) }} batches</div>
+        <div style="font-size:.78rem;color:#6b7280;margin-top:.2rem;">
+          {{ '{:,}'.format(w.get('flows',0)) }} flows · mean {{ '%.0f'%(w.get('flows_summary',{}).get('mean',0)) }} f/batch
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="scn-canvas-wrap" style="height:120px;">
+      <canvas id="scn-chart-regime" style="width:100%;height:120px;"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ 6. Errors & Gaps ════════════════════════════════════════════════════ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+
+    <!-- Errors -->
+    {% if errs %}
+    <div id="scn-errors-section" class="scn-sec scn-warn" style="margin-bottom:0;">
+      <div class="scn-sec-title" style="color:#dc2626;">⚠ {{ errs|length }} Error Entries</div>
+      
+      <!-- Error type distribution -->
+      {% set err_msgs = {} %}
+      {% for e in errs %}
+        {% set msg = e.get('msg','?') %}
+        {% if msg in err_msgs %}{% set _ = err_msgs.update({msg: err_msgs[msg]+1}) %}{% else %}{% set _ = err_msgs.update({msg: 1}) %}{% endif %}
+      {% endfor %}
+      {% set err_max = err_msgs.values()|max if err_msgs else 1 %}
+      {% for msg, cnt in err_msgs.items() %}
+      <div class="scn-hbar-row">
+        <div class="scn-hbar-lbl" title="{{ msg }}" style="font-size:.75rem;">{{ msg[:22] }}{% if msg|length>22 %}…{% endif %}</div>
+        <div class="scn-hbar-track"><div class="scn-hbar-fill" style="width:{{ (cnt/err_max*100)|int }}%;background:#dc2626;"></div></div>
+        <div class="scn-hbar-val">{{ cnt }}</div>
+      </div>
+      {% endfor %}
+      
+      <!-- Interactive error table with pagination -->
+      <div style="margin-top:.75rem;">
+        <div class="scn-error-filter">
+          <label for="scn-err-filter">Filter:</label>
+          <select id="scn-err-filter">
+            <option value="">All error types</option>
+            {% for msg in err_msgs.keys() %}
+            <option value="{{ msg }}">{{ msg[:40] }}{% if msg|length>40 %}…{% endif %} ({{ err_msgs[msg] }})</option>
+            {% endfor %}
+          </select>
+          <label for="scn-err-pagesize">Show:</label>
+          <select id="scn-err-pagesize">
+            <option value="10">10 per page</option>
+            <option value="25" selected>25 per page</option>
+            <option value="50">50 per page</option>
+            <option value="0">All</option>
+          </select>
+        </div>
+        
+        <div style="max-height:400px;overflow-y:auto;margin-top:.5rem;" id="scn-err-table-wrap">
+          <table data-sortable style="width:100%;border-collapse:collapse;font-size:.78rem;" id="scn-err-table">
+            <thead style="position:sticky;top:0;z-index:2;box-shadow:0 1px 0 #fca5a5;"><tr>
+              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;white-space:nowrap;">Time</th>
+              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;">Message</th>
+              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;">NATS Error / Detail</th>
+              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:right;white-space:nowrap;"
+                  data-tooltip="numFlows of the FlowBatch that triggered this error — the batch received immediately before this log line.">Flows</th>
+            </tr></thead>
+            <tbody id="scn-err-tbody">
+            {% for e in errs %}
+            {% set fields = e.get('fields') or {} %}
+            {% set err_detail = fields.get('error', e.get('error','')) %}
+            {% set full_msg = e.get('msg','—') %}
+            {% set num_flows = e.get('num_flows') %}
+            <tr data-msg="{{ e.get('msg','') }}" data-idx="{{ loop.index0 }}">
+              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp') or '')[:19] }}</td>
+              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                  data-tooltip="{{ full_msg }}">{{ full_msg }}</td>
+              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;font-size:.72rem;color:#7f1d1d;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                  data-tooltip="{{ err_detail }}">{{ err_detail }}</td>
+              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;text-align:right;">
+                {% if num_flows is not none %}
+                <span class="scn-flow-badge"
+                      data-tooltip="{{ '{:,}'.format(num_flows) }} flows in the FlowBatch received just before this error">{{ '{:,}'.format(num_flows) }}</span>
+                {% else %}<span style="color:#9ca3af;font-size:.72rem;">—</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="scn-error-pagination" id="scn-err-pagination">
+          <button id="scn-err-prev" disabled>← Previous</button>
+          <span id="scn-err-page-info">Page 1</span>
+          <button id="scn-err-next">Next →</button>
         </div>
       </div>
     </div>
+    {% else %}
+    <div class="scn-sec" style="margin-bottom:0;border-color:#a7f3d0;">
+      <div class="scn-sec-title" style="color:#059669;">✅ No Error Entries</div>
+      <div style="color:#6b7280;font-size:.88rem;">All log lines are at INFO level — no errors or warnings found.</div>
+    </div>
+    {% endif %}
+
+    <!-- Gaps -->
+    <div class="scn-sec" style="margin-bottom:0;{% if gaps %}border-color:#fed7aa;{% endif %}">
+      <div class="scn-sec-title">
+        🕳️ Receive Gaps{% if gaps %} <span class="scn-badge" style="background:#fff7ed;color:#c2410c;">{{ gaps|length }}</span>{% endif %}
+        <span class="scn-info-icon"
+              data-tooltip="A receive gap is an unexpected silence in data ingestion: no new batches arrive for longer than the normal 100–130 s polling interval. May indicate network issues, pod restarts, or upstream throttling. Yellow = 2–5 min · Red = &gt;5 min.">i</span>
+      </div>
+      {% if gaps %}
+      <div class="table-scroll-container" style="max-height:400px;margin-top:.5rem;">
+        <table data-sortable style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th data-no-sort style="width:2rem;"></th>
+              <th>Duration</th>
+              <th>Gap start</th>
+              <th>Gap end</th>
+              <th>Flows before</th>
+              <th>Flows after</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for g in gaps %}
+          {% set gap_min = g.get('gap_seconds',0) / 60 %}
+          {% set sev_class = 'scn-gap-crit' if gap_min > 5 else ('scn-gap-warn' if gap_min > 2 else 'scn-gap-mild') %}
+          {% set icon = '🔴' if gap_min > 5 else ('🟡' if gap_min > 2 else '🟢') %}
+          <tr class="{{ sev_class }}" style="font-size:.82rem;">
+            <td style="text-align:center;padding:.45rem .3rem;">{{ icon }}</td>
+            <td style="padding:.45rem .5rem;white-space:nowrap;">
+              <span class="scn-gap-dur">{{ '%.0f'%g.get('gap_seconds',0) }}s</span>
+              <span style="color:#6b7280;font-size:.76rem;margin-left:.3rem;">({{ '%.1f'%gap_min }} min)</span>
+            </td>
+            <td style="padding:.45rem .5rem;font-family:monospace;font-size:.76rem;">{{ (g.get('from') or '')[:19] }}</td>
+            <td style="padding:.45rem .5rem;font-family:monospace;font-size:.76rem;">{{ (g.get('to') or '')[:19] }}</td>
+            <td style="padding:.45rem .5rem;text-align:right;">{{ '{:,}'.format(g.get('from_flows',0)) }}</td>
+            <td style="padding:.45rem .5rem;text-align:right;">{{ '{:,}'.format(g.get('to_flows',0)) }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="color:#6b7280;font-size:.88rem;">No abnormal gaps (outside 100–130 s window) detected.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══ 7. Identity + Integrity ════════════════════════════════════════════ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+
+    <div id="scn-identity-section" class="scn-sec" style="margin-bottom:0;">
+      <div class="scn-sec-title">🔑 Identity &amp; Integrity</div>
+      <div class="scn-kpi">
+        <div class="scn-kpi-card">
+          <div class="scn-kpi-label">Unique UUIDs</div>
+          <div class="scn-kpi-value">{{ '{:,}'.format(identity.get('unique_batch_uuids',0)) }}</div>
+        </div>
+        <div class="scn-kpi-card" style="border-left:3px solid {% if identity.get('duplicate_batch_uuids',0)>0 %}#f59e0b{% else %}#e5e7eb{% endif %};">
+          <div class="scn-kpi-label">Duplicates</div>
+          <div class="scn-kpi-value">{{ identity.get('duplicate_batch_uuids',0) }}</div>
+        </div>
+        <div class="scn-kpi-card" style="border-left:3px solid {% if identity.get('num_flows_mismatch_flow_record_count',0)>0 %}#f59e0b{% else %}#e5e7eb{% endif %};">
+          <div class="scn-kpi-label">Flow Count Mismatch</div>
+          <div class="scn-kpi-value">{{ identity.get('num_flows_mismatch_flow_record_count',0) }}</div>
+        </div>
+      </div>
+      {% set hosts = identity.get('hosts', []) %}
+      {% if hosts %}
+      <div style="margin-top:.75rem;border-top:1px solid #e5e7eb;padding-top:.65rem;">
+        <div style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.4rem;">Hosts</div>
+        {% for h in hosts %}
+        <div style="font-family:monospace;font-size:.78rem;color:#374151;">{{ h.get('value','?') }} — {{ '{:,}'.format(h.get('count',0)) }} batches</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% set acks = identity.get('ack_values', []) %}
+      {% if acks %}
+      <div style="margin-top:.65rem;border-top:1px solid #e5e7eb;padding-top:.6rem;">
+        <div style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.4rem;">ACK Values</div>
+        {% for ack_val, ack_cnt in acks %}
+        <div class="scn-hbar-row">
+          <div class="scn-hbar-lbl">{{ ack_val }}</div>
+          <div class="scn-hbar-track"><div class="scn-hbar-fill" style="width:{{ (ack_cnt/totals.get('batches_received',1)*100)|int }}%;background:#3b82f6;"></div></div>
+          <div class="scn-hbar-val">{{ '{:,}'.format(ack_cnt) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Samples -->
+    {% if samples %}
+    <div class="scn-sec" style="margin-bottom:0;">
+      <div class="scn-sec-title">🔬 Notable Batches</div>
+      {% for label, key in [('First Batch', 'first'), ('Largest by Flows', 'largest_by_flows'), ('Largest by Bytes', 'largest_by_bytes'), ('Last Batch', 'last')] %}
+      {% set s = samples.get(key) %}
+      {% if s %}
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:.55rem .75rem;margin-bottom:.4rem;">
+        <div style="font-size:.75rem;color:#6b7280;font-weight:600;text-transform:uppercase;">{{ label }}</div>
+        <div style="font-size:.82rem;margin-top:.15rem;">
+          <span style="font-weight:600;">{{ '{:,}'.format(s.get('num_flows',0)) }}</span> flows ·
+          <span style="font-family:monospace;font-size:.75rem;">{{ (s.get('received_at') or '')[:19] }}</span>
+          {% if s.get('publish') and s.get('publish', {}).get('lag_ms') %}· lag {{ s.get('publish',{}).get('lag_ms','—') }} ms{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ 8. Hourly Data Table (accordion with 5-min sub-intervals) ══════════ -->
+  {% if sc_result %}
+  <div class="scn-sec" id="scn-hourly-section">
+    <details open>
+      <summary class="scn-sec-title" style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:.5rem;">
+        📋 Hourly Breakdown
+        <span style="font-size:.78rem;color:#6b7280;font-weight:400;">({{ hourly|length }} hours · click a row to expand 5-min sub-intervals)</span>
+      </summary>
+      {% if hourly %}
+      <div style="overflow-x:auto;margin-top:.75rem;" class="table-scroll-container">
+        <table data-sortable style="width:100%;border-collapse:collapse;font-size:.8rem;">
+          <thead>
+            <tr>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left;">Hour (UTC)</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Batches</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Flows</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Bytes MB</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Lag med</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Lag p95</th>
+              <th style="position:sticky;top:0;padding:.4rem .5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Acks</th>
+            </tr>
+          </thead>
+          <tbody class="scn-hr-tbody" id="scn-hr-tbody">
+            {% for h in hourly %}
+            {% set lh = h.get('lag_ms_summary', {}) %}
+            <tr class="scn-hr-row{% if loop.index0%2==0 %} even{% endif %}" data-hour="{{ h.get('hour','') }}">
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;font-family:monospace;font-size:.78rem;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ h.get('hour','—') }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ h.get('batches',0) }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ '{:,}'.format(h.get('flows',0)) }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ '%.1f'%(h.get('bytes',0)/1048576) }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ lh.get('median','—') }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ lh.get('p95','—') }}</td>
+              <td style="padding:.38rem .5rem;border:1px solid #e5e7eb;text-align:right;{% if loop.index0%2==0 %}background:#fafafa;{% endif %}">{{ h.get('acks',0) }}</td>
+            </tr>
+            <tr class="scn-hr-subrow" data-sub-hour="{{ h.get('hour','') }}">
+              <td colspan="7" class="scn-hr-subtable-wrap" style="padding:0;border:1px solid #bae6fd;border-top:none;">
+                <div class="scn-hr-loading" id="scn-sub-{{ loop.index0 }}">⏳ Loading 5-min sub-intervals…</div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="margin:.75rem 0 0;color:#6b7280;font-size:.88rem;">
+        ⚠ No hourly data available — the log file contained no parseable flow-batch records.
+      </p>
+      {% endif %}
+    </details>
+  </div>
+  {% endif %}
+
+
+  <!-- ══ Canvas Chart Scripts ════════════════════════════════════════════════ -->
+  <script>
+  (function(){
+    /* ── Tiny chart helpers ── */
+    const PAD = {top:20, right:60, bottom:42, left:60};
+
+    function grid(ctx, x0, y0, x1, y1, nY) {
+      ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+      for (let i = 0; i <= nY; i++) {
+        const y = y1 - (i / nY) * (y1 - y0);
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+      }
+    }
+
+    function axisLabel(ctx, text, x, y, align, color) {
+      ctx.fillStyle = color || '#6b7280'; ctx.font = '10px sans-serif';
+      ctx.textAlign = align || 'center'; ctx.fillText(text, x, y);
+    }
+
+    function niceMax(v) {
+      if (!v) return 1;
+      const mag = Math.pow(10, Math.floor(Math.log10(v)));
+      return Math.ceil(v / mag) * mag;
+    }
+
+    /* ── 1. Hourly chart ── */
+    const hourlyData = {{ sc_result.get('hourly', []) | tojson }};
+    const regimeJump = {{ ((regime.get('jump') or {}).get('to_hour') or '') | tojson }};
+
+    function _drawHourlyChart(data) {
+      const canvas = document.getElementById('scn-chart-hourly');
+      if (!canvas || !data.length) return;
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.offsetWidth || 800, H = 260;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const p = PAD;
+      const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+      const n = data.length;
+      const barW = Math.max(1, iW / n - 1);
+
+      const maxFlows = niceMax(Math.max(...data.map(h => h.flows)));
+      const maxLag   = niceMax(Math.max(...data.map(h => (h.lag_ms_summary||{}).median||0)));
+      const minLag   = Math.min(...data.map(h => (h.lag_ms_summary||{}).median||0));
+
+      grid(ctx, p.left, p.top, W - p.right, p.top + iH, 5);
+
+      // Y axis labels (flows - left)
+      for (let i = 0; i <= 5; i++) {
+        const v = maxFlows * i / 5;
+        const y = p.top + iH - (i / 5) * iH;
+        axisLabel(ctx, v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toFixed(0), p.left - 5, y + 3, 'right');
+      }
+      // Y axis right (lag ms)
+      for (let i = 0; i <= 5; i++) {
+        const v = minLag + (maxLag - minLag) * i / 5;
+        const y = p.top + iH - (i / 5) * iH;
+        axisLabel(ctx, v.toFixed(0), W - p.right + 5, y + 3, 'left', '#f59e0b');
+      }
+
+      // Volume-regime jump line
+      let jumpIdx = -1;
+      if (regimeJump) data.forEach((h,i) => { if (h.hour === regimeJump) jumpIdx = i; });
+
+      data.forEach((h, i) => {
+        const x = p.left + i * (iW / n);
+        const bH = (h.flows / maxFlows) * iH;
+        const y = p.top + iH - bH;
+        ctx.fillStyle = i < jumpIdx ? '#93c5fd' : '#3b82f6';
+        ctx.fillRect(x, y, barW, bH);
+      });
+
+      // Lag line
+      ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+      data.forEach((h, i) => {
+        const lag = (h.lag_ms_summary || {}).median || 0;
+        const x = p.left + (i + 0.5) * (iW / n);
+        const y = p.top + iH - ((lag - minLag) / (maxLag - minLag || 1)) * iH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      if (jumpIdx >= 0) {
+        const jx = p.left + jumpIdx * (iW / n);
+        ctx.beginPath(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4,3]); ctx.moveTo(jx, p.top); ctx.lineTo(jx, p.top + iH); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // X axis ticks (every 12 hours)
+      ctx.fillStyle = '#9ca3af'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      data.forEach((h, i) => {
+        if (h.hour && (h.hour.endsWith('T00') || h.hour.endsWith('T06') || h.hour.endsWith('T12') || h.hour.endsWith('T18'))) {
+          const x = p.left + (i + 0.5) * (iW / n);
+          ctx.fillText(h.hour.slice(5, 13), x, p.top + iH + 14);
+        }
+      });
+      // Axis lines
+      ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top + iH); ctx.lineTo(W - p.right, p.top + iH); ctx.stroke();
+    }
+
+    // Expose for time-range filter
+    window.scnRedrawHourly = _drawHourlyChart;
+
+    if (hourlyData.length) _drawHourlyChart(hourlyData);
+
+    /* ── 2. Daily chart ── */
+    const dailyData = {{ sc_result.get('daily', []) | tojson }};
+    if (dailyData.length) {
+      const canvas = document.getElementById('scn-chart-daily');
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.offsetWidth || 800, H = 200;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const p = {top:20, right:60, bottom:38, left:60};
+        const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+        const n = dailyData.length;
+        const groupW = iW / n;
+        const barW = groupW * 0.36;
+
+        const maxFlows = niceMax(Math.max(...dailyData.map(d => d.flows)));
+        const maxBytes = niceMax(Math.max(...dailyData.map(d => d.bytes)));
+
+        grid(ctx, p.left, p.top, W - p.right, p.top + iH, 4);
+
+        dailyData.forEach((d, i) => {
+          const x = p.left + i * groupW + groupW * 0.08;
+          const bH = (d.flows / maxFlows) * iH;
+          ctx.fillStyle = '#3b82f6';
+          ctx.fillRect(x, p.top + iH - bH, barW, bH);
+
+          const bH2 = (d.bytes / maxBytes) * iH;
+          ctx.fillStyle = '#8b5cf6';
+          ctx.fillRect(x + barW + 2, p.top + iH - bH2, barW, bH2);
+        });
+
+        // X labels
+        ctx.fillStyle = '#6b7280'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        dailyData.forEach((d, i) => {
+          ctx.fillText(d.day.slice(5), p.left + i * groupW + groupW / 2, p.top + iH + 14);
+        });
+
+        // Y axis (flows)
+        for (let i = 0; i <= 4; i++) {
+          const v = maxFlows * i / 4;
+          const y = p.top + iH - (i / 4) * iH;
+          axisLabel(ctx, v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toFixed(0), p.left - 5, y + 3, 'right');
+        }
+
+        // Legend
+        ctx.fillStyle = '#3b82f6'; ctx.fillRect(W - p.right + 5, p.top + 4, 10, 10);
+        axisLabel(ctx, 'Flows', W - p.right + 20, p.top + 12, 'left', '#374151');
+        ctx.fillStyle = '#8b5cf6'; ctx.fillRect(W - p.right + 5, p.top + 20, 10, 10);
+        axisLabel(ctx, 'Bytes', W - p.right + 20, p.top + 28, 'left', '#374151');
+
+        ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top + iH); ctx.lineTo(W - p.right, p.top + iH); ctx.stroke();
+      }
+    }
+
+    /* ── 3. Lag percentile bar chart ── */
+    const lagSum = {{ totals.get('publish_lag_ms_summary', {}) | tojson }};
+    if (lagSum && lagSum.count) {
+      const canvas = document.getElementById('scn-chart-lag-perc');
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.offsetWidth || 400, H = 160;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const entries = [
+          {label:'min', val:lagSum.min, color:'#d1fae5'},
+          {label:'p50', val:lagSum.median, color:'#6ee7b7'},
+          {label:'p90', val:lagSum.p90, color:'#3b82f6'},
+          {label:'p95', val:lagSum.p95, color:'#f59e0b'},
+          {label:'p99', val:lagSum.p99, color:'#ef4444'},
+          {label:'max', val:lagSum.max, color:'#7f1d1d'},
+        ];
+        const maxVal = niceMax(lagSum.max);
+        const p = {top:14, right:12, bottom:28, left:36};
+        const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+        const barW = iW / entries.length - 4;
+
+        grid(ctx, p.left, p.top, W - p.right, p.top + iH, 4);
+        entries.forEach((e, i) => {
+          const x = p.left + i * (iW / entries.length) + 2;
+          const bH = (e.val / maxVal) * iH;
+          ctx.fillStyle = e.color;
+          ctx.fillRect(x, p.top + iH - bH, barW, bH);
+          axisLabel(ctx, e.label, x + barW / 2, p.top + iH + 14, 'center', '#374151');
+          axisLabel(ctx, e.val.toFixed(0), x + barW / 2, p.top + iH - bH - 3, 'center', '#374151');
+        });
+        for (let i = 0; i <= 4; i++) {
+          axisLabel(ctx, (maxVal * i / 4).toFixed(0), p.left - 3, p.top + iH - (i/4)*iH + 3, 'right');
+        }
+        ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top + iH); ctx.lineTo(W - p.right, p.top + iH); ctx.stroke();
+      }
+    }
+
+    /* ── 4. Regime comparison bars ── */
+    const regimeWindows = {{ (regime.get('windows') or []) | tojson }};
+    if (regimeWindows.length >= 2) {
+      const canvas = document.getElementById('scn-chart-regime');
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.offsetWidth || 800, H = 120;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const colors = ['#93c5fd', '#3b82f6'];
+        const maxFlows = niceMax(Math.max(...regimeWindows.map(w => (w.flows_summary||{}).mean||0)));
+        const p = {top:14, right:20, bottom:30, left:60};
+        const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+        const barW = iW / 2 - 20;
+
+        grid(ctx, p.left, p.top, W - p.right, p.top + iH, 3);
+
+        regimeWindows.forEach((w, i) => {
+          const mean = (w.flows_summary || {}).mean || 0;
+          const bH = (mean / maxFlows) * iH;
+          const x = p.left + i * (iW / 2) + 10;
+          ctx.fillStyle = colors[i];
+          ctx.fillRect(x, p.top + iH - bH, barW, bH);
+          ctx.fillStyle = '#374151'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+          const label = i === 0 ? 'Before jump' : 'After jump';
+          ctx.fillText(label, x + barW / 2, p.top + iH + 14);
+          ctx.fillText(mean.toFixed(0) + ' flows/batch avg', x + barW / 2, p.top + iH - bH - 4);
+        });
+
+        for (let i = 0; i <= 3; i++) {
+          axisLabel(ctx, (maxFlows * i / 3).toFixed(0), p.left - 3, p.top + iH - (i/3)*iH + 3, 'right');
+        }
+        ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top + iH); ctx.lineTo(W - p.right, p.top + iH); ctx.stroke();
+      }
+    }
+  })();
+
+  /* ── Pipeline charts ── */
+  (function() {
+    {% if pipeline and pl_tput %}
+    /* Cross-pipeline throughput comparison bar chart */
+    (function() {
+      const canvas = document.getElementById('scn-chart-pipeline-tput');
+      if (!canvas) return;
+      const tputData = {{ pl_tput | tojson }};
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.offsetWidth || 400, H = 200;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const labels = tputData.map(d => d.stage);
+      const values = tputData.map(d => d.value || 0);
+      const maxVal = Math.max(...values, 1);
+      const logMax = Math.log10(maxVal + 1);
+
+      const p = {top:10, right:10, bottom:40, left:80};
+      const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+      const barW = Math.max(6, Math.floor((iW / values.length) - 4));
+      const gap = (iW - barW * values.length) / (values.length + 1);
+
+      const colors = ['#3b82f6','#8b5cf6','#7c3aed','#059669','#dc2626','#6b7280'];
+      ctx.clearRect(0, 0, W, H);
+
+      // Draw horizontal grid lines (log scale)
+      ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = p.top + iH - (i / 4) * iH;
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(W - p.right, y); ctx.stroke();
+        const labelVal = Math.round(Math.pow(10, (i/4) * logMax));
+        ctx.fillStyle = '#9ca3af'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText(labelVal >= 1000 ? (labelVal/1000).toFixed(0)+'K' : labelVal, p.left - 3, y + 3);
+      }
+
+      // Axes
+      ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top+iH); ctx.lineTo(W-p.right, p.top+iH); ctx.stroke();
+
+      values.forEach((val, i) => {
+        const logVal = val > 0 ? Math.log10(val + 1) : 0;
+        const bH = Math.max(2, (logVal / logMax) * iH);
+        const x = p.left + gap + i * (barW + gap);
+        const y = p.top + iH - bH;
+        ctx.fillStyle = colors[i % colors.length] + 'cc';
+        ctx.fillRect(x, y, barW, bH);
+        // Label
+        ctx.fillStyle = '#374151'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        const shortLabel = labels[i].length > 12 ? labels[i].slice(0, 12) : labels[i];
+        ctx.fillText(shortLabel, x + barW/2, p.top + iH + 12);
+        // Value on top
+        if (val > 0) {
+          ctx.fillStyle = '#1f2937'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+          const valStr = val >= 1000000 ? (val/1000000).toFixed(1)+'M' : val >= 1000 ? (val/1000).toFixed(0)+'K' : val;
+          ctx.fillText(valStr, x + barW/2, y - 3);
+        }
+      });
+    })();
+    {% endif %}
+
+    {% if pipeline and pl_diis.get('ch_open_series') %}
+    /* DIIS CH open connections mini-chart */
+    (function() {
+      const canvas = document.getElementById('scn-chart-diis-ch-conn');
+      if (!canvas) return;
+      const series = {{ pl_diis.get('ch_open_series', []) | tojson }};
+      if (!series.length) return;
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.offsetWidth || 300, H = 80;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const values = series.map(d => d.v || 0);
+      const maxVal = Math.max(...values, 1);
+      const p = {top:8, right:8, bottom:16, left:20};
+      const iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top+iH); ctx.lineTo(W-p.right, p.top+iH); ctx.stroke();
+
+      // Fill area under line
+      ctx.beginPath();
+      series.forEach((d, i) => {
+        const x = p.left + (i / (series.length - 1 || 1)) * iW;
+        const y = p.top + iH - (d.v / maxVal) * iH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.lineTo(p.left + iW, p.top + iH); ctx.lineTo(p.left, p.top + iH);
+      ctx.fillStyle = '#dc262620'; ctx.fill();
+
+      // Axis labels
+      ctx.fillStyle = '#9ca3af'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('0', 2, p.top + iH);
+      ctx.fillText(maxVal, 2, p.top + 8);
+      // First and last timestamp
+      ctx.textAlign = 'left';
+      if (series[0]) ctx.fillText((series[0].ts || '').slice(11, 16), p.left, H - 2);
+      ctx.textAlign = 'right';
+      if (series[series.length-1]) ctx.fillText((series[series.length-1].ts || '').slice(11, 16), W - p.right, H - 2);
+    })();
+    {% endif %}
+
+  })();
+
+  /* ── Dashboard Controls: Time-range filter + Auto-refresh ── */
+  (function() {
+    var _rangeHours = 0;        // 0 = All
+    var _refreshTimer = null;
+    var _refreshInterval = 0;   // seconds, 0 = off
+    var _refreshedAt = Date.now();
+
+    /* ── Time-range filter ── */
+    window.scnSetRange = function(hours) {
+      _rangeHours = hours;
+      // Update button states
+      document.querySelectorAll('[data-range]').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.range) === hours);
+      });
+      // Refilter hourly chart + table
+      _applyTimeRange();
+    };
+
+    function _applyTimeRange() {
+      var allData = {{ sc_result.get('hourly', []) | tojson }};
+      if (!allData.length) return;
+      var filtered = allData;
+      if (_rangeHours > 0) {
+        // Sort by hour descending and take the last N entries
+        var sorted = allData.slice().sort(function(a,b){ return (a.hour||'') > (b.hour||'') ? 1 : -1; });
+        filtered = sorted.slice(Math.max(0, sorted.length - _rangeHours));
+      }
+      // Redraw hourly chart if function is available
+      if (typeof window.scnRedrawHourly === 'function') window.scnRedrawHourly(filtered);
+      // Filter hourly breakdown table rows
+      document.querySelectorAll('[data-hour]').forEach(function(row) {
+        var hr = row.dataset.hour || '';
+        if (!filtered.length || _rangeHours === 0) {
+          row.style.display = '';
+          return;
+        }
+        var minHr = filtered[0].hour || '';
+        row.style.display = hr >= minHr ? '' : 'none';
+      });
+    }
+
+    /* ── Auto-refresh ── */
+    window.scnSetRefresh = function(sec) {
+      _refreshInterval = sec;
+      if (_refreshTimer) clearInterval(_refreshTimer);
+      document.querySelectorAll('[data-interval]').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.interval) === sec);
+      });
+      var statusEl = document.getElementById('scn-refresh-status');
+      var textEl   = document.getElementById('scn-refresh-text');
+      if (sec === 0) {
+        if (statusEl) statusEl.style.display = 'none';
+        return;
+      }
+      if (statusEl) statusEl.style.display = 'flex';
+      _refreshedAt = Date.now();
+      // Update the "last updated" counter every second
+      var counterTimer = setInterval(function() {
+        var secs = Math.round((Date.now() - _refreshedAt) / 1000);
+        if (textEl) textEl.textContent = 'Auto-refresh · last updated ' + secs + 's ago';
+      }, 1000);
+
+      _refreshTimer = setInterval(function() {
+        // Poll job status
+        var apiUrl = {{ api_url | tojson }};
+        fetch(apiUrl + '?status_only=1')
+          .then(function(r){ return r.json(); })
+          .then(function(data) {
+            _refreshedAt = Date.now();
+            var st = data.status || '';
+            if (st === 'complete' || st === 'error' || st === 'aborted') {
+              // Job finished — reload page to show results
+              clearInterval(_refreshTimer);
+              clearInterval(counterTimer);
+              window.location.reload();
+            }
+          })
+          .catch(function(){});
+      }, sec * 1000);
+    };
+
+    /* ── E2E Latency bar chart ── */
+    (function() {
+      var canvas = document.getElementById('scn-chart-e2e-lat');
+      if (!canvas) return;
+      var e2e = {{ ((sc_result.get('pipeline') or {}).get('e2e_latency') or {}) | tojson }};
+      var lat = e2e.recv_to_nats_ms || {};
+      var points = [
+        {label:'min', v: lat.min || 0},
+        {label:'p50', v: lat.p50 || 0},
+        {label:'p95', v: lat.p95 || 0},
+        {label:'p99', v: lat.p99 || 0},
+        {label:'max', v: lat.max || 0},
+      ];
+      var maxV = Math.max.apply(null, points.map(function(p){return p.v;})) || 1;
+      var dpr = window.devicePixelRatio || 1;
+      var W = canvas.offsetWidth || 600, H = 90;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var p = {top:8, right:10, bottom:26, left:44};
+      var iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+      var barW = Math.floor(iW / points.length * 0.65);
+      var gap  = (iW - barW * points.length) / (points.length + 1);
+      var colors = ['#93c5fd','#3b82f6','#f59e0b','#f97316','#dc2626'];
+
+      // Grid
+      ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+      [0, 0.25, 0.5, 0.75, 1.0].forEach(function(frac) {
+        var y = p.top + iH - frac * iH;
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(W - p.right, y); ctx.stroke();
+        ctx.fillStyle = '#9ca3af'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxV * frac), p.left - 3, y + 3);
+      });
+      // Axes
+      ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, p.top+iH); ctx.lineTo(W-p.right, p.top+iH); ctx.stroke();
+
+      points.forEach(function(pt, i) {
+        var bH = Math.max(2, (pt.v / maxV) * iH);
+        var x = p.left + gap + i * (barW + gap);
+        var y = p.top + iH - bH;
+        ctx.fillStyle = colors[i];
+        ctx.fillRect(x, y, barW, bH);
+        ctx.fillStyle = '#374151'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(pt.v + 'ms', x + barW/2, y - 3);
+        ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif';
+        ctx.fillText(pt.label, x + barW/2, p.top + iH + 13);
+      });
+    })();
+
+    /* ── Drop-rate bar chart ── */
+    (function() {
+      var canvas = document.getElementById('scn-chart-drop-rates');
+      if (!canvas) return;
+      var ed = {{ ((sc_result.get('pipeline') or {}).get('error_drops') or {}) | tojson }};
+      var stages = ed.stages || [];
+      if (!stages.length) return;
+      var dpr = window.devicePixelRatio || 1;
+      var W = canvas.offsetWidth || 600, H = 100;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var p = {top:16, right:10, bottom:28, left:10};
+      var iW = W - p.left - p.right, iH = H - p.top - p.bottom;
+      var barW = Math.floor(iW / stages.length * 0.6);
+      var gap  = (iW - barW * stages.length) / (stages.length + 1);
+
+      stages.forEach(function(s, i) {
+        var pct = Math.min(100, s.drop_rate_pct || 0);
+        var bH = Math.max(pct > 0 ? 3 : 0, (pct / 100) * iH);
+        var x = p.left + gap + i * (barW + gap);
+        var y = p.top + iH - bH;
+        var color = pct >= 50 ? '#dc2626' : (pct > 0 ? '#f59e0b' : '#22c55e');
+        ctx.fillStyle = color + 'cc';
+        ctx.fillRect(x, y, barW, bH);
+        // Zero line bar
+        if (pct === 0) {
+          ctx.fillStyle = '#22c55e33';
+          ctx.fillRect(x, p.top + iH - 3, barW, 3);
+        }
+        // Pct label
+        ctx.fillStyle = '#374151'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(pct.toFixed(1) + '%', x + barW/2, y - 4);
+        // Stage label
+        ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif';
+        var shortLabel = (s.stage || '').replace('JetStream','JS').replace(' / ','/ ').slice(0,14);
+        ctx.fillText(shortLabel, x + barW/2, p.top + iH + 13);
+      });
+      // 100% line
+      ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(W - p.right, p.top); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#9ca3af'; ctx.font = '8px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('100%', W - p.right - 2, p.top + 8);
+    })();
+
+    /* ── Hourly chart redraw hook (register so time-range can call it) ── */
+    // scnRedrawHourly is defined by the main chart block below; we just expose it here
+    // by setting up the mechanism — the actual function is defined later.
+  })();
+
+  /* ══ Interactive Features ══════════════════════════════════════════════════ */
+  
+  // ── 1. Tooltip system ──────────────────────────────────────────────────────
+  (function() {
+    const tip = document.getElementById('scn-tooltip');
+    if (!tip) return;
+    let hideTimer;
+
+    function showTip(el, text) {
+      clearTimeout(hideTimer);
+      tip.textContent = text;
+      tip.classList.remove('above', 'visible');
+      tip.style.left = '0'; tip.style.top = '0'; // reset
+      document.body.appendChild(tip);
+      
+      const rect = el.getBoundingClientRect();
+      const tw = Math.min(280, window.innerWidth - 20);
+      tip.style.maxWidth = tw + 'px';
+      
+      // Position below element by default
+      let top = rect.bottom + window.scrollY + 8;
+      let left = rect.left + window.scrollX + rect.width / 2 - tw / 2;
+      
+      // Clamp horizontally
+      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+      
+      // Flip above if not enough space below
+      if (rect.bottom + 90 > window.innerHeight) {
+        top = rect.top + window.scrollY - 8;
+        tip.style.top = top + 'px';
+        tip.style.left = left + 'px';
+        tip.classList.add('above', 'visible');
+        // Adjust: position above requires subtracting tip height
+        requestAnimationFrame(() => {
+          tip.style.top = (rect.top + window.scrollY - tip.offsetHeight - 8) + 'px';
+        });
+      } else {
+        tip.style.top = top + 'px';
+        tip.style.left = left + 'px';
+        tip.classList.add('visible');
+      }
+    }
+
+    function hideTip() {
+      hideTimer = setTimeout(() => tip.classList.remove('visible'), 80);
+    }
+
+    // Attach to all [data-tooltip] elements within the SC section
+    document.getElementById('sc-analysis-wrap').addEventListener('mouseover', e => {
+      const el = e.target.closest('[data-tooltip]');
+      if (el) showTip(el, el.getAttribute('data-tooltip'));
+    });
+    document.getElementById('sc-analysis-wrap').addEventListener('mouseout', e => {
+      if (e.target.closest('[data-tooltip]')) hideTip();
+    });
+    document.getElementById('sc-analysis-wrap').addEventListener('mouseleave', hideTip);
+  })();
+
+  // ── 2. Clickable KPI cards → scroll + highlight ────────────────────────────
+  document.querySelectorAll('.scn-kpi-card.clickable').forEach(card => {
+    card.addEventListener('click', () => {
+      const targetId = card.getAttribute('data-scroll-to');
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetEl.style.transition = 'box-shadow .3s';
+        targetEl.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.4)';
+        setTimeout(() => { targetEl.style.boxShadow = ''; }, 1200);
+      }
+    });
+  });
+
+  // ── 3. Error table pagination & filtering ─────────────────────────────────
+  (function() {
+    const filterSelect = document.getElementById('scn-err-filter');
+    const pageSizeSelect = document.getElementById('scn-err-pagesize');
+    const tbody = document.getElementById('scn-err-tbody');
+    const prevBtn = document.getElementById('scn-err-prev');
+    const nextBtn = document.getElementById('scn-err-next');
+    const pageInfo = document.getElementById('scn-err-page-info');
+    if (!tbody) return;
+
+    const allRows = Array.from(tbody.querySelectorAll('tr'));
+    let currentPage = 1;
+    let filteredRows = allRows;
+
+    function updateTable() {
+      const filterValue = filterSelect.value;
+      const pageSize = parseInt(pageSizeSelect.value) || allRows.length;
+      filteredRows = filterValue ?
+        allRows.filter(r => r.getAttribute('data-msg') === filterValue) : allRows;
+      allRows.forEach(r => r.style.display = 'none');
+      if (pageSize === 0) {
+        filteredRows.forEach(r => r.style.display = '');
+        pageInfo.textContent = `Showing all ${filteredRows.length} entries`;
+        prevBtn.style.display = nextBtn.style.display = 'none';
+      } else {
+        const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
+        currentPage = Math.min(currentPage, totalPages);
+        filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .forEach(r => r.style.display = '');
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${filteredRows.length} entries)`;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage >= totalPages;
+        prevBtn.style.display = nextBtn.style.display = '';
+      }
+    }
+
+    filterSelect.addEventListener('change', () => { currentPage = 1; updateTable(); });
+    pageSizeSelect.addEventListener('change', () => { currentPage = 1; updateTable(); });
+    prevBtn.addEventListener('click', () => { currentPage--; updateTable(); });
+    nextBtn.addEventListener('click', () => { currentPage++; updateTable(); });
+    updateTable();
+  })();
+
+  // ── 4. Hourly accordion with 5-minute sub-intervals from batches CSV ───────
+  (function() {
+    const batchesCsvUrl = {{ url_for('download_sc_analysis_file', run_id=run_id, filename='network_receiver_batches.csv') | tojson }};
+    let csvCache = null;  // parsed rows, loaded once
+
+    async function loadCsv() {
+      if (csvCache) return csvCache;
+      const resp = await fetch(batchesCsvUrl);
+      if (!resp.ok) throw new Error('Failed to fetch batches CSV');
+      const text = await resp.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      csvCache = lines.slice(1).map(line => {
+        const parts = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => obj[h.trim()] = (parts[i] || '').trim());
+        return obj;
+      });
+      return csvCache;
+    }
+
+    function compute5MinBuckets(rows, hourStr) {
+      // hourStr like "2026-10-14T08"
+      const hourRows = rows.filter(r => r.received_at && r.received_at.startsWith(hourStr));
+      const buckets = {};
+      for (let m = 0; m < 60; m += 5) {
+        const key = String(m).padStart(2, '0');
+        buckets[key] = { label: `${hourStr}:${key}`, batches: 0, flows: 0, bytes: 0, lags: [], acks: 0 };
+      }
+      hourRows.forEach(r => {
+        const ts = r.received_at || '';
+        const minPart = ts.slice(14, 16);  // "HH:MM" → minute
+        const min = parseInt(minPart) || 0;
+        const bucket5 = String(Math.floor(min / 5) * 5).padStart(2, '0');
+        const b = buckets[bucket5];
+        if (!b) return;
+        b.batches++;
+        b.flows += parseInt(r.num_flows) || 0;
+        b.bytes += parseInt(r.size_bytes) || 0;
+        const lag = parseFloat(r.lag_ms);
+        if (!isNaN(lag)) b.lags.push(lag);
+        if (r.ack === 'True') b.acks++;
+      });
+      return Object.values(buckets).filter(b => b.batches > 0);
+    }
+
+    function medianOf(arr) {
+      if (!arr.length) return '—';
+      const s = [...arr].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m].toFixed(0) : ((s[m - 1] + s[m]) / 2).toFixed(0);
+    }
+
+    function p95Of(arr) {
+      if (!arr.length) return '—';
+      const s = [...arr].sort((a, b) => a - b);
+      return s[Math.floor(s.length * 0.95)].toFixed(0);
+    }
+
+    function renderSubTable(buckets) {
+      if (!buckets.length) return '<p class="scn-hr-loading">No batch data for this hour.</p>';
+      const rows = buckets.map(b => `
+        <tr>
+          <td>${b.label.slice(11, 16)}</td>
+          <td>${b.batches}</td>
+          <td>${b.flows.toLocaleString()}</td>
+          <td>${(b.bytes / 1048576).toFixed(1)}</td>
+          <td>${medianOf(b.lags)}</td>
+          <td>${p95Of(b.lags)}</td>
+          <td>${b.acks}</td>
+        </tr>`).join('');
+      return `<table class="scn-hr-subtable">
+        <thead><tr>
+          <th>:MM (UTC)</th><th>Batches</th><th>Flows</th><th>Bytes MB</th>
+          <th>Lag med</th><th>Lag p95</th><th>Acks</th>
+        </tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    const hrRows = document.querySelectorAll('.scn-hr-row');
+    hrRows.forEach((row, idx) => {
+      row.addEventListener('click', async () => {
+        const subRow = document.querySelector(`.scn-hr-subrow[data-sub-hour="${row.dataset.hour}"]`);
+        if (!subRow) return;
+        const isOpen = subRow.classList.contains('open');
+
+        // Close all first
+        document.querySelectorAll('.scn-hr-subrow.open').forEach(r => r.classList.remove('open'));
+        document.querySelectorAll('.scn-hr-row.expanded').forEach(r => r.classList.remove('expanded'));
+
+        if (!isOpen) {
+          row.classList.add('expanded');
+          subRow.classList.add('open');
+          const cell = subRow.querySelector('td');
+          const loadingDiv = subRow.querySelector('.scn-hr-loading');
+
+          // Only compute once
+          if (loadingDiv) {
+            try {
+              const rows = await loadCsv();
+              const buckets = compute5MinBuckets(rows, row.dataset.hour);
+              cell.innerHTML = renderSubTable(buckets);
+            } catch (err) {
+              cell.innerHTML = `<p class="scn-hr-loading" style="color:#dc2626;">⚠ Failed to load: ${err.message}</p>`;
+            }
+          }
+        }
+      });
+    });
+  })();
+  </script>
+
+  {% else %}
+  <div style="padding:1rem;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;color:#6b7280;font-size:.9rem;">
+    Analysis report will appear here once the job completes.
+  </div>
+  {% endif %}
+
+  </div>
+  {% endif %}
+
+  {% if info.get('job_kind') == 'sc_security_analyzer' %}
+  {% set sc_sec = info.get('summary', {}) %}
+  {% set ar = sc_sec.get('analysis_result', {}) %}
+  {% set vma = ar.get('vm_assignment', {}) %}
+  {% set aud = ar.get('audits', {}) %}
+  {% set qr  = ar.get('queries', {}) %}
+
+  <!-- ══ SC Security Reports Analyzer Visualization ══════════════════════════ -->
+  <div id="sc-sec-wrap" style="margin-top:1rem;">
+    <style>
+      .sc-section { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.1rem; }
+      .sc-section-title { font-size:1.05rem; font-weight:700; margin:0 0 1rem; display:flex; align-items:center; gap:0.5rem; }
+      .sc-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:0.75rem; }
+      .sc-kpi { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:0.85rem 1rem; }
+      .sc-kpi-label { font-size:0.78rem; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:0.35rem; }
+      .sc-kpi-value { font-size:1.5rem; font-weight:700; color:#111827; line-height:1; }
+      .sc-kpi-sub { font-size:0.78rem; color:#9ca3af; margin-top:0.25rem; }
+      .sc-hbar-row { display:flex; align-items:center; gap:0.65rem; margin-bottom:0.5rem; }
+      .sc-hbar-label { width:220px; min-width:120px; font-size:0.82rem; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+      .sc-hbar-track { flex:1; background:#f3f4f6; border-radius:999px; height:18px; overflow:hidden; }
+      .sc-hbar-fill { height:100%; border-radius:999px; transition:width .4s ease; }
+      .sc-hbar-count { font-size:0.82rem; font-weight:600; color:#374151; width:56px; text-align:right; flex-shrink:0; }
+      .sc-hbar-pct { font-size:0.75rem; color:#9ca3af; width:40px; text-align:right; flex-shrink:0; }
+      .sc-canvas-wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; margin-top:.75rem; }
+      .sc-canvas-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:1rem; text-align:center; }
+      .sc-canvas-card canvas { max-width:100%; }
+      .sc-canvas-label { font-size:0.82rem; color:#6b7280; margin-top:.5rem; }
+      .sc-badge { display:inline-block; padding:.15rem .55rem; border-radius:999px; font-size:.75rem; font-weight:700; }
+      .sc-badge-high { background:#fee2e2; color:#991b1b; }
+      .sc-badge-medium { background:#fef3c7; color:#92400e; }
+      .sc-badge-low { background:#dcfce7; color:#166534; }
+      .sc-badge-blue { background:#dbeafe; color:#1e40af; }
+      .sc-legend { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; margin-top:.65rem; font-size:.8rem; }
+      .sc-legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:.35rem; vertical-align:middle; }
+      .sc-pending { padding:1rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; }
+    </style>
+
+    {% if ar %}
+
+    <!-- ── Overview KPIs ──────────────────────────────────────────────────── -->
+    <div class="sc-section">
+      <div class="sc-section-title">📊 Overview</div>
+      <div class="sc-kpi-grid">
+        <div class="sc-kpi" style="border-left:4px solid #3b82f6;">
+          <div class="sc-kpi-label">Unique VMs</div>
+          <div class="sc-kpi-value">{{ '{:,}'.format(vma.get('total_unique_vms', 0)) }}</div>
+          <div class="sc-kpi-sub">{{ vma.get('total_pairs', 0) }} category pairs</div>
+        </div>
+        <div class="sc-kpi" style="border-left:4px solid {% if vma.get('l2_assignment_rate_pct', 0) > 50 %}#059669{% elif vma.get('l2_assignment_rate_pct', 0) > 10 %}#d97706{% else %}#dc2626{% endif %};">
+          <div class="sc-kpi-label">L2 Assignment Rate</div>
+          <div class="sc-kpi-value">{{ '%.1f' % vma.get('l2_assignment_rate_pct', 0) }}%</div>
+          <div class="sc-kpi-sub">{{ vma.get('overall_l2_statuses', {}).get('ASSIGNED', 0) }} assigned</div>
+        </div>
+        <div class="sc-kpi" style="border-left:4px solid #f59e0b;">
+          <div class="sc-kpi-label">Audit Rules</div>
+          <div class="sc-kpi-value">{{ aud.get('total', 0) }}</div>
+          <div class="sc-kpi-sub">{{ aud.get('unique_policies', 0) }} policies</div>
+        </div>
+        <div class="sc-kpi" style="border-left:4px solid #8b5cf6;">
+          <div class="sc-kpi-label">Queries Success</div>
+          <div class="sc-kpi-value">{{ '%.1f' % qr.get('success_rate_pct', 0) }}%</div>
+          <div class="sc-kpi-sub">{{ '{:,}'.format(qr.get('total_success', 0)) }} / {{ '{:,}'.format(qr.get('total', 0)) }}</div>
+        </div>
+        <div class="sc-kpi">
+          <div class="sc-kpi-label">L1 Categories</div>
+          <div class="sc-kpi-value">{{ vma.get('total_l1_categories', 0) }}</div>
+          <div class="sc-kpi-sub">L2: {{ vma.get('total_l2_categories', 0) }}</div>
+        </div>
+        <div class="sc-kpi">
+          <div class="sc-kpi-label">Unique Clusters</div>
+          <div class="sc-kpi-value">{{ vma.get('clusters', {}) | length }}</div>
+          <div class="sc-kpi-sub">{{ vma.get('projects', {}) | length }} projects</div>
+        </div>
+        <div class="sc-kpi">
+          <div class="sc-kpi-label">Query Entities</div>
+          <div class="sc-kpi-value">{{ qr.get('unique_entities', 0) }}</div>
+          <div class="sc-kpi-sub">schema objects</div>
+        </div>
+        <div class="sc-kpi" style="border-left:4px solid #dc2626;">
+          <div class="sc-kpi-label">High Severity Rules</div>
+          <div class="sc-kpi-value" style="color:#dc2626;">{{ aud.get('by_severity', {}).get('high', 0) }}</div>
+          <div class="sc-kpi-sub">of {{ aud.get('total', 0) }} total</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Canvas Charts Row ──────────────────────────────────────────────── -->
+    <div class="sc-section">
+      <div class="sc-section-title">📈 Visual Breakdown</div>
+      <div class="sc-canvas-wrap">
+        <div class="sc-canvas-card">
+          <canvas id="chart-vm-assign" width="220" height="220"></canvas>
+          <div class="sc-canvas-label">VM L2 Assignment Status</div>
+          <div class="sc-legend" style="justify-content:center;">
+            <span><span class="sc-legend-dot" style="background:#059669;"></span>Assigned ({{ vma.get('overall_l2_statuses', {}).get('ASSIGNED', 0) }})</span>
+            <span><span class="sc-legend-dot" style="background:#e5e7eb;"></span>Uncategorized ({{ vma.get('overall_l2_statuses', {}).get('UNCATEGORIZED', 0) }})</span>
+          </div>
+        </div>
+        <div class="sc-canvas-card">
+          <canvas id="chart-audit-sev" width="220" height="220"></canvas>
+          <div class="sc-canvas-label">Audit Rule Severity</div>
+          <div class="sc-legend" style="justify-content:center;">
+            {% for sev, cnt in aud.get('by_severity', {}).items() %}
+            <span><span class="sc-legend-dot" style="background:{% if sev == 'high' %}#dc2626{% elif sev == 'medium' %}#f59e0b{% else %}#059669{% endif %};"></span>{{ sev|capitalize }} ({{ cnt }})</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="sc-canvas-card">
+          <canvas id="chart-query-status" width="220" height="220"></canvas>
+          <div class="sc-canvas-label">Query Execution Status</div>
+          <div class="sc-legend" style="justify-content:center;">
+            <span><span class="sc-legend-dot" style="background:#3b82f6;"></span>Success ({{ '{:,}'.format(qr.get('total_success', 0)) }})</span>
+            <span><span class="sc-legend-dot" style="background:#fca5a5;"></span>Failed ({{ '{:,}'.format(qr.get('total_failed', 0)) }})</span>
+          </div>
+        </div>
+        <div class="sc-canvas-card">
+          <canvas id="chart-query-dataset" width="220" height="220"></canvas>
+          <div class="sc-canvas-label">Queries by Dataset</div>
+          <div class="sc-legend" style="justify-content:center;">
+            {% for ds, cnt in qr.get('by_dataset', {}).items() %}
+            <span><span class="sc-legend-dot" style="background:{% if loop.index0 == 0 %}#8b5cf6{% else %}#a78bfa{% endif %};"></span>{{ ds.replace('_AND_', ' & ').replace('INVENTORY', 'INV')[:20] }} ({{ cnt }})</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Category Pair Assignment Matrix ───────────────────────────────── -->
+    {% if vma.get('pairs_summary') %}
+    <div class="sc-section">
+      <div class="sc-section-title">🗂️ Category Pair Assignment Matrix</div>
+      <div style="overflow-x:auto;">
+        <table data-sortable style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr>
+              <th style="padding:.5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left;">Level-1</th>
+              <th style="padding:.5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left;">Level-2</th>
+              <th style="padding:.5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">VMs</th>
+              <th style="padding:.5rem;border:1px solid #e5e7eb;background:#f3f4f6;">L2 Assignment</th>
+              <th style="padding:.5rem;border:1px solid #e5e7eb;background:#f3f4f6;text-align:right;">Assigned %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pair in vma.get('pairs_summary', []) %}
+            {% set assigned = pair.get('l2_statuses', {}).get('ASSIGNED', 0) %}
+            {% set total = pair.get('total_vms', 0) %}
+            {% set pct = pair.get('l2_assigned_pct', 0) %}
+            <tr style="{% if loop.index0 % 2 == 0 %}background:#fafafa;{% endif %}">
+              <td style="padding:.45rem .55rem;border:1px solid #e5e7eb;font-size:0.82rem;">{{ pair.get('level1','?').replace('Category: ','') }}</td>
+              <td style="padding:.45rem .55rem;border:1px solid #e5e7eb;font-size:0.82rem;">{{ pair.get('level2','?').replace('Category: ','') }}</td>
+              <td style="padding:.45rem .55rem;border:1px solid #e5e7eb;text-align:right;">{{ '{:,}'.format(total) }}</td>
+              <td style="padding:.45rem .55rem;border:1px solid #e5e7eb;">
+                <div style="background:#f3f4f6;border-radius:999px;height:14px;overflow:hidden;position:relative;">
+                  <div style="background:{% if pct > 50 %}#059669{% elif pct > 10 %}#f59e0b{% elif pct > 0 %}#3b82f6{% else %}#e5e7eb{% endif %};height:100%;width:{{ [pct, 100] | min }}%;border-radius:999px;"></div>
+                </div>
+              </td>
+              <td style="padding:.45rem .55rem;border:1px solid #e5e7eb;text-align:right;font-weight:{% if pct > 0 %}700{% else %}400{% endif %};color:{% if pct > 50 %}#059669{% elif pct > 0 %}#d97706{% else %}#9ca3af{% endif %};">
+                {{ '%.1f' % pct }}%
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Audit Rules ────────────────────────────────────────────────────── -->
+    {% if aud %}
+    <div class="sc-section">
+      <div class="sc-section-title">🛡️ Audit Rules</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
+
+        <!-- Severity bars -->
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.65rem;">By Severity</div>
+          {% set sev_total = aud.get('total', 1) %}
+          {% for sev, cnt in aud.get('by_severity', {}).items() %}
+          {% set sev_color = '#dc2626' if sev == 'high' else ('#f59e0b' if sev == 'medium' else '#059669') %}
+          {% set pct = (cnt / sev_total * 100) | round(1) %}
+          <div class="sc-hbar-row">
+            <div class="sc-hbar-label">
+              <span class="sc-badge sc-badge-{{ sev }}">{{ sev|upper }}</span>
+            </div>
+            <div class="sc-hbar-track">
+              <div class="sc-hbar-fill" style="width:{{ pct }}%;background:{{ sev_color }};"></div>
+            </div>
+            <div class="sc-hbar-count">{{ cnt }}</div>
+            <div class="sc-hbar-pct">{{ '%.0f' % pct }}%</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Category bars -->
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.65rem;">By Category</div>
+          {% set cat_max = aud.get('by_category', {}).values() | max if aud.get('by_category') else 1 %}
+          {% for cat, cnt in aud.get('by_category', {}).items() %}
+          {% set pct = (cnt / cat_max * 100) | round(0) | int %}
+          <div class="sc-hbar-row">
+            <div class="sc-hbar-label" title="{{ cat }}">{{ cat[:28] }}{% if cat | length > 28 %}…{% endif %}</div>
+            <div class="sc-hbar-track">
+              <div class="sc-hbar-fill" style="width:{{ pct }}%;background:#6366f1;"></div>
+            </div>
+            <div class="sc-hbar-count">{{ cnt }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Policy coverage -->
+      {% if aud.get('policy_coverage') %}
+      <div style="margin-top:1rem;border-top:1px solid #e5e7eb;padding-top:1rem;">
+        <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.65rem;">Policy Coverage</div>
+        {% set pol_max = aud.get('policy_coverage', {}).values() | max if aud.get('policy_coverage') else 1 %}
+        {% for pol, cnt in aud.get('policy_coverage', {}).items() %}
+        {% set pct = (cnt / pol_max * 100) | round(0) | int %}
+        <div class="sc-hbar-row">
+          <div class="sc-hbar-label" title="{{ pol }}">{{ pol[:32] }}{% if pol | length > 32 %}…{% endif %}</div>
+          <div class="sc-hbar-track">
+            <div class="sc-hbar-fill" style="width:{{ pct }}%;background:#0ea5e9;"></div>
+          </div>
+          <div class="sc-hbar-count">{{ cnt }}</div>
+          <div class="sc-hbar-pct">{{ '%.0f' % (cnt / aud.get('total', 1) * 100) }}%</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Query Coverage ─────────────────────────────────────────────────── -->
+    {% if qr.get('top_entities') %}
+    <div class="sc-section">
+      <div class="sc-section-title">🔍 Query Coverage by Entity (Top {{ qr.get('top_entities', []) | length }})</div>
+      {% set ent_max = qr.get('top_entities', [{}])[0].get('count', 1) %}
+      {% set colors = ['#3b82f6','#6366f1','#8b5cf6','#0ea5e9','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316','#84cc16','#a855f7','#64748b','#78716c','#0d9488','#7c3aed','#b45309','#be185d','#0369a1'] %}
+      <div style="overflow-x:auto;">
+        {% for ent in qr.get('top_entities', []) %}
+        {% set pct = (ent.get('count', 0) / ent_max * 100) | round(0) | int %}
+        {% set col = colors[loop.index0 % colors | length] %}
+        <div class="sc-hbar-row">
+          <div class="sc-hbar-label" style="width:180px;" title="{{ ent.get('entity','?') }}">
+            <code style="font-size:0.78rem;">{{ ent.get('entity','?') }}</code>
+          </div>
+          <div class="sc-hbar-track">
+            <div class="sc-hbar-fill" style="width:{{ pct }}%;background:{{ col }};"></div>
+          </div>
+          <div class="sc-hbar-count">{{ '{:,}'.format(ent.get('count', 0)) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Dataset breakdown -->
+      {% if qr.get('by_dataset') %}
+      <div style="margin-top:1rem;border-top:1px solid #e5e7eb;padding-top:1rem;display:flex;gap:2rem;flex-wrap:wrap;">
+        {% for ds, cnt in qr.get('by_dataset', {}).items() %}
+        <div>
+          <div style="font-size:0.75rem;color:#6b7280;font-weight:600;text-transform:uppercase;">{{ ds.replace('_AND_', ' & ') }}</div>
+          <div style="font-size:1.4rem;font-weight:700;color:#374151;">{{ '{:,}'.format(cnt) }}</div>
+        </div>
+        {% endfor %}
+        {% if qr.get('total_failed', 0) > 0 %}
+        <div>
+          <div style="font-size:0.75rem;color:#dc2626;font-weight:600;text-transform:uppercase;">Failed Queries</div>
+          <div style="font-size:1.4rem;font-weight:700;color:#dc2626;">{{ '{:,}'.format(qr.get('total_failed', 0)) }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── VM Distribution ────────────────────────────────────────────────── -->
+    {% if vma.get('clusters') or vma.get('l2_assigned_values') %}
+    <div class="sc-section">
+      <div class="sc-section-title">🖥️ VM Distribution</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+        <!-- Cluster distribution -->
+        {% if vma.get('clusters') %}
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.65rem;">By Cluster</div>
+          {% set cl_max = vma.get('clusters', {}).values() | max if vma.get('clusters') else 1 %}
+          {% for cl, cnt in vma.get('clusters', {}).items() %}
+          {% set pct = (cnt / cl_max * 100) | round(0) | int %}
+          <div class="sc-hbar-row">
+            <div class="sc-hbar-label" title="{{ cl }}">{{ cl[:30] }}{% if cl | length > 30 %}…{% endif %}</div>
+            <div class="sc-hbar-track">
+              <div class="sc-hbar-fill" style="width:{{ pct }}%;background:#0ea5e9;"></div>
+            </div>
+            <div class="sc-hbar-count">{{ '{:,}'.format(cnt) }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- L2 assigned values -->
+        {% if vma.get('l2_assigned_values') %}
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.65rem;">L2 Assigned Values</div>
+          {% set val_max = vma.get('l2_assigned_values', {}).values() | max if vma.get('l2_assigned_values') else 1 %}
+          {% for val, cnt in vma.get('l2_assigned_values', {}).items() %}
+          {% set pct = (cnt / val_max * 100) | round(0) | int %}
+          <div class="sc-hbar-row">
+            <div class="sc-hbar-label" title="{{ val }}">{{ val[:28] }}{% if val | length > 28 %}…{% endif %}</div>
+            <div class="sc-hbar-track">
+              <div class="sc-hbar-fill" style="width:{{ pct }}%;background:#10b981;"></div>
+            </div>
+            <div class="sc-hbar-count">{{ cnt }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Autocomplete Query Coverage ───────────────────────────────────── -->
+    {% set ac = ar.get('autocomplete_queries', {}) %}
+    {% if ac.get('top_entities') %}
+    <div class="sc-section">
+      <div class="sc-section-title">⚡ Autocomplete Query Coverage ({{ '{:,}'.format(ac.get('total', 0)) }} total)</div>
+      {% set ac_max = ac.get('top_entities', [{}])[0].get('count', 1) %}
+      {% set colors2 = ['#0ea5e9','#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316','#84cc16','#a855f7','#64748b','#78716c','#0d9488','#7c3aed'] %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0.5rem 2rem;">
+        {% for ent in ac.get('top_entities', []) %}
+        {% set pct = (ent.get('count', 0) / ac_max * 100) | round(0) | int %}
+        <div class="sc-hbar-row">
+          <div class="sc-hbar-label" style="width:160px;"><code style="font-size:0.78rem;">{{ ent.get('entity','?') }}</code></div>
+          <div class="sc-hbar-track">
+            <div class="sc-hbar-fill" style="width:{{ pct }}%;background:{{ colors2[loop.index0 % 15] }};"></div>
+          </div>
+          <div class="sc-hbar-count">{{ '{:,}'.format(ent.get('count', 0)) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── JS: Donut Charts ───────────────────────────────────────────────── -->
+    <script>
+    (function() {
+      function drawDonut(canvasId, segments, opts) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        const cx = W / 2, cy = H / 2;
+        const R = Math.min(W, H) / 2 - 10;
+        const r = R * 0.58;
+        ctx.clearRect(0, 0, W, H);
+        const total = segments.reduce((s, seg) => s + seg.value, 0);
+        if (!total) {
+          ctx.fillStyle = '#e5e7eb';
+          ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+          return;
+        }
+        let startAngle = -Math.PI / 2;
+        for (const seg of segments) {
+          const slice = (seg.value / total) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, R, startAngle, startAngle + slice);
+          ctx.closePath();
+          ctx.fillStyle = seg.color;
+          ctx.fill();
+          startAngle += slice;
+        }
+        // Donut hole
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        // Center text
+        const label = opts && opts.centerLabel ? opts.centerLabel : (Math.round(segments[0].value / total * 100) + '%');
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, cx, cy - 6);
+        if (opts && opts.centerSub) {
+          ctx.font = '11px sans-serif';
+          ctx.fillStyle = '#6b7280';
+          ctx.fillText(opts.centerSub, cx, cy + 14);
+        }
+      }
+
+      // VM Assignment donut
+      const vmAssigned   = {{ vma.get('overall_l2_statuses', {}).get('ASSIGNED', 0) | tojson }};
+      const vmUncat      = {{ vma.get('overall_l2_statuses', {}).get('UNCATEGORIZED', 0) | tojson }};
+      const vmRate       = {{ '%.1f' % vma.get('l2_assignment_rate_pct', 0) }};
+      drawDonut('chart-vm-assign', [
+        { value: vmAssigned,  color: '#059669' },
+        { value: vmUncat,     color: '#e5e7eb' },
+      ], { centerLabel: vmRate + '%', centerSub: 'covered' });
+
+      // Audit severity donut
+      const audSev = {{ aud.get('by_severity', {}) | tojson }};
+      const sevColors = { high: '#dc2626', medium: '#f59e0b', low: '#059669' };
+      const audSegs = Object.entries(audSev).map(([k, v]) => ({ value: v, color: sevColors[k] || '#9ca3af' }));
+      drawDonut('chart-audit-sev', audSegs,
+        { centerLabel: {{ aud.get('total', 0) | tojson }}, centerSub: 'rules' });
+
+      // Query status donut
+      const qSuccess = {{ qr.get('total_success', 0) | tojson }};
+      const qFailed  = {{ qr.get('total_failed',  0) | tojson }};
+      const qRate    = {{ '%.1f' % qr.get('success_rate_pct', 0) }};
+      drawDonut('chart-query-status', [
+        { value: qSuccess, color: '#3b82f6' },
+        { value: qFailed,  color: '#fca5a5' },
+      ], { centerLabel: qRate + '%', centerSub: 'success' });
+
+      // Dataset donut
+      const dsData = {{ qr.get('by_dataset', {}) | tojson }};
+      const dsColors = ['#8b5cf6','#a78bfa','#c4b5fd','#7c3aed'];
+      const dsSegs = Object.entries(dsData).map(([k, v], i) => ({ value: v, color: dsColors[i % 4] }));
+      drawDonut('chart-query-dataset', dsSegs,
+        { centerLabel: {{ qr.get('total_success', 0) | tojson }}, centerSub: 'queries' });
+    })();
+    </script>
+
+    {% else %}
+    <div class="sc-pending">Analysis report will appear here once the job completes.</div>
+    {% endif %}
+
   </div>
   {% endif %}
 
@@ -1578,7 +3990,9 @@
     const isCgJob = {{ (info.get('job_kind') == 'cg_reports') | tojson }};
     const isCgDataLoaderJob = {{ (info.get('job_kind') == 'cg_data_loader') | tojson }};
     const isIpfixJob = {{ (info.get('job_kind') == 'ipfix') | tojson }};
-    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix')) | tojson }};
+    const isScNetAnalyzerJob = {{ (info.get('job_kind') == 'sc_network_analyzer') | tojson }};
+    const isScSecAnalyzerJob = {{ (info.get('job_kind') == 'sc_security_analyzer') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -2754,121 +5168,150 @@
     }
 
     // Parse IPFIX log to extract flow statistics.
-    // Mock conntrack lines look like "-> [SUCCESS] ... TCP src -> dst".
-    // Live VM lines look like "TCP 10.1.1.1:40000 -> 10.1.1.2:8000 ... duration=30s".
-    function parseIpfixLog(logText) {
-      if (!logText) return;
-      
-      const statsWrap = document.getElementById('ipfix-flow-stats');
-      
-      const builtMatch = logText.match(/Built (\d+) flows/);
-      const planMatch = logText.match(/Plan: (\d+) flows/);
-      let expectedFlows = 0;
-      if (builtMatch) expectedFlows = parseInt(builtMatch[1], 10);
-      else if (planMatch) expectedFlows = parseInt(planMatch[1], 10);
-      const expectedEl = document.getElementById('ipfix-expected-flows');
-      if (expectedEl && expectedFlows > 0) {
-        expectedEl.textContent = expectedFlows.toLocaleString();
-      }
-      if (statsWrap && expectedFlows > 0) {
-        document.getElementById('ipfix-total-flows').textContent = expectedFlows.toLocaleString();
-        statsWrap.style.display = 'block';
-      }
-      
-      const mockSuccess = (logText.match(/-> \[SUCCESS\]/g) || []).length;
-      const mockFailed = (logText.match(/-> \[FAILED/g) || []).length;
-      let liveSuccess = 0;
-      let liveFailed = 0;
-      const flowRows = [];
-      const liveRe = /^(TCP|UDP) (\S+) -> (\S+)\s+(.*)$/gm;
-      let liveMatch;
-      while ((liveMatch = liveRe.exec(logText)) !== null) {
-        const detail = liveMatch[4] || '';
-        const failed = detail.indexOf('error=') !== -1;
-        if (failed) liveFailed += 1;
-        else liveSuccess += 1;
-        flowRows.push({
-          status: failed ? 'Failed' : 'Running',
-          flow: liveMatch[1] + ' ' + liveMatch[2] + ' -> ' + liveMatch[3],
-          detail: detail,
-        });
-      }
-      const mockRe = /^ -> \[(SUCCESS|FAILED)[^\]]*\] \S+ \S+ conntrack (TCP|UDP) (\S+) -> (\S+)/gm;
-      let mockMatch;
-      while ((mockMatch = mockRe.exec(logText)) !== null) {
-        const ok = mockMatch[1] === 'SUCCESS';
-        flowRows.push({
-          status: ok ? 'Success' : 'Failed',
-          flow: mockMatch[2] + ' ' + mockMatch[3] + ' -> ' + mockMatch[4],
-          detail: ok ? '' : mockMatch[0],
-        });
-      }
-      const successCount = mockSuccess + liveSuccess;
-      const failureCount = mockFailed + liveFailed;
-      const totalCompleted = successCount + failureCount;
-      
-      const completedEl = document.getElementById('ipfix-completed-flows');
-      const successfulEl = document.getElementById('ipfix-successful-flows');
-      const failedEl = document.getElementById('ipfix-failed-flows');
-      const completionRateEl = document.getElementById('ipfix-completion-rate');
-      
-      if (completedEl && totalCompleted > 0) {
-        completedEl.textContent = totalCompleted.toLocaleString();
-      }
-      if (successfulEl && totalCompleted > 0) {
-        successfulEl.textContent = successCount.toLocaleString();
-      }
-      if (failedEl && totalCompleted > 0) {
-        failedEl.textContent = failureCount.toLocaleString();
-      }
-      if (completionRateEl && expectedFlows > 0 && totalCompleted > 0) {
-        const completionPercent = Math.round((totalCompleted / expectedFlows) * 100);
-        const successPercent = Math.round((successCount / totalCompleted) * 100);
-        completionRateEl.innerHTML = completionPercent + '% complete<br><span style="font-size:0.85rem; color: #6b7280;">(' + successPercent + '% success)</span>';
+    // Prefers server-side structured stats (j.ipfix_live_stats) over regex parsing.
+    function fmtElapsed(sec) {
+      if (!sec || sec < 0) return '—';
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      if (h > 0) return h + 'h ' + m + 'm';
+      if (m > 0) return m + 'm ' + s + 's';
+      return s + 's';
+    }
+    function fmtEta(remainingFlows, ratePerMin) {
+      if (!ratePerMin || ratePerMin <= 0 || remainingFlows <= 0) return '—';
+      const remainSec = Math.round((remainingFlows / ratePerMin) * 60);
+      return fmtElapsed(remainSec) + ' left';
+    }
+    function parseIpfixLog(logText, liveStats) {
+      if (!logText && !liveStats) return;
+
+      // ── Determine stats: prefer server-side counters, fallback to regex ──
+      let totalFlows = 0, totalBatches = 0, completedBatches = 0;
+      let successfulFlows = 0, failedFlows = 0, completedFlows = 0, elapsedSec = 0;
+
+      if (liveStats && typeof liveStats === 'object') {
+        totalFlows      = Number(liveStats.total_flows      || 0);
+        totalBatches    = Number(liveStats.total_batches    || 0);
+        completedBatches= Number(liveStats.completed_batches|| 0);
+        successfulFlows = Number(liveStats.successful_flows || 0);
+        failedFlows     = Number(liveStats.failed_flows     || 0);
+        completedFlows  = Number(liveStats.completed_flows  || 0);
+        elapsedSec      = Number(liveStats.elapsed_sec      || 0);
       }
 
-      const rowsEl = document.getElementById('ipfix-flow-rows');
-      if (rowsEl && flowRows.length) {
-        const recent = flowRows.slice(-40);
-        rowsEl.innerHTML = recent.map(function (row) {
-          const color = row.status === 'Failed' ? '#dc2626' : '#059669';
-          return '<tr>'
-            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); color:' + color + ';">' + escapeHtml(row.status) + '</td>'
-            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); font-family:var(--font-mono);">' + escapeHtml(row.flow) + '</td>'
-            + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray);">' + escapeHtml(row.detail) + '</td>'
-            + '</tr>';
-        }).join('');
-      }
-      
-      const wavesMatches = logText.match(/Batch \d+\/(\d+)/g);
-      if (wavesMatches && wavesMatches.length > 0 && statsWrap) {
-        const lastMatch = wavesMatches[wavesMatches.length - 1];
-        const totalWaves = lastMatch.match(/Batch \d+\/(\d+)/);
-        if (totalWaves) {
-          document.getElementById('ipfix-waves').textContent = totalWaves[1];
-          statsWrap.style.display = 'block';
+      // Fallback: regex parse log tail (always try to fill zeros from log)
+      if (logText) {
+        if (!totalFlows) {
+          const builtM = logText.match(/Built (\d+) flows/);
+          const planM  = logText.match(/Plan: (\d+) flows/);
+          if (builtM) totalFlows = parseInt(builtM[1], 10);
+          else if (planM) totalFlows = parseInt(planM[1], 10);
         }
-      }
-      
-      // Extract injection duration from timestamps
-      const timestampMatches = logText.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+/g);
-      if (timestampMatches && timestampMatches.length >= 2 && statsWrap) {
-        try {
-          const startTime = new Date(timestampMatches[0]);
-          const endTime = new Date(timestampMatches[timestampMatches.length - 1]);
-          const durationSec = Math.round((endTime - startTime) / 1000);
-          if (durationSec > 0) {
-            document.getElementById('ipfix-duration').textContent = durationSec + 's';
+        if (!totalBatches) {
+          const bm = logText.match(/batches=(\d+)/);
+          if (bm) totalBatches = parseInt(bm[1], 10);
+          // Also scan Batch X/Y headers
+          const wavesM = logText.match(/Batch \d+\/(\d+)/g);
+          if (wavesM && wavesM.length > 0) {
+            const last = wavesM[wavesM.length - 1].match(/Batch \d+\/(\d+)/);
+            if (last) totalBatches = Math.max(totalBatches, parseInt(last[1], 10));
           }
-        } catch (e) {
-          // Ignore parse errors
+        }
+        if (!completedBatches) {
+          completedBatches = (logText.match(/Batch \d+\/\d+ done/g) || []).length;
+        }
+        if (!completedFlows) {
+          const ms = (logText.match(/-> \[SUCCESS/g) || []).length;
+          const mf = (logText.match(/-> \[FAILED/g)  || []).length;
+          successfulFlows = Math.max(successfulFlows, ms);
+          failedFlows     = Math.max(failedFlows, mf);
+          completedFlows  = successfulFlows + failedFlows;
+        }
+        if (!elapsedSec) {
+          const tsMatches = logText.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g);
+          if (tsMatches && tsMatches.length >= 2) {
+            try {
+              const t0 = new Date(tsMatches[0]);
+              const t1 = new Date(tsMatches[tsMatches.length - 1]);
+              elapsedSec = Math.round((t1 - t0) / 1000);
+            } catch(e) {}
+          }
         }
       }
-      
-      // Update old success rate display
-      if (statsWrap && totalCompleted > 0) {
-        const successRate = Math.round((successCount / totalCompleted) * 100);
-        document.getElementById('ipfix-success-rate').textContent = successRate + '% (' + successCount + '/' + totalCompleted + ')';
+
+      // ── Update stat cards ──
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+      if (totalFlows > 0) set('ipfix-expected-flows', totalFlows.toLocaleString());
+      set('ipfix-completed-flows', completedFlows > 0 ? completedFlows.toLocaleString() : '0');
+      set('ipfix-successful-flows', successfulFlows > 0 ? successfulFlows.toLocaleString() : '0');
+      set('ipfix-failed-flows',     failedFlows     > 0 ? failedFlows.toLocaleString()     : '0');
+      set('ipfix-elapsed', fmtElapsed(elapsedSec));
+
+      // Batches card
+      if (totalBatches > 0) {
+        set('ipfix-batches-done', completedBatches.toLocaleString() + ' / ' + totalBatches.toLocaleString());
+      } else if (completedBatches > 0) {
+        set('ipfix-batches-done', completedBatches.toLocaleString());
+      }
+
+      // Rate and ETA
+      const ratePerMin = (elapsedSec > 0 && completedFlows > 0)
+        ? Math.round((completedFlows / elapsedSec) * 60)
+        : 0;
+      set('ipfix-rate', ratePerMin > 0 ? ratePerMin.toLocaleString() : '—');
+      const remainingFlows = totalFlows > 0 ? Math.max(0, totalFlows - completedFlows) : 0;
+      set('ipfix-eta', fmtEta(remainingFlows, ratePerMin));
+
+      // Success rate
+      if (completedFlows > 0) {
+        const sr = Math.round((successfulFlows / completedFlows) * 100);
+        set('ipfix-success-rate', sr + '% (' + successfulFlows.toLocaleString() + ' / ' + completedFlows.toLocaleString() + ')');
+      }
+
+      // Progress bar
+      const progWrap = document.getElementById('ipfix-progress-wrap');
+      const progBar  = document.getElementById('ipfix-progress-bar');
+      const progLbl  = document.getElementById('ipfix-progress-label');
+      if (progWrap && progBar && totalFlows > 0) {
+        progWrap.style.display = 'block';
+        const pct = Math.min(100, Math.round((completedFlows / totalFlows) * 100));
+        progBar.style.width = pct + '%';
+        progBar.style.background = failedFlows > 0 ? '#f59e0b' : '#3b82f6';
+        const parts = [pct + '% complete (' + completedFlows.toLocaleString() + ' / ' + totalFlows.toLocaleString() + ' flows)'];
+        if (ratePerMin > 0) parts.push(ratePerMin.toLocaleString() + ' flows/min');
+        if (progLbl) progLbl.textContent = parts.join(' · ');
+      }
+
+      // Flow detail table (last 40 result lines from log)
+      if (logText) {
+        const flowRows = [];
+        const mockRe = /^ -> \[(SUCCESS|FAILED)[^\]]*\] \S+ \S+ conntrack (TCP|UDP) (\S+) -> (\S+)/gm;
+        let mockMatch;
+        while ((mockMatch = mockRe.exec(logText)) !== null) {
+          const ok = mockMatch[1] === 'SUCCESS';
+          flowRows.push({ status: ok ? 'Success' : 'Failed', flow: mockMatch[2] + ' ' + mockMatch[3] + ' -> ' + mockMatch[4], detail: ok ? '' : mockMatch[0] });
+        }
+        const liveRe = /^(TCP|UDP) (\S+) -> (\S+)\s+(.*)$/gm;
+        let liveMatch;
+        while ((liveMatch = liveRe.exec(logText)) !== null) {
+          const detail = liveMatch[4] || '';
+          const failed = detail.indexOf('error=') !== -1;
+          flowRows.push({ status: failed ? 'Failed' : 'Running', flow: liveMatch[1] + ' ' + liveMatch[2] + ' -> ' + liveMatch[3], detail });
+        }
+        const rowsEl = document.getElementById('ipfix-flow-rows');
+        if (rowsEl && flowRows.length) {
+          const recent = flowRows.slice(-40);
+          rowsEl.innerHTML = recent.map(function (row) {
+            const color = row.status === 'Failed' ? '#dc2626' : '#059669';
+            return '<tr>'
+              + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); color:' + color + ';">' + escapeHtml(row.status) + '</td>'
+              + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray); font-family:var(--font-mono); font-size:0.8rem;">' + escapeHtml(row.flow) + '</td>'
+              + '<td style="padding:0.4rem; border-bottom:1px solid var(--border-gray);">' + escapeHtml(row.detail) + '</td>'
+              + '</tr>';
+          }).join('');
+        }
       }
     }
 
@@ -2946,7 +5389,7 @@
           
           // Parse IPFIX log for flow statistics
           if (j.job_kind === 'ipfix' || isIpfixJob) {
-            parseIpfixLog(j.log || '');
+            parseIpfixLog(j.log || '', j.ipfix_live_stats || null);
           }
         }
         if (j.error) {
@@ -3070,6 +5513,163 @@
         });
       }
     });
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Reusable table-sort engine
+       • Finds every table[data-sortable] in the document and makes its
+         <thead> <th> elements clickable.
+       • Auto-detects column type: number → numeric sort, ISO date/time
+         strings → date sort, everything else → locale-aware text sort.
+       • Toggles asc / desc on repeat clicks; clears other columns.
+       • Appends a <span class="sort-ind"> to each header for the ▲/▼ arrow.
+       • Works inside .table-scroll-container (sticky headers preserved).
+       • Exports window.initSortableTable(tableEl) so JS-rendered tables
+         (e.g. hourly sub-tables) can opt-in after insertion.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <script>
+  (function () {
+    "use strict";
+
+    /**
+     * Return a comparison key for a cell's text content.
+     * Tries: number → bare float; ISO-ish date → Date ms; fallback → lower string.
+     */
+    function cellKey(text) {
+      var t = text.trim();
+      // Strip trailing non-numeric suffixes like "ms", "MB", "s", "%"
+      var numeric = t.replace(/[,\s]/g, "").replace(/[a-zA-Z%]+$/, "");
+      if (numeric !== "" && !isNaN(Number(numeric))) return Number(numeric);
+      // ISO date / datetime (YYYY-MM-DD or YYYY-MM-DDTHH:MM)
+      if (/^\d{4}-\d{2}-\d{2}/.test(t)) {
+        var d = Date.parse(t);
+        if (!isNaN(d)) return d;
+      }
+      return t.toLowerCase();
+    }
+
+    /** Compare two cell keys, handling mixed number/string safely. */
+    function cmpKeys(a, b) {
+      if (typeof a === "number" && typeof b === "number") return a - b;
+      if (typeof a === "number") return -1;
+      if (typeof b === "number") return  1;
+      return a < b ? -1 : a > b ? 1 : 0;
+    }
+
+    /**
+     * Initialise sorting on one <table> element.
+     * Safe to call multiple times on the same table (idempotent).
+     */
+    function initSortableTable(table) {
+      if (!table || table._sortInit) return;
+      table._sortInit = true;
+
+      var thead = table.querySelector("thead");
+      if (!thead) return;
+      var ths   = Array.from(thead.querySelectorAll("th"));
+
+      ths.forEach(function (th, colIdx) {
+        // Inject indicator span (once)
+        if (!th.querySelector(".sort-ind")) {
+          var ind = document.createElement("span");
+          ind.className = "sort-ind";
+          ind.setAttribute("aria-hidden", "true");
+          th.appendChild(ind);
+        }
+
+        // Skip unsortable columns
+        if (th.hasAttribute("data-no-sort")) return;
+
+        th.classList.add("sortable-th");
+        th.setAttribute("role", "button");
+        th.setAttribute("tabindex", "0");
+
+        function doSort() {
+          var tbody = table.querySelector("tbody");
+          if (!tbody) return;
+
+          // Determine next direction
+          var cur = th.getAttribute("data-sort") || "none";
+          var next = (cur === "asc") ? "desc" : "asc";
+
+          // Reset all other columns in this table
+          ths.forEach(function (t2) {
+            t2.removeAttribute("data-sort");
+          });
+          th.setAttribute("data-sort", next);
+
+          // Collect rows (skip sub-rows that belong to the hourly accordion)
+          var rows = Array.from(tbody.querySelectorAll("tr:not(.scn-hr-subrow)"));
+          // For each sortable row, remember its associated sub-row (if any)
+          var paired = rows.map(function (row) {
+            var sub = null;
+            var hour = row.dataset && row.dataset.hour;
+            if (hour) {
+              sub = tbody.querySelector(".scn-hr-subrow[data-sub-hour='" + hour + "']");
+            }
+            return { row: row, sub: sub };
+          });
+
+          // Extract the key for this column from each row
+          paired.forEach(function (p) {
+            var cells = p.row.querySelectorAll("td");
+            var cell  = cells[colIdx];
+            p.key = cell ? cellKey(cell.textContent) : "";
+          });
+
+          // Sort
+          paired.sort(function (a, b) {
+            var c = cmpKeys(a.key, b.key);
+            return next === "asc" ? c : -c;
+          });
+
+          // Re-insert: row immediately followed by its sub-row (if any)
+          paired.forEach(function (p) {
+            tbody.appendChild(p.row);
+            if (p.sub) tbody.appendChild(p.sub);
+          });
+        }
+
+        th.addEventListener("click", doSort);
+        th.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doSort(); }
+        });
+      });
+    }
+
+    /** Initialise all tables in the document that carry data-sortable. */
+    function initAllSortableTables() {
+      document.querySelectorAll("table[data-sortable]").forEach(initSortableTable);
+    }
+
+    // Expose so JS-generated tables (e.g. hourly sub-tables) can opt in after render
+    window.initSortableTable = initSortableTable;
+
+    // Run after DOM is ready
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initAllSortableTables);
+    } else {
+      initAllSortableTables();
+    }
+
+    // ── Hook hourly sub-table injection to auto-init sorting ───────────────
+    // The scn-hr-subtable is injected dynamically; we patch the MutationObserver
+    // approach to catch it.
+    var _origInner = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+    if (_origInner && _origInner.set) {
+      var _origSet = _origInner.set;
+      Object.defineProperty(Element.prototype, "innerHTML", {
+        set: function (val) {
+          _origSet.call(this, val);
+          // If a scn-hr-subtable was just rendered inside a cell, init it
+          var sub = this.querySelector("table.scn-hr-subtable");
+          if (sub) initSortableTable(sub);
+        },
+        get: _origInner.get,
+        configurable: true,
+      });
+    }
+  })();
   </script>
 </body>
 </html>

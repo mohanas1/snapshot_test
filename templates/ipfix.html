@@ -52,12 +52,47 @@
     .btn-primary { background: var(--primary-blue); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-secondary { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
+    .node-chip.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
     .msg { font-size: 0.88rem; color: var(--text-muted); }
     .msg.error { color: var(--danger); }
     .msg.success { color: var(--success); }
     .mode-panel { margin-top: 0.9rem; padding: 0.9rem; border: 1px solid #dbeafe; background: #f8fbff; border-radius: 10px; }
     .check-row { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; }
     .check-row input { width: auto; }
+    /* ── Injection Rate Configuration ────────────────────────────────────── */
+    .irc-row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1rem; }
+    .irc-row > div { display: flex; flex-direction: column; }
+    .irc-row label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.35rem; }
+    .irc-row select, .irc-row input { width: auto; min-width: 140px; }
+    #irc-computed { display: inline-flex; align-items: flex-start; flex-direction: column; gap: 0.25rem;
+      padding: 0.55rem 0.9rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
+      font-size: 0.88rem; font-weight: 700; color: #15803d; min-height: 38px; min-width: 220px; }
+    #irc-computed .irc-rate-primary { font-size: 1rem; font-weight: 800; }
+    #irc-computed .irc-rate-others { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem;
+      margin-top: 0.1rem; font-size: 0.78rem; font-weight: 500; color: #166534; opacity: 0.85; }
+    #irc-computed .irc-rate-eq { white-space: nowrap; }
+    #irc-computed.irc-unknown { background: #f9fafb; border-color: #e5e7eb; color: #6b7280; font-weight: 400;
+      flex-direction: row; align-items: center; min-width: auto; }
+    /* Suggestions table */
+    #irc-suggestions-wrap { margin-top: 0.9rem; }
+    #irc-suggestions-wrap .table-wrap { border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+    #irc-suggestions-wrap table { min-width: 780px; }
+    #irc-suggestions-wrap th { background: #f1f5fd; font-size: 0.76rem; }
+    #irc-suggestions-wrap td { font-size: 0.82rem; padding: 0.45rem 0.5rem; vertical-align: middle; }
+    .irc-row-feasible  { background: #fff; }
+    .irc-row-feasible:hover { background: #f8fffe; }
+    .irc-row-marginal  { background: #fffbeb; }
+    .irc-row-marginal:hover { background: #fef9e0; }
+    .irc-row-infeasible { background: #fafafa; color: #9ca3af; }
+    .irc-row-infeasible:hover { background: #f5f5f5; }
+    .irc-row-selected  { background: #eff6ff !important; outline: 2px solid #3b82f6; outline-offset: -1px; }
+    .irc-badge-ok    { display:inline-block; border-radius:999px; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:700; background:#dcfce7; color:#15803d; }
+    .irc-badge-warn  { display:inline-block; border-radius:999px; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:700; background:#fef9c3; color:#92400e; }
+    .irc-badge-no    { display:inline-block; border-radius:999px; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:700; background:#fee2e2; color:#991b1b; }
+    .irc-tag { display:inline-block; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:0.1rem 0.4rem; font-size:0.78rem; font-family:ui-monospace,monospace; }
+    .irc-check-cell input[type=radio] { width:16px; height:16px; cursor:pointer; }
+    #irc-empty-msg { color:#6b7280; font-size:0.88rem; padding:0.6rem 0; }
+    /* ─────────────────────────────────────────────────────────────────────── */
     .port-grid { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.35rem; }
     .port-grid label { display: flex; align-items: center; gap: 0.35rem; margin: 0; font-weight: 500; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.35rem 0.55rem; }
     .port-grid input { width: auto; }
@@ -132,6 +167,135 @@
     .mode-example .example-box .ex-title { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
     .mode-example .example-box .ex-line { color: #6b7280; margin-left: 1rem; }
     .mode-tag { display: inline-block; background: #dbeafe; color: #1e40af; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+
+    /* ── Flow Projection Banner ─────────────────────────────────────── */
+    #flow-projection-banner {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.85rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    #flow-projection-banner.fxb-warn {
+      background: #fefce8;
+      border-color: #fde68a;
+    }
+    #flow-projection-banner.fxb-danger {
+      background: #fff1f2;
+      border-color: #fecdd3;
+    }
+    #flow-projection-banner.fxb-muted {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+    /* Threshold badge shown when rate exceeds limits */
+    #fxb-threshold-badge {
+      display: none;
+      margin-left: .5rem;
+      font-size: .72rem;
+      font-weight: 700;
+      padding: .1rem .45rem;
+      border-radius: 999px;
+      vertical-align: middle;
+    }
+    .fxb-threshold-ok   { background: #dcfce7; color: #15803d; }
+    .fxb-threshold-warn { background: #fef9c3; color: #92400e; }
+    .fxb-threshold-crit { background: #fee2e2; color: #b91c1c; }
+    /* Fetch VMs spinner */
+    .btn-spinner {
+      display: inline-block;
+      width: .85em; height: .85em;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: btn-spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: .35em;
+    }
+    @keyframes btn-spin { to { transform: rotate(360deg); } }
+    /* VM summary counter strip */
+    #vm-summary-strip {
+      display: none;
+      flex-wrap: wrap;
+      gap: .35rem .65rem;
+      margin: .5rem 0 .3rem;
+      font-size: .79rem;
+    }
+    #vm-summary-strip .vm-stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: .15rem .6rem;
+      font-weight: 600;
+      color: #374151;
+    }
+    #vm-summary-strip .vm-stat-pill .vsp-count { color: #1d4ed8; }
+    /* Port range validation error */
+    .port-range-err {
+      color: #b91c1c;
+      font-size: .78rem;
+      margin-top: .25rem;
+    }
+    .fxb-main-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.3rem 0.75rem;
+      font-size: 0.92rem;
+    }
+    .fxb-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.3rem;
+      background: rgba(0,0,0,0.04);
+      border-radius: 6px;
+      padding: 0.18rem 0.55rem;
+      white-space: nowrap;
+    }
+    .fxb-chip-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .fxb-chip-val {
+      font-weight: 700;
+      color: #065f46;
+      font-size: 0.97rem;
+    }
+    .fxb-chip-val.fxb-warn-val { color: #92400e; }
+    .fxb-chip-val.fxb-muted-val { color: #6b7280; }
+    .fxb-chip-val.fxb-rate-ok  { color: #065f46; }
+    .fxb-chip-val.fxb-rate-warn { color: #92400e; }
+    .fxb-chip-val.fxb-rate-err  { color: #991b1b; }
+    /* Rate feasibility text colours */
+    .rate-feasible   { color: #15803d; font-size: 0.8rem; }
+    .rate-feasible::before { content: "✓ "; }
+    .rate-warn-txt   { color: #b45309; font-size: 0.8rem; }
+    .rate-warn-txt::before { content: "⚠ "; }
+    .rate-error-txt  { color: #b91c1c; font-size: 0.8rem; }
+    .rate-error-txt::before { content: "✗ "; }
+    /* Greyed-out parallel-mode options are handled via JS .disabled;
+       show a visual cue on the rate control when a mode is auto-switched */
+    #inject-rate-preset { transition: box-shadow 0.2s; }
+    #inject-rate-preset.rate-constrained { box-shadow: 0 0 0 2px #fbbf24; }
+    .fxb-detail-row {
+      margin-top: 0.4rem;
+      font-size: 0.78rem;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+    .fxb-breakdown {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.6rem;
+    }
+    .fxb-breakdown-item::before { content: "·"; margin-right: 0.35rem; color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -148,6 +312,7 @@
         <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
         <a href="{{ url_for('ipfix_traffic') }}" class="nav-item active">IPFIX Traffic</a>
         <a href="{{ url_for('cg_reports') }}" class="nav-item">CG</a>
+        <a href="{{ url_for('sc_page') }}" class="nav-item">SC</a>
         <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
       </nav>
     </div>
@@ -179,8 +344,8 @@
           <h2 class="section-title">Prism</h2>
           <div class="grid">
             <div>
-              <label for="pc-ip">Prism IP</label>
-              <input id="pc-ip" type="text" value="10.120.132.47" required />
+              <label for="pc-ip">Prism Element[PE] IP</label>
+              <input id="pc-ip" type="text" value="10.122.44.216" required />
             </div>
             <div>
               <label for="username">Username</label>
@@ -195,8 +360,16 @@
               <input id="page-size" type="number" min="1" max="5000" value="50" />
             </div>
             <div style="grid-column: 1 / -1;" class="actions">
-              <button id="fetch-btn" class="btn btn-secondary" type="button">Fetch VMs</button>
+              <button id="fetch-local-btn" class="btn btn-secondary" type="button"
+                      title="Load the last saved VM list from disk — instant, no Prism query needed">
+                📂 Fetch Local
+              </button>
+              <button id="fetch-latest-btn" class="btn btn-primary" type="button"
+                      title="Query Prism for the current VM inventory and refresh the local cache">
+                🔄 Fetch Latest
+              </button>
               <span id="fetch-msg" class="msg"></span>
+              <span id="cache-age-hint" style="font-size:.8rem;color:#6b7280;display:none;"></span>
             </div>
             <div id="ips-file-group" style="grid-column: 1 / -1;">
               <label for="ips-file">Or load an IP file</label>
@@ -209,6 +382,12 @@
           </div>
           <div id="vm-stats" class="stats"></div>
           <div id="vm-warning" class="help"></div>
+          <!-- Node filter bar: one chip per hypervisor, hidden until VMs are loaded -->
+          <div id="node-filter-bar" style="display:none; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.5rem; align-items:center;">
+            <span style="font-size:0.8rem; color:#6b7280; white-space:nowrap;">Filter by node:</span>
+            <button id="node-filter-all" type="button" class="btn btn-secondary node-chip active"
+              style="padding:0.2rem 0.65rem;font-size:0.78rem;border-radius:999px;">All</button>
+          </div>
           <div class="table-tools">
             <input id="vm-search" type="search" placeholder="Search name, IP, or host" />
             <label for="vm-page-size" style="margin: 0;">Rows</label>
@@ -237,12 +416,103 @@
                 </tr>
               </thead>
               <tbody id="vm-body">
-                <tr><td colspan="7" class="empty">Fetch VMs to list them here.</td></tr>
+                <tr><td colspan="7" class="empty">Click "Fetch Local" (instant) or "Fetch Latest" (from Prism) to list VMs.</td></tr>
               </tbody>
             </table>
           </div>
           <div id="vm-pager" class="pager"></div>
+          <!-- VM summary counter strip (visible after VMs are loaded) -->
+          <div id="vm-summary-strip">
+            <span class="vm-stat-pill">Selected <span class="vsp-count" id="vms-selected">0</span></span>
+            <span class="vm-stat-pill">With IPs <span class="vsp-count" id="vms-with-ip">0</span></span>
+            <span class="vm-stat-pill">No endpoint <span class="vsp-count" id="vms-no-ep">0</span></span>
+            <span class="vm-stat-pill" style="color:#15803d;">Power On <span class="vsp-count" id="vms-on">0</span></span>
+            <span class="vm-stat-pill" style="color:#b91c1c;">Power Off <span class="vsp-count" id="vms-off">0</span></span>
+          </div>
         </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Injection Rate Configuration
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="card" id="irc-card">
+          <h2 class="section-title">Injection Rate Configuration</h2>
+          <p class="help" style="margin-bottom: 0.75rem;">
+            Specify a target throughput and see which pipeline configurations can achieve it.
+            Checking a row instantly syncs all dropdowns on this page.
+          </p>
+
+          <!-- ── Selectors row ──────────────────────────────────────────── -->
+          <div class="irc-row">
+            <div>
+              <label for="irc-count-preset">Count</label>
+              <select id="irc-count-preset">
+                <option value="">— choose —</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="500">500</option>
+                <option value="1000">1,000</option>
+                <option value="2500">2,500</option>
+                <option value="5000">5,000</option>
+                <option value="10000">10,000</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div id="irc-custom-wrap" style="display:none;">
+              <label for="irc-count-custom">Custom count</label>
+              <input id="irc-count-custom" type="number" min="1" max="10000000"
+                     placeholder="e.g. 750" style="min-width:120px;" />
+            </div>
+            <div>
+              <label for="irc-period">Rate type</label>
+              <select id="irc-period">
+                <option value="1">per second</option>
+                <option value="60">per minute</option>
+                <option value="300">per 5 minutes</option>
+                <option value="600">per 10 minutes</option>
+                <option value="3600">per hour</option>
+              </select>
+            </div>
+            <div style="justify-content: flex-end;">
+              <label>&nbsp;</label>
+              <span id="irc-computed" class="irc-unknown">— select a count —</span>
+            </div>
+          </div>
+
+          <!-- ── Suggestions table ─────────────────────────────────────── -->
+          <div id="irc-suggestions-wrap" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.55rem; flex-wrap:wrap; gap:0.5rem;">
+              <strong style="font-size:0.9rem;" id="irc-table-title">Valid configurations</strong>
+              <span style="font-size:0.8rem; color:#6b7280;">
+                <span class="irc-badge-ok">✓ Feasible</span>&nbsp;
+                <span class="irc-badge-warn">⚡ Needs more threads</span>&nbsp;
+                <span class="irc-badge-no">✗ Not achievable in this mode</span>
+              </span>
+            </div>
+            <div id="irc-empty-msg" style="display:none;">No configurations match this rate. Try a lower count or longer period.</div>
+            <div class="table-wrap">
+              <table id="irc-table">
+                <thead>
+                  <tr>
+                    <th style="width:36px;text-align:center;">Use</th>
+                    <th>Label</th>
+                    <th>Parallel mode</th>
+                    <th>Protocol</th>
+                    <th>Dest ports</th>
+                    <th>Src ports</th>
+                    <th>Persistence</th>
+                    <th>Threads</th>
+                    <th>Rate cap</th>
+                    <th>Feasibility</th>
+                  </tr>
+                </thead>
+                <tbody id="irc-tbody"></tbody>
+              </table>
+            </div>
+            <div class="help" style="margin-top:0.5rem;" id="irc-sync-hint" style="display:none;"></div>
+          </div>
+        </div>
+        <!-- ════════════════════════════════════════════════════════════════ -->
 
         <div class="card">
           <h2 class="section-title">Flows</h2>
@@ -286,6 +556,7 @@
                 <span>to</span>
                 <input id="source-to" type="number" min="1" max="65535" value="40010" />
               </div>
+              <div id="source-range-err" class="port-range-err" hidden></div>
               <div id="source-list-wrap" class="port-extra" hidden>
                 <input id="source-list" type="text" placeholder="40000, 40001, 40010" />
               </div>
@@ -307,6 +578,7 @@
                 <span>to</span>
                 <input id="dest-to" type="number" min="1" max="65535" value="8010" />
               </div>
+              <div id="dest-range-err" class="port-range-err" hidden></div>
               <div id="dest-list-wrap" class="port-extra" hidden>
                 <input id="dest-list" type="text" placeholder="80, 443, 8080-8085" />
               </div>
@@ -327,7 +599,7 @@
             <div style="grid-column: 1 / -1;">
               <div class="check-row">
                 <input id="update-existing" type="checkbox" checked />
-                <label for="update-existing" style="margin: 0;"><span class="var-name">UPDATE_EXISTING_CONNECTION</span></label>
+                <label for="update-existing" style="margin: 0;"><span class="var-name">UPDATE_EXISTING_CONNECTION</span> <span style="font-weight:400;color:#6b7280;font-size:.85em;">(Only for live connections)</span></label>
               </div>
             </div>
             <div style="grid-column: 1 / -1;">
@@ -336,6 +608,7 @@
                 <option value="oneshot" selected>One-shot (inject once and exit)</option>
                 <option value="keepalive">Sustained Keep-Alive (continuous refresh)</option>
                 <option value="duration">Custom Duration (time-limited keep-alive)</option>
+                <option value="recurring">Recurring (re-inject every N seconds for M loops)</option>
               </select>
               <div class="help">Choose how long flows stay active. Keep-alive periodically refreshes flows to prevent kernel timeout.</div>
             </div>
@@ -353,6 +626,16 @@
               <label for="duration-limit">Duration Limit (seconds)</label>
               <input id="duration-limit" type="number" min="60" max="86400" value="3600" />
               <div class="help">How long to keep flows alive before automatic teardown (1 hour = 3600s, 24h = 86400s).</div>
+            </div>
+            <div id="loop-count-group" style="grid-column: 1 / -1;" hidden>
+              <label for="loop-count">Loop count</label>
+              <input id="loop-count" type="number" min="2" max="1000" value="5" />
+              <div class="help">Total number of full inject+inspect cycles. Each loop injects all flows fresh then waits.</div>
+            </div>
+            <div id="loop-interval-group" style="grid-column: 1 / -1;" hidden>
+              <label for="loop-interval">Gap between loops (seconds)</label>
+              <input id="loop-interval" type="number" min="5" max="86400" value="60" />
+              <div class="help">Wait time between successive injection rounds. Flows expire after the conntrack timeout; set gap ≥ timeout for clean rounds.</div>
             </div>
             <div style="grid-column: 1 / -1;">
               <div class="check-row">
@@ -424,8 +707,62 @@
               <label for="thread-count" id="thread-label"></label>
               <input id="thread-count" type="number" min="1" value="1" />
             </div>
+
+            <!-- ── Injection Rate ──────────────────────────────────────── -->
+            <div id="rate-group" style="margin-top: 1rem;">
+              <label for="inject-rate-preset" style="font-weight:600;">Injection rate</label>
+              <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-top:0.3rem;">
+                <select id="inject-rate-preset" style="max-width:280px;">
+                  <option value="0" selected>Unlimited (max throughput)</option>
+                  <option value="50">50 / sec — safe conservative</option>
+                  <option value="100">100 / sec</option>
+                  <option value="250">250 / sec</option>
+                  <option value="500">500 / sec</option>
+                  <option value="1000">1,000 / sec</option>
+                  <option value="5000">5,000 / sec (high load)</option>
+                  <option value="custom">Custom…</option>
+                </select>
+                <input id="inject-rate-custom" type="number" min="1" max="100000"
+                       placeholder="e.g. 750" style="display:none; width:110px;"
+                       title="Enter a custom rate in flows per second" />
+              </div>
+              <div class="help" id="rate-feasibility-help" style="margin-top:0.4rem;"></div>
+            </div>
+            <!-- ────────────────────────────────────────────────────────── -->
           </div>
           <div class="actions">
+            <!-- ── Flow Projection Banner ─────────────────────────────── -->
+            <div id="flow-projection-banner" class="fxb-muted" style="width:100%;">
+              <div class="fxb-main-row">
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Total flows</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-total">—</span>
+                  <span id="fxb-threshold-badge"></span>
+                </span>
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Est. time</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-time">—</span>
+                </span>
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Pairs</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-pairs">—</span>
+                </span>
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Ports/pair</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-ports">—</span>
+                </span>
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Threads</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-threads">—</span>
+                </span>
+                <span class="fxb-chip">
+                  <span class="fxb-chip-label">Rate</span>
+                  <span class="fxb-chip-val fxb-muted-val" id="fxb-rate">—</span>
+                </span>
+              </div>
+              <div class="fxb-detail-row" id="fxb-detail">Select VMs and configure flows to see the projection.</div>
+            </div>
+            <!-- ─────────────────────────────────────────────────────────── -->
             <span id="start-wrap" class="start-wrap blocked" title="Fetch VMs before starting ingestion.">
               <button id="start-btn" class="btn btn-primary" type="submit" disabled>Start injection</button>
             </span>
@@ -655,6 +992,14 @@
   </div>
 
   <script>
+    // ─── Injection-rate constants ─────────────────────────────────────────────
+    // Conservative throughput estimates per worker thread.
+    // Mock mode: kernel conntrack via batched SSH → ~50 flows/sec/thread.
+    // Live mode: real TCP/UDP via SSH → ~5 flows/sec/thread.
+    const MOCK_TPT = 50;   // flows per second per thread (mock)
+    const LIVE_TPT = 5;    // flows per second per thread (live)
+    // ─────────────────────────────────────────────────────────────────────────
+
     const MODES = {
       sequential: { parallel: false, threadCount: 1, parallelName: "SEQUENTIAL_PARALLEL", threadName: "SEQUENTIAL_THREAD_COUNT", detail: "one flow at a time" },
       same_vm: { parallel: true, threadCount: 5, parallelName: "SAME_VM_PARALLEL", threadName: "SAME_VM_THREAD_COUNT", detail: "one source and one destination, several ports at once" },
@@ -669,6 +1014,398 @@
       port_scan_burst: { parallel: true, threadCount: 50, parallelName: "PORT_SCAN_BURST_PARALLEL", threadName: "PORT_SCAN_BURST_THREAD_COUNT", detail: "Security/IDS Test Mode: cycles a single source IP through a wide sequential range of destination ports against a target host to test IPFIX log aggregation throughput and high-frequency alert triggers under heavy load" },
       nn: { parallel: true, threadCount: 50, parallelName: "NN_PARALLEL", threadName: "NN_THREAD_COUNT", detail: "All IPs as sources and destinations, all source and destination ports", pattern: null }
     };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // IRC — Injection Rate Configuration
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Static library of representative pipeline configurations.
+     * Each entry describes how to populate the main form when selected.
+     * Fields mirror the form inputs exactly for easy sync.
+     */
+    const CONFIG_LIBRARY = [
+      // ── Simple oneshot ────────────────────────────────────────────────
+      { id:"L01", label:"TCP common ports · sequential",
+        proto:"tcp",  destMode:"common",                        srcMode:"auto",
+        pMode:"sequential",         persist:"oneshot" },
+      { id:"L02", label:"TCP HTTPS-443 · same_vm",
+        proto:"tcp",  destMode:"single",  destPort:443,         srcMode:"auto",
+        pMode:"same_vm",            persist:"oneshot" },
+      { id:"L03", label:"UDP common ports · fan_out",
+        proto:"udp",  destMode:"common",                        srcMode:"auto",
+        pMode:"fan_out",            persist:"oneshot" },
+      { id:"L04", label:"TCP + UDP · spread",
+        proto:"both", destMode:"common",                        srcMode:"auto",
+        pMode:"spread",             persist:"oneshot" },
+      { id:"L05", label:"TCP custom list 22/80/443 · unique_vms",
+        proto:"tcp",  destMode:"list",   destList:"22,80,443",  srcMode:"auto",
+        pMode:"unique_vms",         persist:"oneshot" },
+      { id:"L06", label:"TCP range 8000-8010 · fan_out",
+        proto:"tcp",  destMode:"range",  destFrom:8000, destTo:8010, srcMode:"auto",
+        pMode:"fan_out",            persist:"oneshot" },
+      { id:"L07", label:"UDP DNS/NTP/SNMP · fan_in",
+        proto:"udp",  destMode:"list",   destList:"53,123,161", srcMode:"auto",
+        pMode:"fan_in",             persist:"oneshot" },
+      { id:"L08", label:"TCP MySQL 3306 · first_to_all",
+        proto:"tcp",  destMode:"single", destPort:3306,         srcMode:"auto",
+        pMode:"first_to_all",       persist:"oneshot" },
+      { id:"L09", label:"TCP SSH-22 · all_to_first",
+        proto:"tcp",  destMode:"single", destPort:22,           srcMode:"auto",
+        pMode:"all_to_first",       persist:"oneshot" },
+      { id:"L10", label:"TCP + UDP · randomized_mesh (chaos)",
+        proto:"both", destMode:"common",                        srcMode:"auto",
+        pMode:"randomized_mesh",    persist:"oneshot" },
+      // ── With source port ranges ────────────────────────────────────────
+      { id:"L11", label:"TCP common · 10 src ports · first_to_all",
+        proto:"tcp",  destMode:"common",                        srcMode:"range",  srcFrom:40000, srcTo:40009,
+        pMode:"first_to_all",       persist:"oneshot" },
+      { id:"L12", label:"TCP range 8000-8050 · 20 src ports · spread",
+        proto:"tcp",  destMode:"range",  destFrom:8000, destTo:8050, srcMode:"range",  srcFrom:40000, srcTo:40019,
+        pMode:"spread",             persist:"oneshot" },
+      { id:"L13", label:"TCP + UDP · 50 src ports · randomized_mesh",
+        proto:"both", destMode:"common",                        srcMode:"range",  srcFrom:40000, srcTo:40049,
+        pMode:"randomized_mesh",    persist:"oneshot" },
+      { id:"L14", label:"TCP wide range 5000-5050 · 20 src · unique_vms",
+        proto:"tcp",  destMode:"range",  destFrom:5000, destTo:5050, srcMode:"range",  srcFrom:40000, srcTo:40019,
+        pMode:"unique_vms",         persist:"recurring", loopCount:3, loopInterval:60 },
+      // ── Keep-alive / sustained ─────────────────────────────────────────
+      { id:"L15", label:"TCP HTTPS-443 keep-alive · fan_out",
+        proto:"tcp",  destMode:"single", destPort:443,          srcMode:"auto",
+        pMode:"fan_out",            persist:"keepalive", keepaliveInterval:60 },
+      { id:"L16", label:"UDP range 53-163 · keep-alive · fan_in",
+        proto:"udp",  destMode:"range",  destFrom:53, destTo:163, srcMode:"auto",
+        pMode:"fan_in",             persist:"keepalive", keepaliveInterval:30 },
+      { id:"L17", label:"TCP MySQL 3306 keep-alive · spread",
+        proto:"tcp",  destMode:"single", destPort:3306,         srcMode:"auto",
+        pMode:"spread",             persist:"keepalive", keepaliveInterval:60 },
+      { id:"L18", label:"TCP + UDP · 10 src ports · keep-alive · first_to_all",
+        proto:"both", destMode:"common",                        srcMode:"range",  srcFrom:40000, srcTo:40009,
+        pMode:"first_to_all",       persist:"keepalive", keepaliveInterval:60 },
+      // ── Recurring ─────────────────────────────────────────────────────
+      { id:"L19", label:"TCP common · recurring 5× · fan_out",
+        proto:"tcp",  destMode:"common",                        srcMode:"auto",
+        pMode:"fan_out",            persist:"recurring", loopCount:5, loopInterval:60 },
+      { id:"L20", label:"UDP DNS-53 · recurring 10× · fan_in",
+        proto:"udp",  destMode:"single", destPort:53,           srcMode:"auto",
+        pMode:"fan_in",             persist:"recurring", loopCount:10, loopInterval:30 },
+      { id:"L21", label:"TCP range 8000-8010 · 10 src · recurring 3× · spread",
+        proto:"tcp",  destMode:"range",  destFrom:8000, destTo:8010, srcMode:"range",  srcFrom:40000, srcTo:40009,
+        pMode:"spread",             persist:"recurring", loopCount:3, loopInterval:60 },
+      { id:"L22", label:"TCP + UDP common · recurring 5× · randomized_mesh",
+        proto:"both", destMode:"common",                        srcMode:"auto",
+        pMode:"randomized_mesh",    persist:"recurring", loopCount:5, loopInterval:120 },
+      // ── Duration-limited ──────────────────────────────────────────────
+      { id:"L23", label:"TCP common · duration 1h · client_server_pair",
+        proto:"tcp",  destMode:"common",                        srcMode:"auto",
+        pMode:"client_server_pair", persist:"duration", keepaliveInterval:60, durationLimit:3600 },
+      { id:"L24", label:"TCP list 22/80/443 · duration 30m · fan_out",
+        proto:"tcp",  destMode:"list",   destList:"22,80,443",  srcMode:"auto",
+        pMode:"fan_out",            persist:"duration", keepaliveInterval:60, durationLimit:1800 },
+      // ── Port scan / IDS ────────────────────────────────────────────────
+      { id:"L25", label:"TCP port-scan 8000-8100 · port_scan_burst",
+        proto:"tcp",  destMode:"range",  destFrom:8000, destTo:8100, srcMode:"auto",
+        pMode:"port_scan_burst",    persist:"oneshot" },
+    ];
+
+    // ── IRC state ──────────────────────────────────────────────────────────
+    var _ircSelectedId   = null;   // config id of the currently selected suggestion
+    var _ircSuggestions  = [];     // last computed list
+
+    /** Parse the IRC selectors and return flows/sec as an integer (or 0 if not configured). */
+    function ircGetTargetPerSec() {
+      const preset = document.getElementById("irc-count-preset").value;
+      if (!preset) return 0;
+      const raw = preset === "custom"
+        ? (parseFloat(document.getElementById("irc-count-custom").value) || 0)
+        : parseFloat(preset);
+      const period = parseInt(document.getElementById("irc-period").value) || 1;
+      return raw > 0 ? Math.round(raw / period) : 0;
+    }
+
+    /** Compute dest-port label for a config entry (for display). */
+    function ircDestLabel(cfg) {
+      if (cfg.destMode === "common") {
+        if (cfg.proto === "tcp")  return "TCP 80,443,22,3306";
+        if (cfg.proto === "udp")  return "UDP 53,123,161";
+        return "TCP 80,443,22,3306 + UDP 53,123,161";
+      }
+      if (cfg.destMode === "single") return ":" + cfg.destPort;
+      if (cfg.destMode === "range")  return cfg.destFrom + "–" + cfg.destTo;
+      if (cfg.destMode === "list")   return cfg.destList;
+      return "?";
+    }
+
+    /** Compute src-port label for a config entry. */
+    function ircSrcLabel(cfg) {
+      if (!cfg.srcMode || cfg.srcMode === "auto") return "Auto";
+      if (cfg.srcMode === "single") return ":" + cfg.srcPort;
+      if (cfg.srcMode === "range")  return cfg.srcFrom + "–" + cfg.srcTo;
+      if (cfg.srcMode === "list")   return cfg.srcList;
+      return "?";
+    }
+
+    /**
+     * Score and annotate every CONFIG_LIBRARY entry for the given target rate.
+     * Returns sorted array with feasibility metadata added.
+     *
+     * Feasibility tiers:
+     *   "ok"       — default thread count achieves ≥ target rate
+     *   "marginal" — needs more threads but the mode supports it (not sequential)
+     *   "no"       — sequential mode or target mathematically unreachable
+     */
+    function ircComputeSuggestions(targetPerSec) {
+      const tpt = tptForMode();
+      return CONFIG_LIBRARY.map(function (cfg) {
+        const modeInfo   = MODES[cfg.pMode] || {};
+        const isSeq      = cfg.pMode === "sequential";
+        const defThreads = modeInfo.threadCount || 1;
+        const defRate    = defThreads * tpt;
+        // Minimum threads required (capped at 10 000 for display)
+        const minThreads = Math.min(10000, Math.ceil(targetPerSec / tpt));
+
+        var tier, threads, achievable;
+        if (!targetPerSec) {
+          tier = "ok"; threads = defThreads; achievable = defRate;
+        } else if (defRate >= targetPerSec) {
+          tier = "ok"; threads = defThreads; achievable = defRate;
+        } else if (!isSeq) {
+          tier = "marginal"; threads = minThreads; achievable = minThreads * tpt;
+        } else {
+          tier = "no"; threads = 1; achievable = tpt;
+        }
+
+        return Object.assign({}, cfg, {
+          _tier:         tier,
+          _threads:      threads,
+          _achievable:   achievable,
+          _minThreads:   minThreads,
+          _defThreads:   defThreads,
+        });
+      }).sort(function (a, b) {
+        const tierOrder = { ok: 0, marginal: 1, no: 2 };
+        if (tierOrder[a._tier] !== tierOrder[b._tier])
+          return tierOrder[a._tier] - tierOrder[b._tier];
+        return b._achievable - a._achievable;
+      });
+    }
+
+    /** Render the suggestions into #irc-tbody. */
+    function ircRenderSuggestions(suggestions, targetPerSec) {
+      const tbody = document.getElementById("irc-tbody");
+      const empty = document.getElementById("irc-empty-msg");
+      const wrap  = document.getElementById("irc-suggestions-wrap");
+      const title = document.getElementById("irc-table-title");
+      const tpt   = tptForMode();
+
+      if (!targetPerSec) {
+        wrap.style.display  = "none";
+        return;
+      }
+      wrap.style.display = "";
+
+      const visCount = suggestions.filter(function (s) { return s._tier !== "no"; }).length;
+      title.textContent = visCount + " configuration" + (visCount !== 1 ? "s" : "") +
+                          " can achieve " + fmtN(targetPerSec) + " flows/sec";
+
+      tbody.innerHTML = "";
+      var shown = 0;
+      suggestions.forEach(function (s) {
+        shown++;
+        const rowClass = s._tier === "ok" ? "irc-row-feasible"
+                       : s._tier === "marginal" ? "irc-row-marginal"
+                       : "irc-row-infeasible";
+        const badge = s._tier === "ok"
+          ? "<span class='irc-badge-ok'>✓ Feasible</span>"
+          : s._tier === "marginal"
+          ? "<span class='irc-badge-warn'>⚡ +" + (s._minThreads - s._defThreads) + " threads</span>"
+          : "<span class='irc-badge-no'>✗ Max " + fmtN(s._defThreads * tpt) + "/sec</span>";
+
+        const checked = s.id === _ircSelectedId ? "checked" : "";
+        const selClass = s.id === _ircSelectedId ? " irc-row-selected" : "";
+
+        const tr = document.createElement("tr");
+        tr.className = rowClass + selClass;
+        tr.dataset.cfgId = s.id;
+        tr.innerHTML =
+          "<td class='irc-check-cell' style='text-align:center;'>" +
+            "<input type='radio' name='irc-radio' value='" + s.id + "' " + checked + " />" +
+          "</td>" +
+          "<td style='max-width:200px;'><strong style='font-size:0.8rem;'>" + esc(s.label) + "</strong></td>" +
+          "<td><span class='irc-tag'>" + esc(s.pMode) + "</span></td>" +
+          "<td><span class='irc-tag'>" + s.proto.toUpperCase() + "</span></td>" +
+          "<td><span class='irc-tag'>" + esc(ircDestLabel(s)) + "</span></td>" +
+          "<td><span class='irc-tag'>" + esc(ircSrcLabel(s)) + "</span></td>" +
+          "<td><span class='irc-tag'>" + esc(s.persist) + "</span></td>" +
+          "<td><strong>" + fmtN(s._threads) + "</strong>" +
+            (s._tier === "marginal" ? " <span style='color:#92400e;font-size:0.75rem;'>(default " + s._defThreads + ")</span>" : "") +
+          "</td>" +
+          "<td>" + fmtN(s._achievable) + "/sec</td>" +
+          "<td>" + badge + "</td>";
+        tbody.appendChild(tr);
+      });
+
+      empty.style.display = shown === 0 ? "" : "none";
+      tbody.style.display = shown === 0 ? "none" : "";
+    }
+
+    /**
+     * Apply a CONFIG_LIBRARY entry to all main-page form dropdowns.
+     * This is the two-way sync: suggestion row → form fields.
+     */
+    function ircApplySuggestion(cfg) {
+      // ── Protocol ──────────────────────────────────────────────────────
+      document.getElementById("proto").value = cfg.proto;
+
+      // ── Destination ports ──────────────────────────────────────────────
+      document.getElementById("dest-mode").value = cfg.destMode;
+      if (cfg.destMode === "single" && cfg.destPort)
+        document.getElementById("dest-port").value  = cfg.destPort;
+      if (cfg.destMode === "range") {
+        document.getElementById("dest-from").value  = cfg.destFrom || 8000;
+        document.getElementById("dest-to").value    = cfg.destTo   || 8010;
+      }
+      if (cfg.destMode === "list" && cfg.destList)
+        document.getElementById("dest-list").value  = cfg.destList;
+
+      // ── Source ports ───────────────────────────────────────────────────
+      const srcMode = cfg.srcMode || "auto";
+      document.getElementById("source-mode").value = srcMode;
+      if (srcMode === "single" && cfg.srcPort)
+        document.getElementById("source-port").value = cfg.srcPort;
+      if (srcMode === "range") {
+        document.getElementById("source-from").value = cfg.srcFrom || 40000;
+        document.getElementById("source-to").value   = cfg.srcTo   || 40009;
+      }
+      if (srcMode === "list" && cfg.srcList)
+        document.getElementById("source-list").value = cfg.srcList;
+
+      // ── Parallel mode & thread count ────────────────────────────────────
+      const pModeEl = document.getElementById("parallel-mode");
+      pModeEl.value = cfg.pMode;
+      currentMode   = cfg.pMode;
+      const newParallel = cfg.pMode !== "sequential";
+      modeState[cfg.pMode] = modeState[cfg.pMode] || {};
+      modeState[cfg.pMode].parallel    = newParallel;
+      modeState[cfg.pMode].threadCount = cfg._threads;
+      document.getElementById("thread-count").value = cfg._threads;
+      document.getElementById("parallel-flag").checked = newParallel;
+
+      // ── Persistence mode ───────────────────────────────────────────────
+      document.getElementById("persistence-mode").value = cfg.persist || "oneshot";
+      if ((cfg.persist === "keepalive" || cfg.persist === "duration") && cfg.keepaliveInterval)
+        document.getElementById("keepalive-interval").value = cfg.keepaliveInterval;
+      if (cfg.persist === "duration" && cfg.durationLimit)
+        document.getElementById("duration-limit").value = cfg.durationLimit;
+      if (cfg.persist === "recurring") {
+        if (cfg.loopCount)    document.getElementById("loop-count").value    = cfg.loopCount;
+        if (cfg.loopInterval) document.getElementById("loop-interval").value = cfg.loopInterval;
+      }
+
+      // ── Sync inject-rate-preset with the computed rate ─────────────────
+      const perSec     = ircGetTargetPerSec();
+      const presetEl   = document.getElementById("inject-rate-preset");
+      const rounded    = Math.round(perSec);           // always integer
+      const knownOpts  = ["50","100","250","500","1000","5000"];
+      if (perSec > 0 && !knownOpts.includes(String(rounded))) {
+        presetEl.value = "custom";
+        document.getElementById("inject-rate-custom").value = rounded;
+      } else if (perSec > 0) {
+        presetEl.value = String(rounded);
+      }
+
+      // ── Trigger full form refresh ──────────────────────────────────────
+      refreshForm();
+
+      // Update hint
+      const hint = document.getElementById("irc-sync-hint");
+      hint.style.display = "";
+      hint.innerHTML = "✓ Applied <strong>" + esc(cfg.label) + "</strong> — form fields updated. " +
+        "Adjust manually if needed.";
+    }
+
+    /** Build & render suggestions; update the =/sec display chip. */
+    function ircRefresh() {
+      const perSec   = ircGetTargetPerSec();
+      const chipEl   = document.getElementById("irc-computed");
+      const preset   = document.getElementById("irc-count-preset").value;
+      const period   = parseInt(document.getElementById("irc-period").value) || 1;
+      const periodLbl = { "1":"sec","60":"min","300":"5 min","600":"10 min","3600":"hr" }[String(period)] || "?";
+
+      if (!perSec) {
+        chipEl.className = "irc-unknown";
+        chipEl.textContent = preset ? "— enter a count —" : "— select a count —";
+        document.getElementById("irc-suggestions-wrap").style.display = "none";
+        return;
+      }
+
+      chipEl.className = "";
+
+      // Format a rate value — show integer if whole, otherwise up to 3 decimal places
+      function fmtRate(n) {
+        return n % 1 === 0 ? fmtN(n) : n >= 10 ? n.toFixed(1) : n.toFixed(3).replace(/\.?0+$/, "");
+      }
+
+      const perMin   = perSec * 60;
+      const per5Min  = perSec * 300;
+      const perHour  = perSec * 3600;
+
+      chipEl.innerHTML =
+        "<span class='irc-rate-primary'>≡ " + fmtRate(perSec) + " flows / sec</span>" +
+        "<span class='irc-rate-others'>" +
+          "<span class='irc-rate-eq'>📌 " + fmtRate(perMin)  + " / min</span>" +
+          "<span class='irc-rate-eq'>📌 " + fmtRate(per5Min) + " / 5 min</span>" +
+          "<span class='irc-rate-eq'>📌 " + fmtRate(perHour) + " / hr</span>" +
+        "</span>";
+
+      _ircSuggestions = ircComputeSuggestions(perSec);
+      ircRenderSuggestions(_ircSuggestions, perSec);
+    }
+
+    /** Simple HTML-escape for safe insertion. */
+    function esc(s) {
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    // ── IRC event wiring ──────────────────────────────────────────────────
+
+    document.getElementById("irc-count-preset").addEventListener("change", function () {
+      const isCustom = this.value === "custom";
+      document.getElementById("irc-custom-wrap").style.display = isCustom ? "" : "none";
+      if (!isCustom) ircRefresh();
+    });
+    document.getElementById("irc-count-custom").addEventListener("input", ircRefresh);
+    document.getElementById("irc-period").addEventListener("change", ircRefresh);
+
+    // Radio selection in suggestion table → two-way sync
+    document.getElementById("irc-tbody").addEventListener("change", function (e) {
+      if (e.target.type !== "radio") return;
+      const selId = e.target.value;
+      _ircSelectedId = selId;
+
+      // Re-style rows
+      Array.from(document.querySelectorAll("#irc-tbody tr")).forEach(function (tr) {
+        tr.classList.toggle("irc-row-selected", tr.dataset.cfgId === selId);
+      });
+
+      const cfg = _ircSuggestions.find(function (s) { return s.id === selId; });
+      if (cfg) ircApplySuggestion(cfg);
+    });
+
+    // Clicking a table row also selects its radio
+    document.getElementById("irc-tbody").addEventListener("click", function (e) {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      const radio = tr.querySelector("input[type=radio]");
+      if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+
+    // When traffic mode changes, re-score suggestions (different tpt)
+    document.querySelectorAll('input[name="traffic-mode"]').forEach(function (r) {
+      r.addEventListener("change", function () { if (_ircSuggestions.length) ircRefresh(); });
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
 
     const modeState = {};
     Object.keys(MODES).forEach(function (name) {
@@ -720,6 +1457,7 @@
     let vmLoaded = false;
     let vmPage = 1;
     let runActive = false;
+    let activeNodeFilter = null; // currently pinned hypervisor IP (null = show all)
 
     function esc(value) {
       return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
@@ -739,11 +1477,79 @@
 
     function filteredRows() {
       const query = document.getElementById("vm-search").value.trim().toLowerCase();
-      if (!query) return vmRows;
       return vmRows.filter(function (row) {
+        // node-filter chip
+        if (activeNodeFilter && row.host_ip !== activeNodeFilter) return false;
+        // text search
+        if (!query) return true;
         const haystack = [row.name, row.power_state, row.host_name, row.host_ip, (row.ips || []).join(" ")].join(" ").toLowerCase();
         return haystack.indexOf(query) !== -1;
       });
+    }
+
+    /** Build / refresh the per-node filter chip bar. */
+    function renderNodeFilterBar() {
+      const bar = document.getElementById("node-filter-bar");
+      // Collect unique host IPs and their VM counts
+      const hostMap = {}; // host_ip -> count of selectable VMs
+      vmRows.forEach(function (row) {
+        const hip = row.host_ip || "";
+        if (!hip) return;
+        if (!hostMap[hip]) hostMap[hip] = { total: 0, selectable: 0 };
+        hostMap[hip].total += 1;
+        if (selectable(row)) hostMap[hip].selectable += 1;
+      });
+      const hosts = Object.keys(hostMap).sort();
+      if (hosts.length < 2) {
+        bar.style.display = "none";
+        return;
+      }
+      bar.style.display = "flex";
+
+      // Remove old per-host chips (keep the "All" button)
+      const allBtn = document.getElementById("node-filter-all");
+      Array.from(bar.querySelectorAll(".node-chip-host")).forEach(function (el) { el.remove(); });
+
+      hosts.forEach(function (hip) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-secondary node-chip node-chip-host";
+        btn.dataset.hip = hip;
+        btn.style.cssText = "padding:0.2rem 0.65rem;font-size:0.78rem;border-radius:999px;";
+        const cnt = hostMap[hip];
+        btn.textContent = hip + " (" + cnt.selectable + "/" + cnt.total + " VMs)";
+        if (activeNodeFilter === hip) btn.classList.add("active");
+        btn.addEventListener("click", function () { activateNodeFilter(hip); });
+        bar.appendChild(btn);
+      });
+
+      // Keep "All" chip state in sync
+      allBtn.classList.toggle("active", !activeNodeFilter);
+    }
+
+    /** Activate or toggle a node filter chip. */
+    function activateNodeFilter(hip) {
+      if (activeNodeFilter === hip) {
+        // Second click on same chip → clear filter
+        activeNodeFilter = null;
+        document.getElementById("host-ip").value = "";
+      } else {
+        activeNodeFilter = hip;
+        // Auto-fill the AHV host IP field
+        document.getElementById("host-ip").value = hip;
+        // Auto-select all selectable VMs on this node
+        vmRows.forEach(function (row) {
+          if (!selectable(row)) return;
+          if (row.host_ip === hip) {
+            selectedKeys.add(row.key);
+          }
+        });
+      }
+      vmPage = 1;
+      renderNodeFilterBar();
+      renderVmTable();
+      updateStartButton();
+      previewCommand();
     }
 
     function selectedIps() {
@@ -761,6 +1567,26 @@
       return ips;
     }
 
+    /**
+     * Return [{ip, host_ip}] for all selected VMs.
+     * host_ip may be "" when the VM was loaded from a plain IP file (no Prism data).
+     * The backend uses this to build the ip→hypervisor map without a Prism re-fetch.
+     */
+    function selectedVms() {
+      const vms = [];
+      const seen = {};
+      vmRows.forEach(function (row) {
+        if (!selectedKeys.has(row.key)) return;
+        (row.ips || []).forEach(function (ip) {
+          if (!seen[ip]) {
+            seen[ip] = true;
+            vms.push({ ip: ip, host_ip: row.host_ip || "" });
+          }
+        });
+      });
+      return vms;
+    }
+
     function startBlockReason() {
       if (runActive) return "An ingestion run is already in progress.";
       if (!vmLoaded) return "Fetch VMs before starting ingestion.";
@@ -768,7 +1594,69 @@
       const count = selectedIps().length;
       if (!count) return "Select VMs before starting ingestion.";
       if (count < 2) return "Select at least two VM IPs. A flow needs a source and a destination.";
+      // Port range validation
+      if (portRangeError("source") || portRangeError("dest"))
+        return "Fix port errors before starting (all ports must be 1–65535).";
       return "";
+    }
+
+    /**
+     * Validates port inputs for source or dest (single, range, list modes).
+     * Shows a specific error message and returns true when invalid.
+     */
+    function portRangeError(prefix) {
+      const modeEl = document.getElementById(prefix + "-mode");
+      const errEl  = document.getElementById(prefix + "-range-err");
+      if (!modeEl || !errEl) return false;
+      const mode = modeEl.value;
+
+      function setErr(msg) {
+        errEl.textContent = msg;
+        errEl.hidden = !msg;
+        return !!msg;
+      }
+
+      if (mode === "single") {
+        const v = parseInt(document.getElementById(prefix + "-port").value);
+        if (isNaN(v) || v < 1 || v > 65535)
+          return setErr("⚠ Port must be between 1 and 65535.");
+        return setErr("");
+      }
+
+      if (mode === "range") {
+        const from = parseInt(document.getElementById(prefix + "-from").value);
+        const to   = parseInt(document.getElementById(prefix + "-to").value);
+        if (isNaN(from) || isNaN(to) || from < 1 || from > 65535 || to < 1 || to > 65535)
+          return setErr("⚠ Ports must be between 1 and 65535.");
+        if (to < from)
+          return setErr("⚠ \"To\" port must be ≥ \"From\" port.");
+        if (to - from + 1 > 1024)
+          return setErr("⚠ Range spans more than 1024 ports.");
+        return setErr("");
+      }
+
+      if (mode === "list") {
+        const raw = (document.getElementById(prefix + "-list").value || "").trim();
+        if (!raw) return setErr("");
+        const tokens = raw.replace(/,/g, " ").split(/\s+/).filter(Boolean);
+        for (const token of tokens) {
+          const m = token.match(/^(\d+)-(\d+)$/);
+          if (m) {
+            const s = parseInt(m[1]), e = parseInt(m[2]);
+            if (s < 1 || e > 65535 || s > e)
+              return setErr("⚠ Range \"" + token + "\" is invalid (must be 1–65535, start ≤ end).");
+          } else if (/^\d+$/.test(token)) {
+            const p = parseInt(token);
+            if (p < 1 || p > 65535)
+              return setErr("⚠ Port " + token + " is outside 1–65535.");
+          } else {
+            return setErr("⚠ Invalid port token: \"" + token + "\".");
+          }
+        }
+        return setErr("");
+      }
+
+      return setErr("");
     }
 
     function updateStartButton() {
@@ -777,6 +1665,30 @@
       startBtn.disabled = !!reason;
       wrap.classList.toggle("blocked", !!reason);
       wrap.title = reason || ("Inject conntrack flows for " + selectedIps().length + " selected IP addresses.");
+      updateFlowProjection();
+      updateVmSummary();
+    }
+
+    /** Update the VM summary counter strip below the table. */
+    function updateVmSummary() {
+      const strip = document.getElementById("vm-summary-strip");
+      if (!vmLoaded || !vmRows.length) { strip.style.display = "none"; return; }
+      strip.style.display = "flex";
+      const selSet = selectedKeys;
+      var sel = 0, withIp = 0, noEp = 0, on = 0, off = 0;
+      vmRows.forEach(function (row) {
+        const ip = (row.ips || []).find(function (i) { return i; });
+        if (ip) withIp++;
+        else noEp++;
+        if ((row.power_state || row.power || "").toLowerCase() === "on")  on++;
+        else off++;
+        if (selSet.has(row.key)) sel++;
+      });
+      document.getElementById("vms-selected").textContent = sel;
+      document.getElementById("vms-with-ip").textContent  = withIp;
+      document.getElementById("vms-no-ep").textContent    = noEp;
+      document.getElementById("vms-on").textContent       = on;
+      document.getElementById("vms-off").textContent      = off;
     }
 
     function renderStats() {
@@ -811,7 +1723,7 @@
       box.indeterminate = chosen > 0 && chosen < rows.length;
       box.disabled = rows.length === 0;
 
-      const currentVisibleRows = vmBody.querySelectorAll('tr input[type="checkbox"]:not([disabled])');
+      const currentVisibleRows = document.getElementById("vm-body").querySelectorAll('tr input[type="checkbox"]:not([disabled])');
       const pageBox = document.getElementById("vm-select-all-page");
       const pageChosen = Array.from(currentVisibleRows).filter(cb => cb.checked).length;
       pageBox.checked = currentVisibleRows.length > 0 && pageChosen === currentVisibleRows.length;
@@ -898,7 +1810,9 @@
       lastMeta = data;
       vmLoaded = true;
       vmPage = 1;
+      activeNodeFilter = null;
       document.getElementById("vm-search").value = "";
+      renderNodeFilterBar();
       renderVmTable();
       updateStartButton();
       previewCommand();
@@ -919,8 +1833,452 @@
       return document.getElementById(prefix + "-list").value.trim();
     }
 
-    function showRelatedFields() {
+    // ── Flow Projection ──────────────────────────────────────────────────────
+    // Common TCP and UDP ports used when dest-mode = "common"
+    const COMMON_TCP_PORTS = [80, 443, 22, 3306];
+    const COMMON_UDP_PORTS = [53, 123, 161];
+
+    /** Parse a port spec string ("80", "80-90", "80,443,8080-8082") → count */
+    function countPortSpec(spec) {
+      if (!spec || spec.trim() === "") return 0;
+      return spec.split(",").reduce(function (sum, part) {
+        part = part.trim();
+        const m = part.match(/^(\d+)-(\d+)$/);
+        if (m) return sum + Math.max(0, parseInt(m[2]) - parseInt(m[1]) + 1);
+        if (/^\d+$/.test(part)) return sum + 1;
+        return sum;
+      }, 0);
+    }
+
+    /** Return { tcpCount, udpCount } for the current destination-port config */
+    function destPortCounts() {
+      const mode   = document.getElementById("dest-mode").value;
+      const proto  = document.getElementById("proto").value;
+      const isTcp  = proto === "tcp" || proto === "both";
+      const isUdp  = proto === "udp" || proto === "both";
+
+      if (mode === "common") {
+        return {
+          tcpCount: isTcp ? COMMON_TCP_PORTS.length : 0,
+          udpCount: isUdp ? COMMON_UDP_PORTS.length : 0
+        };
+      }
+      if (mode === "single") {
+        return { tcpCount: isTcp ? 1 : 0, udpCount: isUdp ? 1 : 0 };
+      }
+      if (mode === "range") {
+        const from = parseInt(document.getElementById("dest-from").value) || 0;
+        const to   = parseInt(document.getElementById("dest-to").value)   || 0;
+        const cnt  = Math.max(0, Math.min(1024, to - from + 1));
+        return { tcpCount: isTcp ? cnt : 0, udpCount: isUdp ? cnt : 0 };
+      }
+      if (mode === "list") {
+        const cnt = countPortSpec(document.getElementById("dest-list").value);
+        return { tcpCount: isTcp ? cnt : 0, udpCount: isUdp ? cnt : 0 };
+      }
+      return { tcpCount: 0, udpCount: 0 };
+    }
+
+
+    /** Count distinct source ports for the current source-mode configuration.
+     *  auto / single → 1 (no multiplication).
+     *  range / list  → the number of ports in the spec (capped at 1024 to match server validation).
+     */
+    function srcPortCount() {
+      const mode = document.getElementById("source-mode").value;
+      if (mode === "auto" || mode === "single") return 1;
+      if (mode === "range") {
+        const from = parseInt(document.getElementById("source-from").value) || 0;
+        const to   = parseInt(document.getElementById("source-to").value)   || 0;
+        return Math.max(1, Math.min(1024, to - from + 1));
+      }
+      if (mode === "list") {
+        return Math.max(1, Math.min(1024, countPortSpec(document.getElementById("source-list").value)));
+      }
+      return 1;
+    }
+
+    /** Human-readable label for the source port configuration */
+    function srcPortLabel() {
+      const mode = document.getElementById("source-mode").value;
+      if (mode === "auto")   return "auto";
+      if (mode === "single") return "src " + (document.getElementById("source-port").value || "?");
+      if (mode === "range") {
+        const n = srcPortCount();
+        return n + " src port" + (n !== 1 ? "s" : "") + " (" +
+               (document.getElementById("source-from").value || "?") + "–" +
+               (document.getElementById("source-to").value   || "?") + ")";
+      }
+      if (mode === "list") {
+        const n = srcPortCount();
+        return n + " src port" + (n !== 1 ? "s" : "") + " (list)";
+      }
+      return "";
+    }
+
+    /** Human-readable destination port description */
+    function destPortLabel() {
+      const mode = document.getElementById("dest-mode").value;
       const proto = document.getElementById("proto").value;
+      if (mode === "common") {
+        if (proto === "tcp")  return "TCP 80,443,22,3306";
+        if (proto === "udp")  return "UDP 53,123,161";
+        return "TCP 80,443,22,3306 + UDP 53,123,161";
+      }
+      if (mode === "single") return "port " + (document.getElementById("dest-port").value || "?");
+      if (mode === "range")  return "range " + (document.getElementById("dest-from").value || "?") + "–" + (document.getElementById("dest-to").value || "?");
+      if (mode === "list")   return "list: " + (document.getElementById("dest-list").value || "?").substring(0, 30);
+      return "?";
+    }
+
+    // ─── Rate helpers ─────────────────────────────────────────────────────────
+    /** Return the chosen target rate in flows/sec as an integer (0 = unlimited). */
+    function getTargetRate() {
+      const preset = document.getElementById("inject-rate-preset").value;
+      if (preset === "custom") {
+        return Math.max(0, Math.round(parseFloat(document.getElementById("inject-rate-custom").value) || 0));
+      }
+      return Math.round(parseFloat(preset) || 0);
+    }
+
+    /** Per-thread throughput estimate for the current traffic mode. */
+    function tptForMode() {
+      const isLive = document.querySelector('input[name="traffic-mode"]:checked').value === "live";
+      return isLive ? LIVE_TPT : MOCK_TPT;
+    }
+
+    /**
+     * Apply cascading constraints from the selected injection rate:
+     *  • Grey out (disable) parallel-mode <option>s whose achievable rate < target.
+     *  • Warn in #rate-feasibility-help if the current thread count is too low.
+     *  • Auto-switch away from a mode that has just been disabled.
+     * Called on every refreshForm() cycle.
+     */
+    function applyRateCascade() {
+      const targetRate = getTargetRate();
+      const tpt        = tptForMode();
+      const modeEl     = document.getElementById("parallel-mode");
+      const rateEl     = document.getElementById("inject-rate-preset");
+      const helpEl     = document.getElementById("rate-feasibility-help");
+      const threadCount = parseInt(document.getElementById("thread-count").value) || 1;
+
+      // ── Dim/disable parallel-mode options that can't reach the target rate ─
+      Array.from(modeEl.options).forEach(function (opt) {
+        if (!targetRate) {
+          // Unlimited: all modes are valid
+          opt.disabled = false;
+          opt.title    = "";
+          return;
+        }
+        const isSeq     = opt.value === "sequential";
+        const maxThread = isSeq ? 1 : 10000;      // sequential is always 1-thread
+        const maxRate   = maxThread * tpt;
+        const feasible  = maxRate >= targetRate;
+        opt.disabled    = !feasible;
+        opt.title       = feasible
+          ? ""
+          : opt.value + " is limited to ~" + fmtN(maxRate) + " flows/sec (need " + fmtN(targetRate) + "/sec)";
+      });
+
+      // ── If the currently selected mode is now disabled, switch to the first OK one ─
+      let switchedMode = false;
+      if (modeEl.options[modeEl.selectedIndex] && modeEl.options[modeEl.selectedIndex].disabled) {
+        for (var i = 0; i < modeEl.options.length; i++) {
+          if (!modeEl.options[i].disabled) {
+            modeEl.selectedIndex = i;
+            currentMode = modeEl.value;
+            switchedMode = true;
+            break;
+          }
+        }
+      }
+
+      // ── Highlight the rate dropdown when it is constraining mode choices ──
+      var anyDisabled = Array.from(modeEl.options).some(function (o) { return o.disabled; });
+      rateEl.classList.toggle("rate-constrained", !!targetRate && anyDisabled);
+
+      // ── Feasibility help text ──────────────────────────────────────────────
+      if (!targetRate) {
+        helpEl.innerHTML = "";
+        return;
+      }
+      const effThreads    = (currentMode === "sequential") ? 1 : Math.max(1, threadCount);
+      const achievable    = effThreads * tpt;
+      const minNeeded     = Math.ceil(targetRate / tpt);
+      const modeLabel     = tptForMode() === LIVE_TPT ? "live" : "mock";
+
+      if (achievable >= targetRate) {
+        helpEl.innerHTML =
+          "<span class='rate-feasible'>" +
+          fmtN(effThreads) + " thread" + (effThreads !== 1 ? "s" : "") +
+          " → ~" + fmtN(achievable) + " flows/sec in " + modeLabel + " mode" +
+          (switchedMode ? " (mode auto-switched)" : "") +
+          "</span>";
+      } else {
+        helpEl.innerHTML =
+          "<span class='rate-warn-txt'>" +
+          fmtN(effThreads) + " thread" + (effThreads !== 1 ? "s" : "") +
+          " → ~" + fmtN(achievable) + " flows/sec — need at least " +
+          fmtN(minNeeded) + " threads in " + modeLabel + " mode to reach " +
+          fmtN(targetRate) + "/sec" +
+          "</span>";
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Compute the number of src→dst VM pairs for the current mode + pattern.
+     * Returns { pairs, label, isApprox }
+     *
+     * Three modes override the user-selected pattern (matches ipfix_test.py lines 1241-1247):
+     *   first_to_all → "1:all"   all_to_first → "all:1"   nn → "n:n"
+     * All other modes use whatever the user has selected.
+     */
+    function computePairs(n) {
+      const mode = currentMode;
+      if (n < 2) return { pairs: 0, label: "need ≥2 IPs", isApprox: false };
+
+      const N = Math.max(1, parseInt(document.getElementById("flow-n").value) || 10);
+
+      // Determine effective pattern (some modes force it)
+      let eff, note = "";
+      if      (mode === "first_to_all")  { eff = "1:all"; note = " (mode locks 1:all)"; }
+      else if (mode === "all_to_first")  { eff = "all:1"; note = " (mode locks all:1)"; }
+      else if (mode === "nn")            { eff = "n:n";   note = " (mode locks n:n)";   }
+      else                               { eff = activePattern(); }
+
+      switch (eff) {
+        case "1:1": {
+          const p = Math.floor(n / 2);
+          return { pairs: p, label: p + " pairs (1:1)" + note, isApprox: false };
+        }
+        case "1:n": {
+          const p = Math.min(N, n - 1);
+          return { pairs: p, label: "1 src → " + p + " dsts (1:n, N=" + N + ")" + note, isApprox: false };
+        }
+        case "n:1": {
+          const p = Math.min(N, n - 1);
+          return { pairs: p, label: p + " srcs → 1 dst (n:1, N=" + N + ")" + note, isApprox: false };
+        }
+        case "1:all": {
+          const p = n - 1;
+          return { pairs: p, label: "1 src → " + p + " dsts (1:all)" + note, isApprox: false };
+        }
+        case "all:1": {
+          const p = n - 1;
+          return { pairs: p, label: p + " srcs → 1 dst (all:1)" + note, isApprox: false };
+        }
+        case "n:n": {
+          // build_flows n:n: split IPs into two equal halves, full cross-product
+          const src = Math.floor(n / 2);
+          const dst = n - src;
+          return { pairs: src * dst, label: src + " srcs × " + dst + " dsts (N×N)" + note, isApprox: false };
+        }
+        default: {
+          const p = Math.floor(n / 2);
+          return { pairs: p, label: "~" + p + " pairs", isApprox: true };
+        }
+      }
+    }
+
+    /** Format seconds into a human-friendly string */
+    function fmtDuration(secs) {
+      if (!isFinite(secs) || secs < 0) return "?";
+      if (secs < 2)    return "< 1 s";
+      if (secs < 60)   return Math.round(secs) + " s";
+      if (secs < 3600) return (secs / 60).toFixed(1).replace(/\.0$/, "") + " min";
+      if (secs < 86400) return (secs / 3600).toFixed(1).replace(/\.0$/, "") + " hr";
+      return (secs / 86400).toFixed(1).replace(/\.0$/, "") + " d";
+    }
+
+    /** Format a large integer with , separators */
+    function fmtN(n) {
+      return n.toLocaleString();
+    }
+
+    function updateFlowProjection() {
+      const banner   = document.getElementById("flow-projection-banner");
+      const elTotal  = document.getElementById("fxb-total");
+      const elTime   = document.getElementById("fxb-time");
+      const elPairs  = document.getElementById("fxb-pairs");
+      const elPorts  = document.getElementById("fxb-ports");
+      const elThrs   = document.getElementById("fxb-threads");
+      const elRate   = document.getElementById("fxb-rate");
+      const elDetail = document.getElementById("fxb-detail");
+
+      // Helper: reset a chip value to muted
+      function chip(el, val, warn) {
+        el.textContent = val;
+        el.className = "fxb-chip-val" + (warn ? " fxb-warn-val" : val === "—" ? " fxb-muted-val" : "");
+      }
+
+      const ips = selectedIps();
+      const n   = ips.length;
+
+      if (!vmLoaded || n < 2) {
+        chip(elTotal, "—", false); chip(elTime, "—", false);
+        chip(elPairs, "—", false); chip(elPorts, "—", false); chip(elThrs, "—", false);
+        chip(elRate,  "—", false);
+        elDetail.textContent = n < 2 && vmLoaded
+          ? "Select at least 2 VM IPs to project flow count."
+          : "Fetch VMs and select rows to see the projection.";
+        banner.className = "fxb-muted";
+        return;
+      }
+
+      // Pairs
+      const { pairs, label: pairLabel, isApprox } = computePairs(n);
+
+      // Ports
+      const { tcpCount, udpCount } = destPortCounts();
+      const portsPerPair = tcpCount + udpCount;
+      const portLabel    = destPortLabel();
+
+      // Source ports (range/list modes multiply flows; auto/single do not)
+      const srcPorts     = srcPortCount();
+      const srcLabel     = srcPortLabel();
+
+      // Total flows = pairs × dest-ports/pair × src-port variants
+      let totalFlows = pairs * portsPerPair * srcPorts;
+
+      // Parallelism
+      const state       = modeState[currentMode];
+      const isParallel  = state.parallel;
+      const threads     = isParallel ? Math.max(1, state.threadCount) : 1;
+
+      // Time estimate
+      const trafficMode    = document.querySelector('input[name="traffic-mode"]:checked').value;
+      const timeout        = parseFloat(document.getElementById("timeout").value) || 10;
+      const persistence    = document.getElementById("persistence-mode").value;
+      const flowDuration   = parseFloat(document.getElementById("flow-duration").value) || 30;
+      const keepaliveIntvl = parseFloat(document.getElementById("keepalive-interval").value) || 60;
+      const durationLimit  = parseFloat(document.getElementById("duration-limit").value) || 3600;
+      const loopCount      = Math.max(1, parseInt(document.getElementById("loop-count").value) || 1);
+      const loopInterval   = parseFloat(document.getElementById("loop-interval").value) || 60;
+
+      // For recurring mode multiply total flows by loop count for projection
+      const displayFlows = persistence === "recurring" ? totalFlows * loopCount : totalFlows;
+
+      let estSecs;
+      if (persistence === "recurring") {
+        // each loop: injection time + gap (except last loop has no gap)
+        const oneLoopInject = Math.ceil(totalFlows / threads) * (trafficMode === "live" ? flowDuration : 0.01);
+        estSecs = loopCount * oneLoopInject + (loopCount - 1) * loopInterval;
+      } else if (trafficMode === "live") {
+        if (persistence === "keepalive") {
+          estSecs = Infinity; // runs until stopped
+        } else if (persistence === "duration") {
+          estSecs = durationLimit;
+        } else {
+          // oneshot: flows run for flowDuration, batched by threads
+          estSecs = Math.ceil(totalFlows / threads) * flowDuration;
+        }
+      } else {
+        // Mock/conntrack: ~10 ms per flow injection, batched
+        estSecs = Math.ceil(totalFlows / threads) * 0.01;
+      }
+
+      // Render
+      const approxPrefix = isApprox ? "~" : "";
+      chip(elTotal, approxPrefix + fmtN(displayFlows), displayFlows > 50000);
+      chip(elTime,  estSecs === Infinity ? "∞ (continuous)" : fmtDuration(estSecs), estSecs > 3600);
+      chip(elPairs, approxPrefix + fmtN(pairs), false);
+      chip(elPorts, fmtN(portsPerPair), false);
+      chip(elThrs,  isParallel ? threads + " threads" : "sequential", false);
+
+      // Rate chip: show configured rate vs. achievable, highlight mismatches
+      const targetRate  = getTargetRate();
+      const tpt         = tptForMode();
+      const effThreads  = (currentMode === "sequential") ? 1 : Math.max(1, threads);
+      const achievable  = effThreads * tpt;
+      if (!targetRate) {
+        const unlimitedEff = fmtN(achievable) + "/sec est.";
+        elRate.textContent = unlimitedEff;
+        elRate.className   = "fxb-chip-val";
+      } else {
+        const rateTxt = fmtN(targetRate) + "/sec";
+        if (achievable >= targetRate) {
+          elRate.textContent = rateTxt;
+          elRate.className   = "fxb-chip-val fxb-rate-ok";
+        } else {
+          elRate.textContent = rateTxt + " ⚠";
+          elRate.className   = "fxb-chip-val fxb-rate-warn";
+        }
+      }
+
+      // Recalculate estimated time using rate when set
+      if (targetRate > 0 && estSecs !== Infinity) {
+        const rateBasedSecs = displayFlows / targetRate;
+        chip(elTime, fmtDuration(rateBasedSecs), rateBasedSecs > 3600);
+      }
+
+      // Detail breakdown line
+      const parts = [];
+      parts.push(n + " IPs selected");
+      parts.push(pairLabel);
+      if (currentMode !== "port_scan_burst") {
+        const portInfo = portsPerPair + " dst port(s)/pair (" + portLabel + ")";
+        const srcInfo  = srcPorts > 1 ? " × " + srcPorts + " src ports (" + srcLabel + ")" : (srcLabel && srcLabel !== "auto" ? " [" + srcLabel + "]" : "");
+        parts.push(portInfo + srcInfo);
+      }
+      if (isParallel) {
+        const wavesFloat = totalFlows / threads;
+        // For nn mode, build_waves re-filters the cross-product (different halving from build_flows)
+        // so actual injected batches will be lower — flag as approximate.
+        const waveApprox = currentMode === "nn" ? "~" : "";
+        parts.push(threads + "-thread parallelism → " + waveApprox + Math.ceil(wavesFloat) + " wave" + (Math.ceil(wavesFloat) !== 1 ? "s" : ""));
+      }
+      if (trafficMode === "live" && persistence !== "keepalive" && persistence !== "recurring") {
+        parts.push(flowDuration + "s/flow duration");
+      }
+      if (persistence === "recurring") {
+        parts.push(loopCount + " loops × " + fmtN(totalFlows) + " flows");
+        parts.push(loopInterval + "s gap between loops");
+      }
+      // Rate info in detail line
+      if (targetRate > 0) {
+        const rateBasedSecs = displayFlows / targetRate;
+        const feasible = achievable >= targetRate;
+        parts.push(
+          fmtN(targetRate) + " flows/sec rate limit → " +
+          fmtDuration(rateBasedSecs) +
+          (feasible ? "" : " (⚠ need " + Math.ceil(targetRate / tpt) + " threads)")
+        );
+      }
+      elDetail.innerHTML = '<span class="fxb-breakdown">' +
+        parts.map(function (p, i) {
+          return '<span class="fxb-breakdown-item">' + p + '</span>';
+        }).join("") + "</span>";
+
+      // ── Threshold colour-coding (flows per 5 minutes) ─────────────────
+      // Green  0–4k/5min  |  Yellow 4k–20k/5min  |  Red >20k/5min
+      const flows5min   = totalFlows;          // displayFlows already accounts for recurrence
+      const PER5M_WARN  = 4000;
+      const PER5M_CRIT  = 20000;
+      const badgeEl     = document.getElementById("fxb-threshold-badge");
+      if (totalFlows === 0) {
+        banner.className = "";
+        badgeEl.style.display = "none";
+      } else if (flows5min <= PER5M_WARN) {
+        banner.className = "";
+        badgeEl.style.display = "";
+        badgeEl.className = "fxb-threshold-ok";
+        badgeEl.textContent = "✓ Low";
+      } else if (flows5min <= PER5M_CRIT) {
+        banner.className = "fxb-warn";
+        badgeEl.style.display = "";
+        badgeEl.className = "fxb-threshold-warn";
+        badgeEl.textContent = "⚡ Medium";
+      } else {
+        banner.className = "fxb-danger";
+        badgeEl.style.display = "";
+        badgeEl.className = "fxb-threshold-crit";
+        badgeEl.textContent = "🔴 High";
+      }
+    }
+    // ── End Flow Projection ───────────────────────────────────────────────────
+
+    function showRelatedFields() {
       const trafficMode = document.querySelector('input[name="traffic-mode"]:checked').value;
       
       document.getElementById("tcp-state-group").hidden = proto === "udp";
@@ -933,6 +2291,13 @@
       document.getElementById("flow-duration-group").hidden = persistenceMode !== "oneshot";
       document.getElementById("keepalive-interval-group").hidden = !(persistenceMode === "keepalive" || persistenceMode === "duration");
       document.getElementById("duration-limit-group").hidden = persistenceMode !== "duration";
+      document.getElementById("loop-count-group").hidden    = persistenceMode !== "recurring";
+      document.getElementById("loop-interval-group").hidden = persistenceMode !== "recurring";
+
+      // Show/hide custom rate input
+      const ratePreset = document.getElementById("inject-rate-preset").value;
+      document.getElementById("inject-rate-custom").style.display = ratePreset === "custom" ? "" : "none";
+
       const sourceHelp = {
         auto: "Each flow gets the next source port from 40000 upward.",
         single: "Every flow uses this source port.",
@@ -950,6 +2315,9 @@
       };
       document.getElementById("source-help").textContent = sourceHelp[document.getElementById("source-mode").value] || "";
       document.getElementById("dest-help").textContent = destHelp[document.getElementById("dest-mode").value] || "";
+      // Port range validation (live, on every keystroke)
+      portRangeError("source");
+      portRangeError("dest");
     }
 
     function shellQuote(value) {
@@ -957,6 +2325,7 @@
     }
 
     function previewCommand() {
+      updateFlowProjection();
       const state = modeState[currentMode];
       const trafficMode = document.querySelector('input[name="traffic-mode"]:checked').value;
       const scriptName = trafficMode === "live" ? "ipfix_live.py" : "ipfix_test.py";
@@ -1015,8 +2384,15 @@
         parts.push("--keep-alive");
         parts.push("--keepalive-interval " + String(document.getElementById("keepalive-interval").value || ""));
         parts.push("--duration-limit " + String(document.getElementById("duration-limit").value || ""));
+      } else if (persistenceMode === "recurring") {
+        parts.push("--loop-count " + String(document.getElementById("loop-count").value || "5"));
+        parts.push("--loop-interval " + String(document.getElementById("loop-interval").value || "60"));
       }
-      
+
+      // Injection rate
+      const previewRate = getTargetRate();
+      if (previewRate > 0) parts.push("--rate " + previewRate);
+
       document.getElementById("cmd-preview").textContent = parts.join(" ");
     }
 
@@ -1028,7 +2404,7 @@
         pc_ip: document.getElementById("pc-ip").value,
         username: document.getElementById("username").value,
         password: document.getElementById("password").value,
-        selected_ips: selectedIps(),
+        selected_ips: selectedVms(),
         proto: document.getElementById("proto").value,
         source_mode: document.getElementById("source-mode").value,
         source_port: Number(document.getElementById("source-port").value),
@@ -1052,7 +2428,10 @@
         inspect_only: document.getElementById("inspect-only").checked,
         persistence_mode: document.getElementById("persistence-mode").value,
         keepalive_interval: Number(document.getElementById("keepalive-interval").value),
-        duration_limit: Number(document.getElementById("duration-limit").value)
+        duration_limit: Number(document.getElementById("duration-limit").value),
+        loop_count:     Number(document.getElementById("loop-count").value) || 1,
+        loop_interval:  Number(document.getElementById("loop-interval").value) || 30,
+        rate:           getTargetRate()
       };
       if (!MODES[currentMode].pattern) {
         body.pattern = document.getElementById("pattern").value;
@@ -1066,6 +2445,7 @@
     function refreshForm() {
       showModeFields();
       showRelatedFields();
+      applyRateCascade();
       previewCommand();
       updateStartButton();
     }
@@ -1207,6 +2587,16 @@
       previewCommand();
     });
 
+    document.getElementById("node-filter-all").addEventListener("click", function () {
+      activeNodeFilter = null;
+      document.getElementById("host-ip").value = "";
+      renderNodeFilterBar();
+      vmPage = 1;
+      renderVmTable();
+      updateStartButton();
+      previewCommand();
+    });
+
     document.getElementById("vm-search").addEventListener("input", function () {
       vmPage = 1;
       renderVmTable();
@@ -1241,20 +2631,47 @@
       });
     });
 
-    async function loadVmSource(url, body, busyText) {
-      const fetchBtn = document.getElementById("fetch-btn");
-      const loadBtn = document.getElementById("load-file-btn");
-      const fetchMsg = document.getElementById("fetch-msg");
-      fetchBtn.disabled = true;
-      loadBtn.disabled = true;
+    /**
+     * Core VM loader.
+     * url:        fetch URL
+     * body:       POST body object (null = GET request)
+     * busyText:   status text shown while loading
+     * triggerBtn: the button that was clicked (gets the spinner)
+     * idleLabel:  HTML to restore on the button after completion
+     */
+    async function loadVmSource(url, body, busyText, triggerBtn, idleLabel) {
+      const localBtn  = document.getElementById("fetch-local-btn");
+      const latestBtn = document.getElementById("fetch-latest-btn");
+      const loadBtn   = document.getElementById("load-file-btn");
+      const fetchMsg  = document.getElementById("fetch-msg");
+      const ageHint   = document.getElementById("cache-age-hint");
+      localBtn.disabled  = true;
+      latestBtn.disabled = true;
+      loadBtn.disabled   = true;
       fetchMsg.className = "msg";
       fetchMsg.textContent = busyText;
+
+      // ── elapsed-time ticker (only for Prism fetch, not local cache) ────
+      const isFetchFromPrism = (body !== null || url.includes("/api/ipfix/vms") && !url.includes("/local"));
+      let fetchStartTs = Date.now();
+      let timerInterval = null;
+      if (isFetchFromPrism) {
+        timerInterval = setInterval(function () {
+          const elapsed = Math.round((Date.now() - fetchStartTs) / 1000);
+          triggerBtn.innerHTML = "<span class='btn-spinner'></span> " +
+            busyText.replace(/\u2026$/, "") + " (" + elapsed + "s)";
+          fetchMsg.textContent = busyText + " (" + elapsed + "s elapsed)";
+        }, 1000);
+      }
+      triggerBtn.innerHTML = "<span class='btn-spinner'></span>" + busyText.replace(/\u2026$/, "");
+
+      let fetchDuration = 0;
       try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+        const opts = body === null
+          ? { method: "GET" }
+          : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+        const response = await fetch(url, opts);
+        fetchDuration = Math.round((Date.now() - fetchStartTs) / 1000);
         const data = await response.json();
         if (!response.ok || !data.ok) {
           fetchMsg.className = "msg error";
@@ -1264,25 +2681,54 @@
         acceptVms(data);
         const count = (data.vms || []).length;
         fetchMsg.className = "msg success";
+        const src = data.source === "local" ? "local cache" : "Prism";
+        const durationStr = fetchDuration > 0 ? " · " + fetchDuration + "s" : "";
         fetchMsg.textContent = count
-          ? (count + " VMs loaded. auto_pc_*, nc*, and sql* are left unchecked.")
-          : "No VMs were returned.";
+          ? (count + " VMs loaded from " + src + durationStr + ". auto_pc_*, nc*, and sql* are left unchecked.")
+          : "No VMs were returned from " + src + durationStr + ".";
+        if (data.source === "local" && data.cache_age_label) {
+          ageHint.style.display = "";
+          ageHint.textContent = "Cached " + data.cache_age_label +
+            (data.cached_pc_ip ? " \u2022 " + data.cached_pc_ip : "");
+        } else if (data.source === "prism") {
+          ageHint.style.display = "";
+          ageHint.textContent = "Cache refreshed just now";
+        } else {
+          ageHint.style.display = "none";
+        }
       } catch (err) {
         fetchMsg.className = "msg error";
         fetchMsg.textContent = String(err);
       } finally {
-        fetchBtn.disabled = false;
-        loadBtn.disabled = false;
+        if (timerInterval) clearInterval(timerInterval);
+        localBtn.disabled  = false;
+        latestBtn.disabled = false;
+        loadBtn.disabled   = false;
+        triggerBtn.innerHTML = idleLabel;
       }
     }
 
-    document.getElementById("fetch-btn").addEventListener("click", function () {
-      loadVmSource("/api/ipfix/vms", {
-        pc_ip: document.getElementById("pc-ip").value,
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value,
-        page_size: Number(document.getElementById("page-size").value)
-      }, "Fetching VMs from Prism…");
+    document.getElementById("fetch-local-btn").addEventListener("click", function () {
+      const pcIp = (document.getElementById("pc-ip").value || "").trim();
+      const url  = pcIp
+        ? "/api/ipfix/vms/local?pc_ip=" + encodeURIComponent(pcIp)
+        : "/api/ipfix/vms/local";
+      loadVmSource(url, null, "Loading cache...", this, "\uD83D\uDCC2 Fetch Local");
+    });
+
+    document.getElementById("fetch-latest-btn").addEventListener("click", function () {
+      loadVmSource(
+        "/api/ipfix/vms",
+        {
+          pc_ip:     document.getElementById("pc-ip").value,
+          username:  document.getElementById("username").value,
+          password:  document.getElementById("password").value,
+          page_size: Number(document.getElementById("page-size").value),
+        },
+        "Fetching from Prism...",
+        this,
+        "\uD83D\uDD04 Fetch Latest"
+      );
     });
 
     document.getElementById("load-file-btn").addEventListener("click", function () {

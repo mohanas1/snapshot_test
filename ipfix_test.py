@@ -95,6 +95,11 @@ CLIENT_SERVER_PAIR_THREAD_COUNT = 50
 PORT_SCAN_BURST_PARALLEL = True
 PORT_SCAN_BURST_THREAD_COUNT = 50
 
+# nn — splits VMs into two equal halves; every source (first half) sends to
+#      every destination (second half), creating a full N×N cross-product mesh
+NN_PARALLEL = True
+NN_THREAD_COUNT = 50
+
 PARALLEL_OPTIONS = {
   "sequential": {
     "parallel": SEQUENTIAL_PARALLEL,
@@ -150,6 +155,11 @@ PARALLEL_OPTIONS = {
     "parallel": PORT_SCAN_BURST_PARALLEL,
     "thread_count": PORT_SCAN_BURST_THREAD_COUNT,
     "detail": "cycles a single source through port range to target",
+  },
+  "nn": {
+    "parallel": NN_PARALLEL,
+    "thread_count": NN_THREAD_COUNT,
+    "detail": "first half of VMs each send to every VM in the second half (N×N cross-product mesh)",
   },
 }
 
@@ -402,6 +412,15 @@ def build_flows(vm_ips, pattern, n, proto, sport, dport, timeout, tcp_state, sta
   elif pattern == "all:1":
     for src in vm_ips[1:]:
       pairs.append((src, vm_ips[0]))
+  elif pattern == "n:n":
+    # Split VMs into two equal halves; every source (first half) sends to
+    # every destination (second half) — full N×N cross-product.
+    midpoint = max(1, len(vm_ips) // 2)
+    src_pool = vm_ips[:midpoint]
+    dst_pool = vm_ips[midpoint:]
+    for src in src_pool:
+      for dst in dst_pool:
+        pairs.append((src, dst))
   else:
     raise RuntimeError("unknown pattern {}".format(pattern))
 
@@ -412,10 +431,13 @@ def build_flows(vm_ips, pattern, n, proto, sport, dport, timeout, tcp_state, sta
     for src, dst in pairs:
       for port in ports:
         if sports:
-          use_sport = sports[len(flows) % len(sports)]
+          # Multiple explicit source ports: iterate over all → each produces a distinct 5-tuple flow
+          for use_sport in sports:
+            flows.append(make_flow(src, dst, one_proto, use_sport, port, timeout, tcp_state, status))
         else:
+          # Auto source port: one flow per (pair, dst_port, proto); sport auto-increments
           use_sport = sport if sport else 40000 + (len(flows) % 20000)
-        flows.append(make_flow(src, dst, one_proto, use_sport, port, timeout, tcp_state, status))
+          flows.append(make_flow(src, dst, one_proto, use_sport, port, timeout, tcp_state, status))
   return flows
 
 
@@ -574,6 +596,26 @@ def build_waves(mode, flows, width):
       mixed = _interleave(group, lambda flow: flow["dport"])
       waves.extend(_chunk(mixed, width))
     return waves
+  if mode == "nn":
+    # N×N cross-product mesh:
+    # Split the distinct VM IPs into two equal halves.
+    # Every VM in the first half (sources) sends to every VM in the second half
+    # (destinations).  Flows that do not match that constraint are dropped.
+    if not flows:
+      return []
+    all_vms = sorted({flow["orig_src"] for flow in flows} |
+                     {flow["orig_dst"] for flow in flows})
+    midpoint = max(1, len(all_vms) // 2)
+    src_pool = set(all_vms[:midpoint])
+    dst_pool = set(all_vms[midpoint:])
+    # If pools overlap (e.g. only one VM) fall back to all flows
+    nn_flows = [f for f in flows
+                if f["orig_src"] in src_pool and f["orig_dst"] in dst_pool]
+    if not nn_flows:
+      nn_flows = flows
+    # Interleave so that each wave gets a spread of (src, dst) pairs
+    mixed = _interleave(nn_flows, lambda flow: (flow["orig_src"], flow["orig_dst"]))
+    return _chunk(mixed, width)
   raise RuntimeError("unknown parallel mode {}".format(mode))
 
 
@@ -742,6 +784,51 @@ class _RootShell(object):
     remote = " ".join(shlex.quote(part) for part in args)
     return self._run_line(remote, timeout)
 
+  def run_batch(self, commands, timeout=120):
+    """
+    Run multiple shell command strings in ONE round-trip.
+    Returns a list of (returncode, output) tuples, one per command.
+    
+    Each command emits a sentinel  __CT_R_{i}:{exit}__  so we can slice
+    the stdout stream back into per-command results without any extra
+    network round-trips.
+    """
+    if not commands:
+      return []
+    self.seq += 1
+    end_marker = "__CT_END_%s__" % self.seq
+    parts = []
+    for i, cmd in enumerate(commands):
+      r_marker = "__CT_R_%d_%%s__" % i          # filled with $? at runtime
+      parts.append(
+        "{{ {cmd} ; }} 2>&1 ; printf '\\n{m}\\n' $?".format(
+          cmd=cmd, m=r_marker.replace("%s", "$?"))
+      )
+    script = "\n".join(parts)
+    script += "\nprintf '\\n%s %%s\\n' %s $?\n" % (
+      end_marker, shlex.quote(end_marker))
+    self.stdin.write(script)
+    self.stdin.flush()
+    # collect everything up to end_marker
+    status_line, lines = self._read_until(end_marker, timeout)
+    # split lines back per command using __CT_R_{i}:*__ sentinels
+    results = []
+    buf_lines = []
+    cur_code = None
+    for line in lines:
+      import re as _re
+      m = _re.match(r"__CT_R_(\d+)_(\d+)__", line.strip())
+      if m:
+        if cur_code is not None:
+          results.append((cur_code, "\n".join(buf_lines).strip()))
+        cur_code = int(m.group(2))
+        buf_lines = []
+      else:
+        buf_lines.append(line)
+    if cur_code is not None:
+      results.append((cur_code, "\n".join(buf_lines).strip()))
+    return results
+
   def _run_line(self, remote, timeout):
     self.seq += 1
     marker = "__CT_END_%s__" % self.seq
@@ -827,6 +914,102 @@ def _exec_on_slot(slot, host, args, paramiko_mod):
     stderr = "" if code == 0 else text
     return subprocess.CompletedProcess(args=args, returncode=code, stdout=text, stderr=stderr)
   return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr=last or "CVM SSH failed")
+
+
+def _exec_batch_on_slot(slot, host, flows_args, paramiko_mod, batch_size=50):
+  """
+  Inject multiple conntrack entries via ONE SSH round-trip per batch_size commands.
+  
+  Instead of N separate slot.run_argv() calls (N SSH round-trips through the
+  CVM → hypervisor pipe), we pack up to `batch_size` conntrack commands into a
+  single shell script and fire them in one write/read cycle.
+
+  Returns a list of subprocess.CompletedProcess, one per flow, in the same order
+  as flows_args.
+  """
+  target = SSH_TARGET
+  results = []
+  # Work in sub-batches to avoid enormous single writes
+  for chunk_start in range(0, len(flows_args), batch_size):
+    chunk = flows_args[chunk_start : chunk_start + batch_size]
+    commands = [
+      " ".join(shlex.quote(a) for a in argv) for argv in chunk
+    ]
+    last = None
+    batch_done = False
+    for attempt in range(3):
+      if target.get("error"):
+        for argv in chunk:
+          results.append(subprocess.CompletedProcess(
+            args=argv, returncode=1, stdout="", stderr=target["error"]))
+        batch_done = True
+        break
+      err = slot.ensure(host, paramiko_mod)
+      if err:
+        last = err
+        if target.get("error") or "password rejected" in err:
+          break
+        slot.close()
+        time.sleep(0.4 * (attempt + 1))
+        continue
+      try:
+        batch_results = slot.run_batch(commands)
+      except Exception as exc:
+        last = "CVM SSH to {} failed before root@{} (batch): {}".format(
+          "{}@{}".format(target["cvm_user"], target["cvm_ip"]), host, exc)
+        slot.close()
+        time.sleep(0.4 * (attempt + 1))
+        continue
+      # Map back to CompletedProcess
+      for argv, (code, text) in zip(chunk, batch_results):
+        stderr = "" if code == 0 else text
+        cp = subprocess.CompletedProcess(
+          args=argv, returncode=code, stdout=text, stderr=stderr)
+        cp.stderr = stderr
+        results.append(cp)
+      batch_done = True
+      break
+    if not batch_done:
+      for argv in chunk:
+        results.append(subprocess.CompletedProcess(
+          args=argv, returncode=1, stdout="",
+          stderr=last or "CVM SSH batch failed"))
+  return results
+
+
+# How many conntrack commands to pack into one SSH round-trip.
+# Raise this to squeeze more throughput; lower it if you see timeout errors.
+CONNTRACK_BATCH_SIZE = 50
+
+
+def inject_flows_batch(flows, host, slot, paramiko_mod):
+  """
+  Inject a list of flows through a single open root-shell slot, batching all
+  conntrack commands into as few SSH round-trips as possible.
+
+  Returns a list of (flow, success, detail) in the same order as `flows`.
+  """
+  argv_list = [inject_argv(flow) for flow in flows]
+  cp_list = _exec_batch_on_slot(
+    slot, host, argv_list, paramiko_mod, batch_size=CONNTRACK_BATCH_SIZE)
+
+  outcomes = []
+  for flow, cp in zip(flows, cp_list):
+    detail = (cp.stderr or cp.stdout).strip()
+    if cp.returncode == 0:
+      outcomes.append((flow, True, detail))
+      continue
+    if "Such conntrack exists" not in detail or not UPDATE_EXISTING_CONNECTION:
+      outcomes.append((flow, False, detail))
+      continue
+    # Fallback: check whether the existing entry is still active
+    state = lookup_existing_state(flow, host)
+    if not connection_is_active(flow["proto"], state):
+      outcomes.append((flow, False,
+        "existing conntrack state=%s is not active; left unchanged" % (state or "missing")))
+      continue
+    outcomes.append((flow, True, "updated existing %s conntrack" % state))
+  return outcomes
 
 
 def _run_on_root_shell(host, args):
@@ -981,7 +1164,7 @@ def main():
   parser = argparse.ArgumentParser(
     description="Fetch VM IPs from Prism and inject conntrack flows"
   )
-  parser.add_argument("--pc_ip", default="10.120.132.47", help="Prism Element IP")
+  parser.add_argument("--pc_ip", default="10.122.44.216", help="Prism Element IP")
   parser.add_argument("--username", default="admin", help="Prism username")
   parser.add_argument("--password", default="Nutanix.123", help="Prism password")
   parser.add_argument("--page_size", type=int, default=PAGE_SIZE, help="vms API page size")
@@ -997,9 +1180,9 @@ def main():
   )
   parser.add_argument(
     "--pattern",
-    choices=["1:1", "1:n", "n:1", "1:all", "all:1"],
+    choices=["1:1", "1:n", "n:1", "1:all", "all:1", "n:n"],
     default="1:1",
-    help="Flow pattern: 1vm:1vm (default), 1vm:n vm, n vms:1 vm, first IP to every VM, every VM to the first IP",
+    help="Flow pattern: 1vm:1vm (default), 1vm:n vm, n vms:1 vm, first IP to every VM, every VM to the first IP, N×N cross-product (used with --parallel-mode nn)",
   )
   parser.add_argument(
     "--n",
@@ -1024,6 +1207,7 @@ def main():
   parser.add_argument("--thread-count", type=int, default=None,
                       help="Override the selected mode's *_THREAD_COUNT")
   parser.add_argument("--host_ip", default=None, help="AHV host to ssh as root for conntrack. Default: hypervisorAddress from the hosts API")
+  parser.add_argument("--ip_host_map", default=None, help="Path to a JSON file with {vm_ip: hypervisor_ip} mapping pre-built by the caller (skips Prism re-fetch)")
   parser.add_argument("--cvm_user", default="nutanix", help="CVM user for ssh root@hypervisor when the host is not reachable directly")
   parser.add_argument("--cvm_password", default="RDMCluster.123", help="CVM SSH password. Defaults to --password")
   parser.add_argument("--update-existing", action=argparse.BooleanOptionalAction, default=None,
@@ -1032,7 +1216,12 @@ def main():
   parser.add_argument("--keep-alive", action="store_true", help="Enable keep-alive mode: periodically refresh flows to prevent timeout")
   parser.add_argument("--keepalive-interval", type=int, default=60, help="Keep-alive refresh interval in seconds (default: 60)")
   parser.add_argument("--duration-limit", type=int, default=None, help="Maximum duration for keep-alive in seconds before auto-teardown")
+  parser.add_argument("--loop-count", type=int, default=1, help="Recurring mode: number of full inject+inspect cycles (default: 1 = no recurrence)")
+  parser.add_argument("--loop-interval", type=int, default=30, help="Recurring mode: seconds to wait between injection loops (default: 30)")
   parser.add_argument("--flush-mock", action="store_true", help="Flush (delete) all injected mock flows on exit")
+  parser.add_argument("--rate", type=float, default=0.0,
+                      help="Injection rate limit in flows/sec. 0 = unlimited (inject as fast as possible). "
+                           "Uses a token-bucket approach: sleeps between waves to maintain the target rate.")
   args = parser.parse_args()
   if args.parallel_mode not in PARALLEL_OPTIONS:
     sys.exit("Unknown --parallel-mode %r" % args.parallel_mode)
@@ -1044,6 +1233,10 @@ def main():
     thread_count = 1
   if thread_count < 1:
     sys.exit("--thread-count must be at least 1")
+  if args.sport and not 1 <= args.sport <= 65535:
+    sys.exit("--sport %s is outside 1-65535" % args.sport)
+  if args.dport and not 1 <= args.dport <= 65535:
+    sys.exit("--dport %s is outside 1-65535" % args.dport)
   if args.update_existing is not None:
     UPDATE_EXISTING_CONNECTION = args.update_existing
   SSH_TARGET["cvm_ip"] = args.pc_ip
@@ -1051,7 +1244,7 @@ def main():
   SSH_TARGET["cvm_password"] = args.cvm_password or args.password
 
   # Register signal handler for graceful teardown
-  if args.keep_alive or args.flush_mock:
+  if args.keep_alive or args.flush_mock or args.loop_count > 1:
     signal.signal(signal.SIGUSR1, _signal_handler_teardown)
     log_and_print("[INIT] Registered SIGUSR1 handler for graceful teardown")
 
@@ -1062,6 +1255,8 @@ def main():
       pattern = "1:all"
     elif args.parallel_mode == "all_to_first":
       pattern = "all:1"
+    elif args.parallel_mode == "nn":
+      pattern = "n:n"
     else:
       pattern = args.pattern
     log_and_print("pattern={} n={} proto={} mode={} update_existing={}".format(
@@ -1075,6 +1270,34 @@ def main():
       with open(args.ips_file) as fh:
         vm_ips = fh.read().split()
       log_and_print("Loaded {} IPs from {}".format(len(vm_ips), args.ips_file), log)
+
+      # Priority 1: caller-supplied {ip: hypervisor} map (from the UI fetch, accurate and instant)
+      if args.ip_host_map and not args.host_ip:
+        try:
+          import json as _json
+          with open(args.ip_host_map) as _fh:
+            ip_to_host = _json.load(_fh)
+          log_and_print(
+            "Loaded VM→host map for {} IPs from {}".format(len(ip_to_host), args.ip_host_map), log
+          )
+        except Exception as exc:
+          log_and_print(
+            "WARN: could not load ip_host_map ({}); will fall back to Prism fetch".format(exc), log
+          )
+
+      # Priority 2: no map file — fetch from Prism (may be incomplete on PC)
+      if not ip_to_host and not args.host_ip:
+        try:
+          _, ip_to_host = fetch_all_vm_ips(
+            args.pc_ip, args.username, args.password, args.page_size, log
+          )
+          log_and_print(
+            "Fetched VM→host mapping for {} IPs from Prism (VM list kept from file)".format(len(ip_to_host)), log
+          )
+        except Exception as exc:
+          log_and_print(
+            "WARN: could not fetch VM→host mapping ({}); will fall back to single-host mode".format(exc), log
+          )
     else:
       try:
         vm_ips, ip_to_host = fetch_all_vm_ips(
@@ -1090,13 +1313,17 @@ def main():
     if args.host_ip:
       default_hosts = [args.host_ip]
     else:
-      try:
-        default_hosts = list(dict.fromkeys(fetch_hypervisors(
-          args.pc_ip, args.username, args.password
-        ).values()))
-      except Exception as exc:
-        log_and_print("ERROR fetching hypervisor address: {}".format(exc), log)
-        sys.exit(1)
+      # derive default_hosts from the mapping (caller-supplied or Prism-fetched)
+      if ip_to_host:
+        default_hosts = list(dict.fromkeys(ip_to_host.values()))
+      else:
+        try:
+          default_hosts = list(dict.fromkeys(fetch_hypervisors(
+            args.pc_ip, args.username, args.password
+          ).values()))
+        except Exception as exc:
+          log_and_print("ERROR fetching hypervisor address: {}".format(exc), log)
+          sys.exit(1)
     log_and_print("conntrack via ssh root@{}".format(",".join(default_hosts)), log)
     log_and_print(
       "CVM SSH sessions=%s; each keeps one root@hypervisor shell and runs that thread's commands there"
@@ -1147,10 +1374,43 @@ def main():
       return flow, host, success, err
 
     def inject_group(group):
-      """One CVM login and one root shell for every command in this thread."""
+      """
+      One CVM login and one root shell per thread.
+      All flows in this group are injected in a single batched SSH call
+      (CONNTRACK_BATCH_SIZE commands per round-trip) instead of one call
+      per flow, dramatically reducing SSH overhead.
+      """
+      try:
+        import paramiko as _paramiko
+      except ImportError:
+        _paramiko = None
       slot = _borrow_cvm_slot()
       _HELD_SLOT.slot = slot
       try:
+        # Fast path: batch all flows in this group by host
+        if _paramiko is not None and not SSH_TARGET.get("error"):
+          # Group by hypervisor host so each sub-batch targets one host
+          by_host = {}
+          host_errs = {}
+          flow_order = []
+          for flow in group:
+            try:
+              h = host_for(flow["orig_src"])
+            except Exception as exc:
+              flow_order.append((flow, "?", False, str(exc)))
+              continue
+            by_host.setdefault(h, []).append(flow)
+          results_map = {}  # flow id → (flow, host, success, err)
+          for h, hflows in by_host.items():
+            batch = inject_flows_batch(hflows, h, slot, _paramiko)
+            for flow, success, detail in batch:
+              results_map[id(flow)] = (flow, h, success, detail)
+          ordered = list(flow_order)
+          for flow in group:
+            if id(flow) in results_map:
+              ordered.append(results_map[id(flow)])
+          return ordered
+        # Fallback: original one-by-one path
         return [inject_one(flow) for flow in group]
       finally:
         _HELD_SLOT.slot = None
@@ -1159,6 +1419,8 @@ def main():
     if not args.inspect_only:
       log_and_print("[1/2] Injecting mock flows into conntrack...", log)
       batch_total = len(waves)
+      _rate_start   = time.time()   # token-bucket epoch
+      _rate_emitted = 0             # flows emitted since epoch
       for batch_index, wave in enumerate(waves, 1):
         vms = []
         for flow in wave:
@@ -1196,6 +1458,17 @@ def main():
             log,
           )
         log_and_print("Batch %s/%s done" % (batch_index, batch_total), log)
+        # ── Rate limiting (token-bucket) ──────────────────────────────────
+        if args.rate > 0:
+          _rate_emitted += len(wave)
+          expected_elapsed = _rate_emitted / args.rate
+          actual_elapsed   = time.time() - _rate_start
+          deficit = expected_elapsed - actual_elapsed
+          if deficit > 0.01:
+            log_and_print("[RATE] %d flows at %.1f/sec target → sleeping %.2fs" % (
+              _rate_emitted, args.rate, deficit), log)
+            time.sleep(deficit)
+        # ─────────────────────────────────────────────────────────────────
     else:
       log_and_print("[1/2] Skipping inject (--inspect_only)", log)
 
@@ -1213,6 +1486,66 @@ def main():
       log_and_print("ssh root@{} conntrack -L".format(host), log)
       inspect_target_flows(target_flows, host, log)
     
+    # ── Recurring injection mode ─────────────────────────────────────────────
+    if args.loop_count > 1 and not args.inspect_only and not args.keep_alive:
+      log_and_print("\n[RECURRING] {} total loops, {}s gap between injections".format(
+        args.loop_count, args.loop_interval), log)
+      log_and_print("  Send SIGUSR1 or SIGTERM to stop early", log)
+
+      for loop_num in range(2, args.loop_count + 1):
+        # Interruptible wait between loops
+        log_and_print("\n[LOOP {}/{}] Waiting {}s before next injection...".format(
+          loop_num, args.loop_count, args.loop_interval), log)
+        for _ in range(args.loop_interval):
+          if _TEARDOWN_REQUESTED.is_set():
+            break
+          time.sleep(1)
+        if _TEARDOWN_REQUESTED.is_set():
+          log_and_print("[LOOP {}/{}] Stopped early via signal.".format(
+            loop_num, args.loop_count), log)
+          break
+
+        # Reset injection markers so re-inject is treated as fresh
+        for flow in target_flows:
+          flow.pop("_injected", None)
+          flow.pop("_host", None)
+
+        # Re-inject
+        loop_start = time.time()
+        log_and_print("[LOOP {}/{}] Injecting {} flows...".format(
+          loop_num, args.loop_count, len(target_flows)), log)
+        batch_total = len(waves)
+        for batch_index, wave in enumerate(waves, 1):
+          vms = []
+          for flow in wave:
+            for ip in (flow["orig_src"], flow["orig_dst"]):
+              if ip not in vms:
+                vms.append(ip)
+          session_count = min(max(1, CVM_SSH_SLOTS), len(wave))
+          groups = [wave[index::session_count] for index in range(session_count)]
+          log_and_print("Batch %s/%s  mode=%s  thread_count=%s  starting %s flows  vms=%s  root_shells=%s" % (
+            batch_index, batch_total, mode, thread_count, len(wave), len(vms), session_count), log)
+          if session_count <= 1:
+            results = inject_group(groups[0])
+          else:
+            with ThreadPoolExecutor(max_workers=session_count) as pool:
+              nested = list(pool.map(inject_group, groups))
+            results = [item for group in nested for item in group]
+          for flow, host, success, err in results:
+            flow["_host"] = host
+            flow["_injected"] = success
+          log_and_print("Batch %s/%s done" % (batch_index, batch_total), log)
+
+        # Inspect after each loop
+        for host in hosts:
+          inspect_target_flows(target_flows, host, log)
+
+        log_and_print("[LOOP {}/{}] Done in {:.1f}s.".format(
+          loop_num, args.loop_count, time.time() - loop_start), log)
+
+      log_and_print("\n[RECURRING] All {} loops completed.".format(args.loop_count), log)
+    # ─────────────────────────────────────────────────────────────────────────
+
     # Keep-alive mode: periodically refresh flows
     if args.keep_alive and not args.inspect_only:
       log_and_print("\n[3/3] KEEP-ALIVE MODE: Refreshing flows every {}s".format(args.keepalive_interval), log)

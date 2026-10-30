@@ -3186,6 +3186,29 @@ def _get_run_info(run_id: str):
         if power is not None:
             out["power_progress"] = power
         return out
+    # Check SC jobs history file for completed SC jobs (survives server restart)
+    try:
+        _sc_hist = globals().get("SC_JOBS_HISTORY_FILE")
+        if _sc_hist and Path(_sc_hist).is_file():
+            for rec in load_records(Path(_sc_hist), max_lines=500):
+                if rec.get("run_id") == run_id:
+                    rec = dict(rec)
+                    # Lazy-load analysis_result from disk (not stored in JSONL to keep file small)
+                    _summ = rec.get("summary") or {}
+                    if _summ and "analysis_result" not in _summ:
+                        _json_out = _summ.get("json_output")
+                        if not _json_out and _summ.get("output_dir"):
+                            _json_out = str(Path(_summ["output_dir"]) / "network_receiver_analysis.json")
+                        if _json_out and Path(_json_out).is_file():
+                            try:
+                                _summ["analysis_result"] = json.loads(
+                                    Path(_json_out).read_text(encoding="utf-8")
+                                )
+                            except Exception:
+                                pass
+                    return rec
+    except Exception:
+        pass
     path = _run_log_path(run_id)
     if not path.is_file():
         path = _legacy_run_log_path(run_id)
@@ -3981,6 +4004,13 @@ def _elapsed_running_seconds(info: dict) -> int | None:
 def job_status(run_id: str):
     info = _get_run_info(run_id)
     if not info:
+        # Try normalizing: if underscores were used instead of hyphens in the
+        # SC job prefix (e.g. sc_na_ → sc-na_), redirect to the canonical form.
+        canonical = run_id.replace("sc_na_", "sc-na_", 1).replace("sc_sec_", "sc-sec_", 1)
+        if canonical != run_id:
+            info = _get_run_info(canonical)
+            if info:
+                return redirect(url_for("job_status", run_id=canonical), code=301)
         abort(404)
     return render_template(
         "job.html",
@@ -4086,6 +4116,7 @@ def api_job(run_id: str):
             "snapshot_progress": info.get("snapshot_progress"),
             "power_progress": info.get("power_progress"),
             "pipeline_progress": info.get("pipeline_progress"),
+            "ipfix_live_stats": info.get("ipfix_live_stats") if jk == "ipfix" else None,
             "cg_live_logs": [
                 {
                     "path": str(p),
@@ -9090,15 +9121,29 @@ def _ipfix_token(value: Any, name: str) -> str:
     return text
 
 
-def _ipfix_selected_ips(raw: Any) -> list[str]:
+def _ipfix_selected_ips(raw: Any) -> tuple[list[str], dict[str, str]]:
+    """Parse selected_ips from the API payload.
+
+    Accepts either:
+      - a plain list of IP strings: ["1.2.3.4", ...]
+      - a list of {ip, host_ip} dicts: [{"ip": "1.2.3.4", "host_ip": "10.x.x.x"}, ...]
+
+    Returns (addresses, ip_to_host) where ip_to_host may be empty if callers passed plain IPs.
+    """
     import ipaddress
 
     if not isinstance(raw, list) or not raw:
         raise ValueError("Fetch VMs and select at least two IP addresses")
     addresses: list[str] = []
+    ip_to_host: dict[str, str] = {}
     seen: set[str] = set()
     for item in raw:
-        token = str(item or "").strip()
+        if isinstance(item, dict):
+            token = str(item.get("ip") or "").strip()
+            host = str(item.get("host_ip") or "").strip()
+        else:
+            token = str(item or "").strip()
+            host = ""
         if not token:
             continue
         try:
@@ -9108,17 +9153,33 @@ def _ipfix_selected_ips(raw: Any) -> list[str]:
         if ip not in seen:
             seen.add(ip)
             addresses.append(ip)
+        if host:
+            try:
+                ipaddress.ip_address(host)
+                ip_to_host[ip] = host
+            except ValueError:
+                pass
     if len(addresses) < 2:
         raise ValueError("Select at least two VM IPs. A flow needs a source and a destination.")
-    return addresses
+    return addresses, ip_to_host
 
 
-def _write_ipfix_ip_file(addresses: list[str]) -> Path:
+def _write_ipfix_ip_file(addresses: list[str], ip_to_host: dict[str, str] | None = None) -> tuple[Path, Path | None]:
+    """Write the IP list to a .txt file and optionally a {ip: host} JSON sidecar.
+
+    Returns (ips_path, host_map_path).  host_map_path is None when ip_to_host is empty.
+    """
+    import json as _json
     folder = DATA_DIR / "ipfix_vm_lists"
     folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"selected_{uuid.uuid4().hex}.txt"
-    path.write_text(" ".join(addresses) + "\n", encoding="utf-8")
-    return path
+    stem = f"selected_{uuid.uuid4().hex}"
+    ips_path = folder / f"{stem}.txt"
+    ips_path.write_text(" ".join(addresses) + "\n", encoding="utf-8")
+    host_map_path: Path | None = None
+    if ip_to_host:
+        host_map_path = folder / f"{stem}_hostmap.json"
+        host_map_path.write_text(_json.dumps(ip_to_host), encoding="utf-8")
+    return ips_path, host_map_path
 
 
 def _ipfix_memory_gib(entity: dict[str, Any]) -> float | None:
@@ -9137,6 +9198,57 @@ def _ipfix_memory_gib(entity: dict[str, Any]) -> float | None:
         except (TypeError, ValueError):
             return None
     return None
+
+
+# ── IPFIX VM cache ────────────────────────────────────────────────────────────
+IPFIX_VM_CACHE_FILE = DATA_DIR / "ipfix_vm_cache.json"
+
+
+def _save_ipfix_vm_cache(result: dict[str, Any], pc_ip: str) -> None:
+    """Persist a fetch result to disk so it can be served without re-querying Prism."""
+    import json as _json
+    payload = dict(result)
+    payload["cached_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    payload["cached_pc_ip"] = pc_ip
+    try:
+        IPFIX_VM_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        IPFIX_VM_CACHE_FILE.write_text(_json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    except OSError as exc:
+        IPFIX_LOGGER.warning("Could not write VM cache: %s", exc)
+
+
+def _load_ipfix_vm_cache() -> dict[str, Any] | None:
+    """Return the on-disk VM cache, or None if it does not exist / is unreadable."""
+    import json as _json
+    if not IPFIX_VM_CACHE_FILE.is_file():
+        return None
+    try:
+        data = _json.loads(IPFIX_VM_CACHE_FILE.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or "vms" not in data:
+            return None
+        # Compute human-readable age
+        cached_at = data.get("cached_at", "")
+        if cached_at:
+            try:
+                import datetime as _dt
+                ts = _dt.datetime.strptime(cached_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=_dt.timezone.utc
+                )
+                age_sec = int((_dt.datetime.now(_dt.timezone.utc) - ts).total_seconds())
+                if age_sec < 60:
+                    data["cache_age_label"] = f"{age_sec}s ago"
+                elif age_sec < 3600:
+                    data["cache_age_label"] = f"{age_sec // 60}m ago"
+                elif age_sec < 86400:
+                    data["cache_age_label"] = f"{age_sec // 3600}h ago"
+                else:
+                    data["cache_age_label"] = f"{age_sec // 86400}d ago"
+            except Exception:
+                data["cache_age_label"] = cached_at
+        return data
+    except (OSError, ValueError):
+        return None
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def _fetch_ipfix_vm_rows(pc_ip: str, username: str, password: str, page_size: int) -> dict[str, Any]:
@@ -9345,7 +9457,7 @@ def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, 
     password = str(payload.get("password") or "")
     if not password:
         raise ValueError("Prism password is required")
-    selected_ips = _ipfix_selected_ips(payload.get("selected_ips"))
+    selected_ips, _ip_to_host_from_ui = _ipfix_selected_ips(payload.get("selected_ips"))
 
     proto = str(payload.get("proto") or "").strip().lower()
     if proto not in ("tcp", "udp", "both"):
@@ -9512,32 +9624,60 @@ def _build_ipfix_command(payload: dict[str, Any]) -> tuple[list[str], dict[str, 
         thread_count = _ipfix_positive_int(payload.get("thread_count"), "thread_count", 1, 10000)
         cmd.extend(["--thread-count", str(thread_count)])
         summary["thread_count"] = thread_count
+
+    # Injection rate limit (0 = unlimited)
+    rate = payload.get("rate", 0)
+    try:
+        rate = float(rate)
+    except (TypeError, ValueError):
+        rate = 0.0
+    if rate < 0:
+        raise ValueError("rate must be ≥ 0")
+    if rate > 0:
+        cmd.extend(["--rate", str(rate)])
+        summary["rate"] = rate
+    else:
+        summary["rate"] = 0  # unlimited
     
     # Persistence mode / keep-alive
     persistence_mode = str(payload.get("persistence_mode") or "oneshot").strip().lower()
-    if persistence_mode not in ("oneshot", "keepalive", "duration"):
-        raise ValueError("persistence_mode must be oneshot, keepalive, or duration")
+    if persistence_mode not in ("oneshot", "keepalive", "duration", "recurring"):
+        raise ValueError("persistence_mode must be oneshot, keepalive, duration, or recurring")
     summary["persistence_mode"] = persistence_mode
-    
+
     if persistence_mode in ("keepalive", "duration"):
         cmd.append("--keep-alive")
         keepalive_interval = _ipfix_positive_int(payload.get("keepalive_interval"), "keepalive_interval", 10, 3600)
         cmd.extend(["--keepalive-interval", str(keepalive_interval)])
         summary["keepalive_interval"] = keepalive_interval
-        
+
         if persistence_mode == "duration":
             duration_limit = _ipfix_positive_int(payload.get("duration_limit"), "duration_limit", 60, 86400)
             cmd.extend(["--duration-limit", str(duration_limit)])
             summary["duration_limit"] = duration_limit
+
+    elif persistence_mode == "recurring":
+        loop_count = _ipfix_positive_int(payload.get("loop_count"), "loop_count", 2, 1000)
+        loop_interval = _ipfix_positive_int(payload.get("loop_interval"), "loop_interval", 5, 86400)
+        cmd.extend(["--loop-count", str(loop_count)])
+        cmd.extend(["--loop-interval", str(loop_interval)])
+        summary["loop_count"] = loop_count
+        summary["loop_interval"] = loop_interval
     
-    # Write IP file and add to command
-    ips_file = str(_write_ipfix_ip_file(selected_ips))
+    # Write IP file (and optional host-map sidecar) and add to command
+    ips_path, host_map_path = _write_ipfix_ip_file(selected_ips, _ip_to_host_from_ui or None)
+    ips_file = str(ips_path)
     if traffic_mode == "live":
         # ipfix_live.py uses --ip-file
         cmd.extend(["--ip-file", ips_file])
     else:
         # ipfix_test.py uses --ips_file and --skip_fetch
         cmd.extend(["--ips_file", ips_file, "--skip_fetch"])
+        # Pass the caller-supplied {ip: host} map so the script never needs to
+        # re-page through all 6k+ PC VMs just to find which node each VM lives on.
+        if host_map_path and not host_ip:
+            cmd.extend(["--ip_host_map", str(host_map_path)])
+            summary["ip_host_map"] = str(host_map_path)
     summary["ips_file"] = ips_file
     return cmd, summary
 
@@ -9618,58 +9758,113 @@ def _enqueue_ipfix_run(cmd: list[str], summary: dict[str, Any]) -> str:
                     if run_id in runs:
                         runs[run_id]["process"] = proc
                 if proc.stdout is not None:
+                    # Live stat counters for IPFIX jobs (updated per-line, served via API)
+                    _ipfix_stats: dict = {
+                        "total_flows": 0, "total_batches": 0,
+                        "completed_batches": 0,
+                        "successful_flows": 0, "failed_flows": 0,
+                        "completed_flows": 0, "elapsed_sec": 0,
+                    }
+                    _ipfix_start_ts = time.time()
+                    _ipfix_stat_re = re.compile(
+                        r"Built (\d+) flows|batches=(\d+)|"
+                        r"Batch \d+/\d+ done$|"
+                        r"-> \[SUCCESS|-> \[FAILED"
+                    )
                     while True:
-                        line = proc.stdout.readline()
+                        # ── Non-blocking read with cancel polling ────────────
+                        # readline() blocks indefinitely if the subprocess has
+                        # no output (e.g., waiting for SSH connections in the
+                        # live mode).  Use select() with a short timeout so that
+                        # cancel_ev is checked every 0.5 s regardless of output.
+                        import select as _select
+                        ready = _select.select([proc.stdout], [], [], 0.5)[0]
+                        if ready:
+                            line = proc.stdout.readline()
+                            if not line:
+                                # Empty read on a ready fd = EOF; process closed stdout
+                                break
+                        else:
+                            line = ""
+
                         if line:
                             log_fh.write(line)
                             log_fh.flush()
-                        elif proc.poll() is not None:
+                            # Track IPFIX progress in memory for live API response
+                            ls = line.strip()
+                            if "-> [SUCCESS" in ls:
+                                _ipfix_stats["successful_flows"] += 1
+                                _ipfix_stats["completed_flows"] += 1
+                            elif "-> [FAILED" in ls:
+                                _ipfix_stats["failed_flows"] += 1
+                                _ipfix_stats["completed_flows"] += 1
+                            elif ls.endswith("done") and "Batch " in ls:
+                                _ipfix_stats["completed_batches"] += 1
+                            elif "Built " in ls and " flows" in ls:
+                                _m = re.search(r"Built (\d+) flows", ls)
+                                if _m:
+                                    _ipfix_stats["total_flows"] = int(_m.group(1))
+                            elif "batches=" in ls:
+                                _m = re.search(r"batches=(\d+)", ls)
+                                if _m:
+                                    _ipfix_stats["total_batches"] = int(_m.group(1))
+                            _ipfix_stats["elapsed_sec"] = int(time.time() - _ipfix_start_ts)
+                            with runs_lock:
+                                if run_id in runs:
+                                    runs[run_id]["ipfix_live_stats"] = dict(_ipfix_stats)
+                        elif not ready and proc.poll() is not None:
+                            # Process exited and stdout drained
                             break
-                        if cancel_ev.is_set() and proc.poll() is None:
+                        if cancel_ev.is_set():
                             # Check if this is a teardown with flush
                             flush_requested = False
                             with runs_lock:
                                 if run_id in runs:
                                     flush_requested = runs[run_id].get("flush_on_stop", False)
-                            
-                            if flush_requested:
+
+                            still_running = proc.poll() is None
+                            if flush_requested and still_running:
                                 log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Teardown requested; sending --flush-mock signal\n")
-                            else:
+                            elif still_running:
                                 log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Cancel requested; stopping process\n")
+                            else:
+                                log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Cancel requested; process already exited\n")
                             log_fh.flush()
-                            
-                            # For keep-alive jobs with flush, send SIGUSR1 to trigger graceful cleanup
-                            if flush_requested:
-                                try:
-                                    import signal
-                                    proc.send_signal(signal.SIGUSR1)
-                                    log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Sent SIGUSR1 for graceful teardown with flow flush\n")
-                                    log_fh.flush()
-                                    # Wait a bit for graceful shutdown
+
+                            if still_running:
+                                # For keep-alive jobs with flush, send SIGUSR1 to trigger graceful cleanup
+                                if flush_requested:
                                     try:
-                                        proc.wait(timeout=15)
-                                    except subprocess.TimeoutExpired:
-                                        log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [WARN] Graceful teardown timeout, forcing termination\n")
+                                        import signal
+                                        proc.send_signal(signal.SIGUSR1)
+                                        log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Sent SIGUSR1 for graceful teardown with flow flush\n")
+                                        log_fh.flush()
+                                        # Wait a bit for graceful shutdown
+                                        try:
+                                            proc.wait(timeout=15)
+                                        except subprocess.TimeoutExpired:
+                                            log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [WARN] Graceful teardown timeout, forcing termination\n")
+                                            log_fh.flush()
+                                            proc.terminate()
+                                            try:
+                                                proc.wait(timeout=8)
+                                            except subprocess.TimeoutExpired:
+                                                proc.kill()
+                                    except Exception as sig_exc:
+                                        log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] Signal error: {sig_exc}\n")
                                         log_fh.flush()
                                         proc.terminate()
                                         try:
                                             proc.wait(timeout=8)
                                         except subprocess.TimeoutExpired:
                                             proc.kill()
-                                except Exception as sig_exc:
-                                    log_fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] Signal error: {sig_exc}\n")
-                                    log_fh.flush()
+                                else:
                                     proc.terminate()
                                     try:
                                         proc.wait(timeout=8)
                                     except subprocess.TimeoutExpired:
                                         proc.kill()
-                            else:
-                                proc.terminate()
-                                try:
-                                    proc.wait(timeout=8)
-                                except subprocess.TimeoutExpired:
-                                    proc.kill()
+                            # Always break when cancel is set, regardless of process state
                             break
                 exit_code = proc.wait(timeout=5)
         except Exception as exc:
@@ -9725,6 +9920,12 @@ def _enqueue_ipfix_run(cmd: list[str], summary: dict[str, Any]) -> str:
                     ips_path.unlink()
                 except OSError:
                     pass
+            hm_path = Path(str(summary.get("ip_host_map") or ""))
+            if hm_path.is_file() and hm_path.parent == (DATA_DIR / "ipfix_vm_lists"):
+                try:
+                    hm_path.unlink()
+                except OSError:
+                    pass
             append_record(
                 HISTORY_FILE,
                 {
@@ -9759,7 +9960,8 @@ def ipfix_traffic():
 
 @app.route("/api/ipfix/vms", methods=["POST"])
 def api_ipfix_vms():
-    """Fetch Prism VMs with the same filter and paging as ipfix_test.py."""
+    """Fetch Prism VMs with the same filter and paging as ipfix_test.py.
+    Automatically refreshes the local VM cache on success."""
     payload = request.get_json(silent=True) or {}
     try:
         pc_ip = _ipfix_token(payload.get("pc_ip"), "Prism IP")
@@ -9775,7 +9977,42 @@ def api_ipfix_vms():
         IPFIX_LOGGER.exception("Failed to fetch IPFIX VMs")
         return jsonify({"ok": False, "message": str(exc)}), 500
     result["ok"] = True
+    result["source"] = "prism"
+    # Persist to local cache for offline / fast-reload use
+    _save_ipfix_vm_cache(result, pc_ip)
     return jsonify(result)
+
+
+@app.route("/api/ipfix/vms/local", methods=["GET"])
+def api_ipfix_vms_local():
+    """Return the most recently cached VM list for the given Prism IP.
+    Accepts optional ?pc_ip= query param to filter the cache by origin.
+    Never queries Prism — instant response from disk."""
+    requested_ip = str(request.args.get("pc_ip") or "").strip()
+    data = _load_ipfix_vm_cache()
+    if data is None:
+        return jsonify({
+            "ok": False,
+            "message": (
+                "No local VM cache found. "
+                "Click 'Fetch Latest' once to populate it from Prism."
+            ),
+        }), 404
+    # If the caller specified a PC IP, reject the cache if it came from a different one
+    if requested_ip:
+        cached_ip = str(data.get("cached_pc_ip") or "").strip()
+        if cached_ip and cached_ip != requested_ip:
+            return jsonify({
+                "ok": False,
+                "message": (
+                    f"No local cache for {requested_ip}. "
+                    f"The existing cache is from {cached_ip}. "
+                    "Click 'Fetch Latest' to populate a fresh cache for this Prism."
+                ),
+            }), 404
+    data["ok"] = True
+    data["source"] = "local"
+    return jsonify(data)
 
 
 @app.route("/api/ipfix/vms/file", methods=["POST"])
@@ -9965,6 +10202,925 @@ def api_running_jobs():
     return jsonify({"ok": True, "count": len(active), "jobs": active})
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  SC — Network Log Analyzer
+# ─────────────────────────────────────────────────────────────────────────────
+
+SC_ANALYZER_SCRIPT_PATH = Path(__file__).parent / "analyze_network_log_receiver.py"
+SC_JOBS_HISTORY_FILE = PROJECT_DIR / "data" / "sc_jobs_history.jsonl"
+SC_JOBS_HISTORY_FILE.parent.mkdir(exist_ok=True)
+
+
+def _compact_sc_summary(summary: dict) -> dict:
+    """Return a compact summary safe for writing to SC_JOBS_HISTORY_FILE.
+
+    Strips ``analysis_result`` (can be 10–20 MB per record) from the dict.
+    The full analysis lives on disk as ``network_receiver_analysis.json`` and
+    is loaded on-demand by ``_get_run_info`` when a specific job is viewed.
+    """
+    return {k: v for k, v in summary.items() if k != "analysis_result"}
+
+
+def _migrate_sc_jobs_history() -> None:
+    """One-time migration: rewrite sc_jobs_history.jsonl without analysis_result.
+
+    Runs once at startup if the file is larger than 1 MB.
+    """
+    if not SC_JOBS_HISTORY_FILE.is_file():
+        return
+    size = SC_JOBS_HISTORY_FILE.stat().st_size
+    if size <= 1_000_000:
+        return  # already compact
+    SC_LOGGER_NAME = "sc"
+    import logging as _logging
+    _log = _logging.getLogger(SC_LOGGER_NAME)
+    _log.info(
+        "SC history file is %.1f MB — compacting (stripping embedded analysis_result)…",
+        size / 1_000_000,
+    )
+    try:
+        lines = SC_JOBS_HISTORY_FILE.read_bytes().splitlines()
+        compact_lines: list[bytes] = []
+        for raw_line in lines:
+            raw_line = raw_line.strip()
+            if not raw_line:
+                continue
+            try:
+                rec = json.loads(raw_line)
+                if "summary" in rec:
+                    rec["summary"] = _compact_sc_summary(rec["summary"])
+                compact_lines.append(json.dumps(rec, separators=(",", ":"), sort_keys=True).encode())
+            except Exception:
+                compact_lines.append(raw_line)
+        new_content = b"\n".join(compact_lines) + b"\n"
+        # Atomic replace via temp file
+        tmp = SC_JOBS_HISTORY_FILE.with_suffix(".jsonl.tmp")
+        tmp.write_bytes(new_content)
+        tmp.replace(SC_JOBS_HISTORY_FILE)
+        new_size = SC_JOBS_HISTORY_FILE.stat().st_size
+        _log.info(
+            "SC history compacted: %.1f MB → %.1f MB (%d records)",
+            size / 1_000_000, new_size / 1_000_000, len(compact_lines),
+        )
+    except Exception as _e:
+        _log.warning("Could not compact SC history file: %s", _e)
+
+
+LOG_FILES["sc"] = OPS_LOG_DIR / "sc.log"
+SC_LOGGER = setup_operation_logger("sc", LOG_FILES["sc"])
+SC_SECURITY_DATA_DIR = Path("/home/mohan.as1/mohan_helpers/security_central")
+_migrate_sc_jobs_history()  # compact existing history file if bloated
+
+
+def _analyze_sc_reports(data_dir: Path) -> dict[str, Any]:
+    """Analyse all SC JSON report files in *data_dir* and return a structured dict."""
+    import re as _re
+
+    result: dict[str, Any] = {"data_dir": str(data_dir), "files_found": {}}
+
+    # ── 1. sc_categories_and_vms.json ────────────────────────────────────────
+    cats_path = data_dir / "sc_categories_and_vms.json"
+    vm_analysis: dict[str, Any] = {}
+    if cats_path.is_file():
+        result["files_found"]["sc_categories_and_vms"] = True
+        cats_data = json.loads(cats_path.read_text())
+        pairs = cats_data.get("pairs", [])
+        l1_cats = cats_data.get("level1_categories", [])
+        l2_cats = cats_data.get("level2_categories", [])
+
+        overall_l1: dict[str, int] = {}
+        clusters: dict[str, int] = {}
+        projects: dict[str, int] = {}
+        vlans: dict[str, int] = {}
+        l2_values: dict[str, int] = {}
+        cat_key_counts: dict[str, int] = {}
+        seen_vms: set[str] = set()
+        vm_l2_any_assigned: set[str] = set()  # VMs with L2 ASSIGNED in any pair
+
+        pairs_summary: list[dict] = []
+        for p in pairs:
+            l1_name = (p.get("level1") or {}).get("displayName", "?")
+            l2_name = (p.get("level2") or {}).get("displayName", "?")
+            vms = p.get("vms", [])
+            p_l1: dict[str, int] = {}
+            p_l2: dict[str, int] = {}
+            for vm in vms:
+                vm_id = vm.get("vm_id", "")
+                s1 = vm.get("level1_assignment_status", "?")
+                s2 = vm.get("level2_assignment_status", "?")
+                cl = vm.get("cluster_name", "?")
+                pr = vm.get("project_name", "?")
+                vl = vm.get("vlan_id", "?")
+                l2v = vm.get("level2_assignment_value_display_name")
+                p_l1[s1] = p_l1.get(s1, 0) + 1
+                p_l2[s2] = p_l2.get(s2, 0) + 1
+                if s2 == "ASSIGNED":
+                    vm_l2_any_assigned.add(vm_id)
+                if vm_id not in seen_vms:
+                    seen_vms.add(vm_id)
+                    overall_l1[s1] = overall_l1.get(s1, 0) + 1
+                    clusters[cl] = clusters.get(cl, 0) + 1
+                    projects[pr] = projects.get(pr, 0) + 1
+                    vlans[vl] = vlans.get(vl, 0) + 1
+                if l2v:
+                    l2_values[l2v] = l2_values.get(l2v, 0) + 1
+                for cat in vm.get("categories", []):
+                    kd = cat.get("keyDisplayName", "?")
+                    cat_key_counts[kd] = cat_key_counts.get(kd, 0) + 1
+
+            total = len(vms)
+            assigned_l2 = p_l2.get("ASSIGNED", 0)
+            pairs_summary.append({
+                "level1": l1_name,
+                "level2": l2_name,
+                "total_vms": total,
+                "l1_statuses": p_l1,
+                "l2_statuses": p_l2,
+                "l2_assigned_pct": round(assigned_l2 / total * 100, 1) if total else 0,
+                "error": p.get("error"),
+            })
+
+        total_unique = len(seen_vms)
+        total_l2_any = len(vm_l2_any_assigned)
+        overall_l2 = {"ASSIGNED": total_l2_any, "UNCATEGORIZED": total_unique - total_l2_any}
+        vm_analysis = {
+            "total_l1_categories": len(l1_cats),
+            "total_l2_categories": len(l2_cats),
+            "total_pairs": len(pairs),
+            "total_unique_vms": total_unique,
+            "overall_l1_statuses": overall_l1,
+            "overall_l2_statuses": overall_l2,
+            "l2_assignment_rate_pct": round(total_l2_any / total_unique * 100, 2) if total_unique else 0,
+            "clusters": dict(sorted(clusters.items(), key=lambda x: -x[1])),
+            "projects": dict(sorted(projects.items(), key=lambda x: -x[1])),
+            "vlans": dict(sorted(vlans.items(), key=lambda x: -x[1])),
+            "l2_assigned_values": dict(sorted(l2_values.items(), key=lambda x: -x[1])),
+            "category_key_usage": dict(sorted(cat_key_counts.items(), key=lambda x: -x[1])),
+            "pairs_summary": pairs_summary,
+        }
+    result["vm_assignment"] = vm_analysis
+
+    # ── 2. audits_list.json ───────────────────────────────────────────────────
+    audits_path = data_dir / "audits_list.json"
+    audits_analysis: dict[str, Any] = {}
+    if audits_path.is_file():
+        result["files_found"]["audits_list"] = True
+        aud_data = json.loads(audits_path.read_text())
+        items = aud_data.get("items", [])
+        by_sev: dict[str, int] = {}
+        by_cat: dict[str, int] = {}
+        by_type: dict[str, int] = {}
+        by_rule_type: dict[str, int] = {}
+        policies: dict[str, int] = {}
+        for it in items:
+            sev = it.get("severity", "?")
+            cat = it.get("category", "?")
+            tp = it.get("type", "?")
+            rt = it.get("ruleType", "?")
+            by_sev[sev] = by_sev.get(sev, 0) + 1
+            by_cat[cat] = by_cat.get(cat, 0) + 1
+            by_type[tp] = by_type.get(tp, 0) + 1
+            by_rule_type[rt] = by_rule_type.get(rt, 0) + 1
+            for pol in it.get("policies", []):
+                pn = pol.get("policyName", "?")
+                policies[pn] = policies.get(pn, 0) + 1
+        audits_analysis = {
+            "total": len(items),
+            "by_severity": dict(sorted(by_sev.items(), key=lambda x: -x[1])),
+            "by_category": dict(sorted(by_cat.items(), key=lambda x: -x[1])),
+            "by_type": dict(sorted(by_type.items(), key=lambda x: -x[1])),
+            "by_rule_type": dict(sorted(by_rule_type.items(), key=lambda x: -x[1])),
+            "policy_coverage": dict(sorted(policies.items(), key=lambda x: -x[1])),
+            "unique_policies": len(policies),
+        }
+    result["audits"] = audits_analysis
+
+    # ── 3. query_results.json ─────────────────────────────────────────────────
+    qr_path = data_dir / "query_results.json"
+    query_analysis: dict[str, Any] = {}
+    if qr_path.is_file():
+        result["files_found"]["query_results"] = True
+        qr_data = json.loads(qr_path.read_text())
+        success_items = qr_data.get("success", [])
+        failed_items = qr_data.get("failed", {})
+        total_failed = sum(len(v) if isinstance(v, list) else 1 for v in failed_items.values()) if isinstance(failed_items, dict) else len(failed_items)
+        total_success = len(success_items)
+        total = total_success + total_failed
+
+        by_dataset: dict[str, int] = {}
+        entity_counts: dict[str, int] = {}
+        for it in success_items:
+            ds = it.get("dataset", "?")
+            by_dataset[ds] = by_dataset.get(ds, 0) + 1
+            q = it.get("query", "")
+            m = _re.search(r'FROM\s+(NX\.\w+)', q, _re.I) or _re.search(r'SELECT\s+(NX\.\w+)', q, _re.I)
+            entity = m.group(1) if m else "other"
+            entity_counts[entity] = entity_counts.get(entity, 0) + 1
+
+        failed_reasons: dict[str, int] = {}
+        if isinstance(failed_items, dict):
+            for reason, items_list in failed_items.items():
+                cnt = len(items_list) if isinstance(items_list, list) else 1
+                failed_reasons[reason[:120]] = cnt
+
+        query_analysis = {
+            "total_success": total_success,
+            "total_failed": total_failed,
+            "total": total,
+            "success_rate_pct": round(total_success / total * 100, 1) if total else 0,
+            "by_dataset": dict(sorted(by_dataset.items(), key=lambda x: -x[1])),
+            "top_entities": [
+                {"entity": k, "count": v}
+                for k, v in sorted(entity_counts.items(), key=lambda x: -x[1])[:20]
+            ],
+            "unique_entities": len(entity_counts),
+            "failed_reasons": failed_reasons,
+        }
+    result["queries"] = query_analysis
+
+    # ── 4. autocomplete_queries.json ──────────────────────────────────────────
+    ac_path = data_dir / "autocomplete_queries.json"
+    if ac_path.is_file():
+        result["files_found"]["autocomplete_queries"] = True
+        try:
+            ac_data = json.loads(ac_path.read_text())
+            if isinstance(ac_data, list):
+                entities_ac: dict[str, int] = {}
+                for q in ac_data:
+                    if not isinstance(q, str):
+                        continue
+                    m = _re.search(r'FROM\s+(NX\.\w+)', q, _re.I)
+                    if m:
+                        e = m.group(1)
+                        entities_ac[e] = entities_ac.get(e, 0) + 1
+                result["autocomplete_queries"] = {
+                    "total": len(ac_data),
+                    "top_entities": [
+                        {"entity": k, "count": v}
+                        for k, v in sorted(entities_ac.items(), key=lambda x: -x[1])[:15]
+                    ],
+                }
+        except Exception:
+            result["files_found"]["autocomplete_queries"] = "parse_error"
+
+    return result
+
+
+def _enqueue_sc_network_analyzer_run(payload: dict) -> str:
+    """Create and start a background SC network-log-analyzer job."""
+    run_id, log_path = _allocate_run_id_and_path("sc_na")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    summary_init: dict[str, Any] = {
+        "pc_ip": pc_ip,
+        "fetch_fresh": bool(payload.get("fetch_fresh", False)),
+        "log_file": str(payload.get("log_file") or ""),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "sc_network_analyzer",
+            "job_details": dict(payload),
+            "summary": dict(summary_init),
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+
+        try:
+            _fetch_fresh = bool(payload.get("fetch_fresh", False))
+            _pc_ip       = str(payload.get("pc_ip") or "").strip()
+            _pc_user     = str(payload.get("username") or "nutanix").strip()
+            _pc_pass     = str(payload.get("password") or "")
+            _log_file    = str(payload.get("log_file") or "").strip()
+            _proc_file   = str(payload.get("processor_file") or "").strip()
+            _kubeconfig  = str(payload.get("kubeconfig") or "").strip()
+
+            out_dir = RUN_LOG_DIR / run_id
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            cmd: list[str] = [sys.executable, str(SC_ANALYZER_SCRIPT_PATH)]
+            if _fetch_fresh:
+                cmd += ["--fetch-fresh", "--pc-ip", _pc_ip, "--pc-user", _pc_user, "--pc-pass", _pc_pass]
+                kc_path = _kubeconfig if _kubeconfig else str(out_dir / "pc_kube.txt")
+                cmd += ["--kubeconfig", kc_path]
+                cmd += ["--receiver", str(out_dir / "file.log")]
+                _pod_kws = str(payload.get("pod_keywords") or "").strip()
+                if _pod_kws:
+                    cmd += ["--pod-keywords", _pod_kws]
+            else:
+                cmd += ["--no-fetch-fresh"]
+                if _log_file:
+                    cmd += ["--receiver", _log_file]
+                if _kubeconfig:
+                    cmd += ["--kubeconfig", _kubeconfig]
+            if _proc_file:
+                cmd += ["--processor", _proc_file]
+            cmd += ["--out-dir", str(out_dir)]
+
+            _since = str(payload.get("since") or "").strip()
+            _until = str(payload.get("until") or "").strip()
+            if _since:
+                cmd += ["--since", _since]
+            if _until:
+                cmd += ["--until", _until]
+
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(
+                    f"{start_ts.isoformat()} [INFO] SC Network Log Analyzer job started\n"
+                    f"{start_ts.isoformat()} [INFO] PC IP: {_pc_ip}\n"
+                    f"{start_ts.isoformat()} [INFO] Fetch fresh: {_fetch_fresh}\n"
+                    f"{start_ts.isoformat()} [INFO] Output dir: {out_dir}\n"
+                    + (f"{start_ts.isoformat()} [INFO] Time range: since={_since or 'start'}  until={_until or 'now'}\n" if _since or _until else "")
+                    + "\n"
+                )
+                log_fh.flush()
+
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+
+                for line in (proc.stdout or []):
+                    log_fh.write(line)
+                    log_fh.flush()
+                    if cancel_ev.is_set() and proc.poll() is None:
+                        proc.terminate()
+                        break
+
+                try:
+                    exit_code = proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    exit_code = proc.wait()
+
+            if exit_code == 0:
+                json_out = out_dir / "network_receiver_analysis.json"
+                if json_out.is_file():
+                    try:
+                        analysis = json.loads(json_out.read_text(encoding="utf-8"))
+                        with runs_lock:
+                            if run_id in runs:
+                                runs[run_id]["summary"] = {
+                                    "pc_ip": _pc_ip,
+                                    "fetch_fresh": _fetch_fresh,
+                                    "analysis_result": analysis,
+                                    "output_dir": str(out_dir),
+                                    "json_output": str(json_out),
+                                    "hourly_csv": str(out_dir / "network_receiver_hourly.csv"),
+                                    "batches_csv": str(out_dir / "network_receiver_batches.csv"),
+                                    "markdown_report": str(out_dir / "network_receiver_analysis.md"),
+                                }
+                    except Exception as parse_exc:
+                        SC_LOGGER.warning("Could not parse analysis JSON: %s", parse_exc)
+
+        except Exception as exc:
+            SC_LOGGER.exception("SC network analyzer job failed")
+            with open(log_path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] {exc}\n")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(exc)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            return
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    if row.get("status") not in ("error", "aborted"):
+                        if cancel_ev.is_set():
+                            row["status"] = "aborted"
+                            row["error"] = "Cancelled by user."
+                        elif exit_code == 0:
+                            row["status"] = "complete"
+                        else:
+                            row["status"] = "error"
+                            if not row.get("error"):
+                                row["error"] = f"Analyzer script exited with code {exit_code}"
+                    row["finished_at"] = finished_at
+                    row["timing"] = {"duration_sec": float(duration_sec)}
+                    row.pop("process", None)
+                    row.pop("cancel_event", None)
+
+                    try:
+                        append_record(SC_JOBS_HISTORY_FILE, {
+                            "run_id": run_id,
+                            "status": row.get("status", "complete"),
+                            "error": row.get("error", ""),
+                            "queued_at": row.get("queued_at", ""),
+                            "running_started_at": row.get("running_started_at", ""),
+                            "finished_at": finished_at,
+                            "duration_sec": float(duration_sec),
+                            "job_kind": "sc_network_analyzer",
+                            "summary": _compact_sc_summary(row.get("summary") or {}),
+                            "log_path": str(log_path),
+                        })
+                    except Exception:
+                        pass
+                    append_record(HISTORY_FILE, {
+                        "run_id": run_id,
+                        "job_kind": "sc_network_analyzer",
+                        "pc_host": pc_ip,
+                        "pc_host_key": _pc_host_key(pc_ip),
+                        "at": finished_at,
+                        "duration_sec": float(duration_sec),
+                        "succeeded": 1 if exit_code == 0 and not cancel_ev.is_set() else 0,
+                        "failed": 0 if exit_code == 0 and not cancel_ev.is_set() else 1,
+                    })
+
+    t = threading.Thread(target=_worker, daemon=True, name=f"sc-na-{run_id}")
+    t.start()
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    return run_id
+
+
+def _enqueue_sc_security_analyzer_run(payload: dict) -> str:
+    """Create and start a background SC security-reports analyzer job (runs in thread)."""
+    run_id, log_path = _allocate_run_id_and_path("sc_sec")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    data_dir_str = str(payload.get("data_dir") or SC_SECURITY_DATA_DIR)
+    summary_init: dict[str, Any] = {
+        "data_dir": data_dir_str,
+        "files": list(payload.get("files", [])),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": "",
+            "pc_host_key": "",
+            "queued_at": queued_at,
+            "job_kind": "sc_security_analyzer",
+            "job_details": dict(payload),
+            "summary": dict(summary_init),
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        try:
+            data_dir = Path(data_dir_str)
+            with open(log_path, "w", encoding="utf-8") as fh:
+                fh.write(f"{start_ts.isoformat()} [INFO] SC Security Reports Analyzer started\n")
+                fh.write(f"{start_ts.isoformat()} [INFO] Data directory: {data_dir}\n")
+                fh.flush()
+
+                # Run analysis
+                analysis = _analyze_sc_reports(data_dir)
+
+                fh.write(f"{dt.datetime.now(dt.timezone.utc).isoformat()} [INFO] Analysis complete\n")
+                # Write summary to log
+                vm = analysis.get("vm_assignment", {})
+                aud = analysis.get("audits", {})
+                qr = analysis.get("queries", {})
+                fh.write(f"  VM data: {vm.get('total_unique_vms', 0)} unique VMs, "
+                         f"{vm.get('total_pairs', 0)} pairs, "
+                         f"L2 assignment rate: {vm.get('l2_assignment_rate_pct', 0):.1f}%\n")
+                fh.write(f"  Audits: {aud.get('total', 0)} rules\n")
+                fh.write(f"  Queries: {qr.get('total_success', 0)} success / {qr.get('total_failed', 0)} failed\n")
+                fh.flush()
+
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["summary"] = {
+                        "data_dir": data_dir_str,
+                        "analysis_result": analysis,
+                    }
+                    runs[run_id]["status"] = "complete"
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        except Exception as exc:
+            SC_LOGGER.exception("SC security analyzer job failed")
+            with open(log_path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] {exc}\n")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(exc)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    row["timing"] = {"duration_sec": float(duration_sec)}
+                    row.pop("cancel_event", None)
+                    try:
+                        append_record(SC_JOBS_HISTORY_FILE, {
+                            "run_id": run_id,
+                            "status": row.get("status", "complete"),
+                            "error": row.get("error", ""),
+                            "queued_at": row.get("queued_at", ""),
+                            "running_started_at": row.get("running_started_at", ""),
+                            "finished_at": finished_at,
+                            "duration_sec": float(duration_sec),
+                            "job_kind": "sc_security_analyzer",
+                            "summary": {
+                                "data_dir": data_dir_str,
+                                "analysis_result": row.get("summary", {}).get("analysis_result", {}),
+                            },
+                            "log_path": str(log_path),
+                        })
+                    except Exception:
+                        pass
+                    append_record(HISTORY_FILE, {
+                        "run_id": run_id,
+                        "job_kind": "sc_security_analyzer",
+                        "at": finished_at,
+                        "duration_sec": float(duration_sec),
+                    })
+
+    t = threading.Thread(target=_worker, daemon=True, name=f"sc-sec-{run_id}")
+    t.start()
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    return run_id
+    """Create and start a background SC network-log-analyzer job."""
+    run_id, log_path = _allocate_run_id_and_path("sc_na")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    summary_init: dict[str, Any] = {
+        "pc_ip": pc_ip,
+        "fetch_fresh": bool(payload.get("fetch_fresh", False)),
+        "log_file": str(payload.get("log_file") or ""),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "base_url": "",
+            "pc_host": pc_ip,
+            "pc_host_key": _pc_host_key(pc_ip),
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "sc_network_analyzer",
+            "job_details": dict(payload),
+            "summary": dict(summary_init),
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+
+        try:
+            _fetch_fresh = bool(payload.get("fetch_fresh", False))
+            _pc_ip       = str(payload.get("pc_ip") or "").strip()
+            _pc_user     = str(payload.get("username") or "nutanix").strip()
+            _pc_pass     = str(payload.get("password") or "")
+            _log_file    = str(payload.get("log_file") or "").strip()
+            _proc_file   = str(payload.get("processor_file") or "").strip()
+            _kubeconfig  = str(payload.get("kubeconfig") or "").strip()
+
+            # Per-job output directory inside the runs log dir
+            out_dir = RUN_LOG_DIR / run_id
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            cmd: list[str] = [sys.executable, str(SC_ANALYZER_SCRIPT_PATH)]
+            if _fetch_fresh:
+                cmd += ["--fetch-fresh", "--pc-ip", _pc_ip, "--pc-user", _pc_user, "--pc-pass", _pc_pass]
+                kc_path = _kubeconfig if _kubeconfig else str(out_dir / "pc_kube.txt")
+                cmd += ["--kubeconfig", kc_path]
+                cmd += ["--receiver", str(out_dir / "file.log")]
+            else:
+                cmd += ["--no-fetch-fresh"]
+                if _log_file:
+                    cmd += ["--receiver", _log_file]
+                if _kubeconfig:
+                    cmd += ["--kubeconfig", _kubeconfig]
+            if _proc_file:
+                cmd += ["--processor", _proc_file]
+            cmd += ["--out-dir", str(out_dir)]
+
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(
+                    f"{start_ts.isoformat()} [INFO] SC Network Log Analyzer job started\n"
+                    f"{start_ts.isoformat()} [INFO] PC IP: {_pc_ip}\n"
+                    f"{start_ts.isoformat()} [INFO] Fetch fresh: {_fetch_fresh}\n"
+                    f"{start_ts.isoformat()} [INFO] Output dir: {out_dir}\n"
+                    f"{start_ts.isoformat()} [INFO] Command: {' '.join(cmd[:5])} ...\n\n"
+                )
+                log_fh.flush()
+
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+
+                for line in (proc.stdout or []):
+                    log_fh.write(line)
+                    log_fh.flush()
+                    if cancel_ev.is_set() and proc.poll() is None:
+                        proc.terminate()
+                        break
+
+                try:
+                    exit_code = proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    exit_code = proc.wait()
+
+            # Read analysis results if script succeeded
+            if exit_code == 0:
+                json_out = out_dir / "network_receiver_analysis.json"
+                if json_out.is_file():
+                    try:
+                        analysis = json.loads(json_out.read_text(encoding="utf-8"))
+                        with runs_lock:
+                            if run_id in runs:
+                                runs[run_id]["summary"] = {
+                                    "pc_ip": _pc_ip,
+                                    "fetch_fresh": _fetch_fresh,
+                                    "analysis_result": analysis,
+                                    "output_dir": str(out_dir),
+                                    "json_output": str(json_out),
+                                    "hourly_csv": str(out_dir / "network_receiver_hourly.csv"),
+                                    "batches_csv": str(out_dir / "network_receiver_batches.csv"),
+                                    "markdown_report": str(out_dir / "network_receiver_analysis.md"),
+                                }
+                    except Exception as parse_exc:
+                        SC_LOGGER.warning("Could not parse analysis JSON: %s", parse_exc)
+
+        except Exception as exc:
+            SC_LOGGER.exception("SC network analyzer job failed")
+            with open(log_path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n{dt.datetime.now(dt.timezone.utc).isoformat()} [ERROR] {exc}\n")
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = "error"
+                    runs[run_id]["error"] = str(exc)
+                    runs[run_id]["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            return
+        finally:
+            duration_sec = max(0.0, (dt.datetime.now(dt.timezone.utc) - start_ts).total_seconds())
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            with runs_lock:
+                row = runs.get(run_id)
+                if row is not None:
+                    if row.get("status") not in ("error", "aborted"):
+                        if cancel_ev.is_set():
+                            row["status"] = "aborted"
+                            row["error"] = "Cancelled by user."
+                        elif exit_code == 0:
+                            row["status"] = "complete"
+                        else:
+                            row["status"] = "error"
+                            if not row.get("error"):
+                                row["error"] = f"Analyzer script exited with code {exit_code}"
+                    row["finished_at"] = finished_at
+                    row["timing"] = {"duration_sec": float(duration_sec)}
+                    row.pop("process", None)
+                    row.pop("cancel_event", None)
+
+                    history_record = {
+                        "run_id": run_id,
+                        "status": row.get("status", "complete"),
+                        "error": row.get("error", ""),
+                        "queued_at": row.get("queued_at", ""),
+                        "running_started_at": row.get("running_started_at", ""),
+                        "finished_at": finished_at,
+                        "duration_sec": float(duration_sec),
+                        "job_kind": "sc_network_analyzer",
+                        "summary": _compact_sc_summary(row.get("summary") or {}),
+                        "log_path": str(log_path),
+                    }
+                    try:
+                        append_record(SC_JOBS_HISTORY_FILE, history_record)
+                    except Exception:
+                        pass
+                    append_record(
+                        HISTORY_FILE,
+                        {
+                            "run_id": run_id,
+                            "job_kind": "sc_network_analyzer",
+                            "pc_host": pc_ip,
+                            "pc_host_key": _pc_host_key(pc_ip),
+                            "at": finished_at,
+                            "duration_sec": float(duration_sec),
+                            "succeeded": 1 if exit_code == 0 and not cancel_ev.is_set() else 0,
+                            "failed": 0 if exit_code == 0 and not cancel_ev.is_set() else 1,
+                        },
+                    )
+
+    t = threading.Thread(target=_worker, daemon=True, name=f"sc-na-{run_id}")
+    t.start()
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    return run_id
+
+
+@app.route("/sc")
+def sc_page():
+    """Render the SC — Network Log Analyzer page."""
+    rows: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    # 1. Include currently active (queued / running) SC jobs from in-memory runs
+    with runs_lock:
+        active = list(runs.items())
+    for rid, info in active:
+        jk = str(info.get("job_kind") or "")
+        if jk not in ("sc_network_analyzer", "sc_security_analyzer"):
+            continue
+        status_v = str(info.get("status") or "")
+        if status_v not in ("queued", "running"):
+            continue
+        rows.append({
+            "run_id": rid,
+            "job_kind": jk,
+            "status": status_v,
+            "started_at": info.get("running_started_at") or info.get("queued_at") or "",
+            "summary": dict(info.get("summary") or {}),
+            "job_url": url_for("job_status", run_id=rid),
+        })
+        seen_ids.add(rid)
+
+    # 2. Load completed SC jobs from the history file (contains full summary data)
+    try:
+        for rec in load_records(SC_JOBS_HISTORY_FILE, max_lines=200):
+            rid = str(rec.get("run_id") or "").strip()
+            if not rid or rid in seen_ids:
+                continue
+            rr = dict(rec)
+            rr["job_url"] = url_for("job_status", run_id=rid)
+            rr.setdefault(
+                "started_at",
+                rec.get("running_started_at") or rec.get("queued_at") or rec.get("finished_at") or "",
+            )
+            rows.append(rr)
+            seen_ids.add(rid)
+    except Exception:
+        pass
+
+    # Newest first, cap at 30
+    rows.sort(key=lambda x: x.get("started_at") or x.get("finished_at") or "", reverse=True)
+    return render_template("sc.html", sc_recent_jobs=rows[:30])
+
+
+@app.route("/api/sc/security_reports/start", methods=["POST"])
+def api_sc_security_reports_start():
+    """Start an SC security-reports analysis job."""
+    payload = request.get_json(silent=True) or {}
+    data_dir = str(payload.get("data_dir") or SC_SECURITY_DATA_DIR)
+    if not Path(data_dir).is_dir():
+        return jsonify({"ok": False, "message": f"Data directory not found: {data_dir}"}), 400
+    try:
+        run_id = _enqueue_sc_security_analyzer_run({"data_dir": data_dir})
+    except Exception as exc:
+        SC_LOGGER.exception("Failed to enqueue SC security analyzer")
+        return jsonify({"ok": False, "message": str(exc)}), 500
+    return jsonify({"ok": True, "run_id": run_id, "job_url": url_for("job_status", run_id=run_id)})
+
+
+@app.route("/api/sc/test_connection", methods=["POST"])
+def api_sc_test_connection():
+    """Validate SSH connectivity to Prism Central (shared logic with CG test connection)."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip())
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if not pc_ip or not username or not password:
+        return jsonify({"success": False, "error": "pc_ip, username, and password are required"}), 400
+
+    cmd = [
+        "sshpass", "-p", password,
+        "ssh",
+        *CG_SSH_OPTIONS,
+        f"{username}@{pc_ip}",
+        "date",
+    ]
+    started = time.perf_counter()
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "SSH connection timed out after 15 seconds"}), 408
+    except FileNotFoundError as exc:
+        if "sshpass" in str(exc):
+            return jsonify({"success": False, "error": "sshpass is not installed on the server"}), 500
+        return jsonify({"success": False, "error": f"Required binary missing: {exc}"}), 500
+    except Exception as exc:
+        SC_LOGGER.exception("SC test connection failed")
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+    connection_time = round(time.perf_counter() - started, 3)
+    if res.returncode != 0:
+        err = (res.stderr or res.stdout or "").strip() or "SSH command failed"
+        return jsonify({"success": False, "error": err, "connection_time": connection_time}), 400
+    return jsonify({
+        "success": True,
+        "pc_ip": pc_ip,
+        "connection_time": connection_time,
+        "remote_date": (res.stdout or "").strip(),
+    })
+
+
+@app.route("/api/sc/network_log_analyzer/start", methods=["POST"])
+def api_sc_network_log_analyzer_start():
+    """Start a SC network-log-analyzer background job."""
+    payload = request.get_json(silent=True) or {}
+    fetch_fresh = bool(payload.get("fetch_fresh", False))
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    log_file = str(payload.get("log_file") or "").strip()
+
+    if fetch_fresh and not pc_ip:
+        return jsonify({"ok": False, "message": "pc_ip is required when fetch_fresh is true"}), 400
+    if not fetch_fresh and not log_file:
+        return jsonify({"ok": False, "message": "log_file is required when fetch_fresh is false"}), 400
+    if not SC_ANALYZER_SCRIPT_PATH.is_file():
+        return jsonify({"ok": False, "message": f"Analyzer script not found: {SC_ANALYZER_SCRIPT_PATH}"}), 500
+
+    try:
+        run_id = _enqueue_sc_network_analyzer_run(payload)
+    except Exception as exc:
+        SC_LOGGER.exception("Failed to enqueue SC analyzer job")
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+    return jsonify({
+        "ok": True,
+        "run_id": run_id,
+        "job_url": url_for("job_status", run_id=run_id),
+    })
+
+
+@app.route("/api/sc/jobs/recent")
+def api_sc_jobs_recent():
+    """Return recent SC jobs."""
+    rows = [r for r in _index_recent_runs(100) if str(r.get("job_kind") or "") == "sc_network_analyzer"][:20]
+    return jsonify({"ok": True, "jobs": rows})
+
+
+@app.route("/download/sc_analysis/<run_id>/<filename>")
+def download_sc_analysis_file(run_id: str, filename: str):
+    """Download a generated analysis file (json / csv / md) for a SC job."""
+    ALLOWED = {"network_receiver_analysis.json", "network_receiver_hourly.csv",
+               "network_receiver_batches.csv", "network_receiver_analysis.md"}
+    if filename not in ALLOWED:
+        abort(400)
+    info = _get_run_info(run_id)
+    if not info or str(info.get("job_kind") or "") != "sc_network_analyzer":
+        abort(404)
+    out_dir = Path(str((info.get("summary") or {}).get("output_dir") or ""))
+    if not out_dir.is_dir():
+        abort(404)
+    file_path = out_dir / filename
+    if not file_path.is_file():
+        abort(404)
+    return send_file(str(file_path), as_attachment=True, download_name=filename)
+
+
 if __name__ == "__main__":
     # 0.0.0.0: reachable via host FQDN/IP from other machines (firewall permitting).
     # Local-only: BULK_SNAP_HOST=127.0.0.1 python app.py
@@ -9973,7 +11129,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
     host = os.environ.get("BULK_SNAP_HOST", "0.0.0.0")
-    port = int(os.environ.get("BULK_SNAP_PORT", "8766"))
+    port = int(os.environ.get("BULK_SNAP_PORT", "8765"))
     # threaded=False serializes HTTP handlers so Werkzeug access lines don't interleave on the terminal.
     threaded = os.environ.get("BULK_SNAP_THREADED", "1").strip().lower() not in ("0", "false", "no")
     socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

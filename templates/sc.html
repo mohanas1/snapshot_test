@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SC — Network Log Analyzer</title>
+  <style>
+    :root {
+      --bg-main: #f6f8fb;
+      --card-bg: #ffffff;
+      --text-primary: #1f2937;
+      --text-muted: #6b7280;
+      --sidebar-bg: #1A1A40;
+      --sidebar-active: #2D325A;
+      --border-gray: #e5e7eb;
+      --primary-blue: #3b82f6;
+      --danger: #dc2626;
+      --success: #059669;
+      --warning: #d97706;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-primary); }
+    .body-content { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; padding: 1rem 0; flex-shrink: 0; }
+    .sidebar-brand { padding: 0 1.2rem 1rem; font-weight: 700; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .sidebar-nav { padding: 1rem 0.6rem; }
+    .nav-group-title { color: #9ca3af; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; padding: 0 0.7rem 0.5rem; }
+    .nav-item { display: block; color: #d1d5db; text-decoration: none; padding: 0.68rem 0.7rem; border-radius: 8px; margin-bottom: 0.3rem; }
+    .nav-item:hover { background: #23234a; color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .main-content { flex: 1; padding: 1.5rem; min-width: 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-gray); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
+    h1 { margin: 0 0 0.3rem; font-size: 1.7rem; }
+    .sub { color: var(--text-muted); margin: 0 0 1rem; }
+    .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.9rem; }
+    input, select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.5rem 0.62rem;
+      font-size: 0.92rem;
+      background: #fff;
+    }
+    .actions { margin-top: 1rem; display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
+    .btn { border: 1px solid transparent; border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-primary { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .msg { font-size: 0.88rem; color: var(--text-muted); }
+    .msg.error { color: var(--danger); }
+    .msg.success { color: var(--success); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border-gray); padding: 0.55rem; text-align: left; font-size: 0.88rem; }
+    th { background: #f3f4f6; }
+    /* ── Scrollable table container ────────────────────────────────────── */
+    .table-scroll-container {
+      max-height: 450px;
+      overflow-y: auto;
+      border: 1px solid var(--border-gray);
+      border-radius: 8px;
+    }
+    .table-scroll-container table {
+      border: none;
+    }
+    .table-scroll-container th,
+    .table-scroll-container td {
+      border-left: none;
+      border-right: none;
+    }
+    .table-scroll-container tr:last-child td {
+      border-bottom: none;
+    }
+    .table-scroll-container thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f3f4f6;
+      box-shadow: 0 1px 0 var(--border-gray);
+    }
+    .toggle-box { margin-top: 0.75rem; padding: 0.65rem 0.75rem; border: 1px solid #E5E7EB; border-radius: 8px; background: #F8FAFC; }
+    .toggle-box label { display: flex; align-items: center; gap: 0.55rem; margin: 0; font-weight: 600; }
+    .toggle-box input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-hint { margin-top: 0.3rem; color: #6B7280; font-size: 0.84rem; }
+    /* conditional visibility */
+    .hidden { display: none !important; }
+    /* time preset chips */
+    .time-preset { padding: 0.22rem 0.65rem; font-size: 0.82rem; border-radius: 999px; }
+    .time-preset.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="body-content">
+    <div class="sidebar">
+      <div class="sidebar-brand">Nutanix Operations</div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">VM MANAGEMENT</div>
+        <a href="{{ url_for('index') }}" class="nav-item">Bulk Snapshots</a>
+        <a href="{{ url_for('recovery_points') }}" class="nav-item">Recovery Points Analysis</a>
+        <a href="{{ url_for('fetch_logs') }}" class="nav-item">Fluentd Log Fetcher</a>
+        <a href="{{ url_for('ipfix_traffic') }}" class="nav-item">IPFIX Traffic</a>
+        <a href="{{ url_for('cg_reports') }}" class="nav-item">CG</a>
+        <a href="{{ url_for('sc_page') }}" class="nav-item active">SC</a>
+        <a href="{{ url_for('additional') }}" class="nav-item">Additional</a>
+      </nav>
+    </div>
+
+    <div class="main-content">
+      <!-- Header -->
+      <div class="card">
+        <h1>SC — Network Log Analyzer</h1>
+        <p class="sub">Fetch and analyse the ncm-network-log-receiver log from Prism Central. Each run creates a background job with a rich analysis report.</p>
+      </div>
+
+      <!-- ── Section 1: PC Connection ─────────────────────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">PC Connection</h2>
+        <div class="grid">
+          <div>
+            <label for="pc-ip">PC IP</label>
+            <input id="pc-ip" type="text" value="10.122.28.20" />
+          </div>
+          <div>
+            <label for="ssh-username">SSH Username</label>
+            <input id="ssh-username" type="text" value="nutanix" />
+          </div>
+          <div>
+            <label for="ssh-password">SSH Password</label>
+            <input id="ssh-password" type="password" value="nutanix/4u" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="test-connection-btn" class="btn btn-secondary" type="button">Test Connection</button>
+          <span id="connection-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <!-- ── Section 2: SC Security Reports Analyzer ─────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">SC Security Reports Analyzer</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Analyse the Security Central JSON reports — category & VM assignments,
+          audit rules, and query coverage — and produce an interactive visual report.
+        </p>
+
+        <div class="grid" style="margin-bottom:0.9rem;">
+          <div style="grid-column: 1 / -1;">
+            <label for="sc-data-dir">Data Directory</label>
+            <input id="sc-data-dir" type="text" value="/home/mohan.as1/mohan_helpers/security_central"
+                   placeholder="/path/to/security_central/" />
+            <div style="margin-top:0.3rem; color:#6B7280; font-size:0.82rem;">
+              Should contain: <code>sc_categories_and_vms.json</code>, <code>audits_list.json</code>,
+              <code>query_results.json</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="run-sc-security-btn" class="btn btn-primary" type="button">Analyse SC Reports</button>
+          <span id="sc-security-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <!-- ── Section 3: Network Log Analyzer ─────────────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">Network Log Analyzer</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Analyse the <code>ncm-network-log-receiver</code> log to produce a structured report on
+          FlowBatch delivery rates, NATS publish latency, error patterns, and hourly breakdown.
+        </p>
+
+        <!-- Fetch Fresh toggle -->
+        <div class="toggle-box" style="margin-bottom:0.9rem;">
+          <label>
+            <input id="fetch-fresh" type="checkbox" checked />
+            Fetch fresh log from PC before analysing
+          </label>
+          <div class="toggle-hint">
+            When enabled, the kubeconfig and receiver log are pulled from Prism Central via SSH + kubectl.
+            Disable to analyse a log file already on disk.
+          </div>
+        </div>
+
+        <!-- Local log path (shown only when fetch-fresh is OFF) -->
+        <div id="local-log-row" class="grid hidden" style="margin-bottom:0.9rem;">
+          <div style="grid-column: 1 / -1;">
+            <label for="log-file">Local Receiver Log Path</label>
+            <input id="log-file" type="text" placeholder="/path/to/file.log" />
+          </div>
+        </div>
+
+        <!-- Optional processor log + kubeconfig -->
+        <div class="grid">
+          <div>
+            <label for="processor-file">Processor Log (optional)</label>
+            <input id="processor-file" type="text" placeholder="/path/to/netwrk_los.txt" />
+          </div>
+          <div>
+            <label for="kubeconfig-file">Kubeconfig Path (optional, for reuse)</label>
+            <input id="kubeconfig-file" type="text" placeholder="auto-determined from output dir" />
+          </div>
+        </div>
+
+        <!-- Time Range -->
+        <div style="margin-top:0.9rem;">
+          <label style="margin-bottom:0.45rem;">Analyse Time Range</label>
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
+            <button type="button" class="btn btn-secondary time-preset active" data-preset="all">All</button>
+            <button type="button" class="btn btn-secondary time-preset" data-preset="1h">Last 1h</button>
+            <button type="button" class="btn btn-secondary time-preset" data-preset="6h">Last 6h</button>
+            <button type="button" class="btn btn-secondary time-preset" data-preset="24h">Last 24h</button>
+            <button type="button" class="btn btn-secondary time-preset" data-preset="7d">Last 7d</button>
+            <button type="button" class="btn btn-secondary time-preset" data-preset="custom">Custom…</button>
+          </div>
+          <div id="custom-range-row" class="grid hidden" style="margin-bottom:0.5rem;">
+            <div>
+              <label for="range-from">From (UTC)</label>
+              <input type="datetime-local" id="range-from" />
+            </div>
+            <div>
+              <label for="range-to">To (UTC)</label>
+              <input type="datetime-local" id="range-to" />
+            </div>
+          </div>
+          <div id="range-preview" style="font-size:0.83rem; color:#6b7280;"></div>
+        </div>
+
+        <div class="actions" style="margin-top:1rem;">
+          <button id="run-analyzer-btn" class="btn btn-primary" type="button">Run Analysis</button>
+          <span id="run-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <!-- ── Section 4: Recent SC Jobs ────────────────────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">Recent SC Jobs</h2>
+        {% if sc_recent_jobs %}
+        <div class="table-scroll-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Details</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in sc_recent_jobs %}
+            <tr>
+              <td><code>{{ row.run_id[:22] }}{% if row.run_id|length > 22 %}…{% endif %}</code></td>
+              <td>
+                {% if row.job_kind == 'sc_security_analyzer' %}
+                  <span style="background:#dbeafe;color:#1e40af;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;font-weight:600;">Security Reports</span>
+                {% else %}
+                  <span style="background:#dcfce7;color:#166534;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;font-weight:600;">Network Log</span>
+                {% endif %}
+              </td>
+              <td>{{ row.status or "—" }}</td>
+              <td>{{ row.started_at or row.at or "—" }}</td>
+              <td style="font-size:0.82rem;color:#6b7280;">
+                {% if row.job_kind == 'sc_security_analyzer' %}
+                  {% set ar = ((row.summary or {}).get('analysis_result') or {}) %}
+                  {% if ar %}
+                    VMs: {{ ar.get('vm_assignment',{}).get('total_unique_vms','—') }} ·
+                    Audits: {{ ar.get('audits',{}).get('total','—') }} ·
+                    Queries: {{ ar.get('queries',{}).get('total_success','—') }}
+                  {% else %}
+                    <span style="color:#d97706;">no report data</span>
+                  {% endif %}
+                {% else %}
+                  {% set batches = ((row.summary or {}).get('analysis_result') or {}).get('totals', {}).get('batches_received') %}
+                  {% if batches is not none and batches != '' %}
+                    Batches: {{ batches }}
+                  {% else %}
+                    <span style="color:#d97706;">no report data</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+              <td><a href="{{ row.job_url }}">Open Job</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>{# /table-scroll-container #}
+        {% else %}
+        <p class="sub">No SC jobs yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pcIpEl         = document.getElementById('pc-ip');
+    const sshUserEl      = document.getElementById('ssh-username');
+    const sshPassEl      = document.getElementById('ssh-password');
+    const fetchFreshEl   = document.getElementById('fetch-fresh');
+    const localLogRow    = document.getElementById('local-log-row');
+    const logFileEl      = document.getElementById('log-file');
+    const procFileEl     = document.getElementById('processor-file');
+    const kubeconfigEl   = document.getElementById('kubeconfig-file');
+    const testBtn        = document.getElementById('test-connection-btn');
+    const runBtn         = document.getElementById('run-analyzer-btn');
+    const connMsg        = document.getElementById('connection-msg');
+    const runMsg         = document.getElementById('run-msg');
+    const scSecBtn       = document.getElementById('run-sc-security-btn');
+    const scSecMsg       = document.getElementById('sc-security-msg');
+    const scDataDirEl    = document.getElementById('sc-data-dir');
+    const customRangeRow = document.getElementById('custom-range-row');
+    const rangeFromEl    = document.getElementById('range-from');
+    const rangeToEl      = document.getElementById('range-to');
+    const rangePreview   = document.getElementById('range-preview');
+
+    // ── Time range preset logic ───────────────────────────────────────────────
+    let activePreset = 'all';  // 'all' | '1h' | '6h' | '24h' | '7d' | 'custom'
+
+    const PRESET_HOURS = { '1h': 1, '6h': 6, '24h': 24, '7d': 168 };
+
+    function isoNow() {
+      return new Date().toISOString();
+    }
+    function isoOffset(hours) {
+      return new Date(Date.now() - hours * 3600 * 1000).toISOString();
+    }
+    // Returns { since, until } as ISO strings (or null for "all")
+    function getTimeRange() {
+      if (activePreset === 'all') return { since: null, until: null };
+      if (activePreset === 'custom') {
+        // datetime-local values are in LOCAL time; convert to UTC ISO
+        const fromVal = rangeFromEl.value;  // "YYYY-MM-DDTHH:MM"
+        const toVal   = rangeToEl.value;
+        const since = fromVal ? new Date(fromVal).toISOString() : null;
+        const until = toVal   ? new Date(toVal).toISOString()   : null;
+        return { since, until };
+      }
+      const hours = PRESET_HOURS[activePreset];
+      return { since: isoOffset(hours), until: null };
+    }
+
+    function updateRangePreview() {
+      const { since, until } = getTimeRange();
+      if (!since && !until) {
+        rangePreview.textContent = 'Entire log will be analysed (no time filter).';
+        return;
+      }
+      const fmt = (iso) => iso ? iso.replace('T', ' ').replace(/\.\d+Z$/, ' UTC') : '—';
+      rangePreview.textContent = `Window: ${fmt(since)} → ${fmt(until || isoNow())}`;
+    }
+
+    document.querySelectorAll('.time-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.time-preset').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activePreset = btn.dataset.preset;
+        customRangeRow.classList.toggle('hidden', activePreset !== 'custom');
+        updateRangePreview();
+      });
+    });
+    rangeFromEl.addEventListener('change', updateRangePreview);
+    rangeToEl.addEventListener('change', updateRangePreview);
+    updateRangePreview();
+
+    // Toggle local log path visibility
+    fetchFreshEl.addEventListener('change', () => {
+      localLogRow.classList.toggle('hidden', fetchFreshEl.checked);
+    });
+
+    // ── Test Connection ──────────────────────────────────────────────────────
+    testBtn.addEventListener('click', async () => {
+      connMsg.className = 'msg';
+      connMsg.textContent = 'Testing connection…';
+      try {
+        const resp = await fetch('/api/sc/test_connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pc_ip:    String(pcIpEl.value || '').trim(),
+            username: String(sshUserEl.value || '').trim(),
+            password: String(sshPassEl.value || ''),
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) throw new Error(data.error || 'Connection failed');
+        connMsg.className = 'msg success';
+        connMsg.textContent = `Connected in ${data.connection_time}s. Remote date: ${data.remote_date}`;
+      } catch (err) {
+        connMsg.className = 'msg error';
+        connMsg.textContent = String(err);
+      }
+    });
+
+    // ── Run Analysis ─────────────────────────────────────────────────────────
+    runBtn.addEventListener('click', async () => {
+      runMsg.className = 'msg';
+      runMsg.textContent = 'Starting analysis job…';
+      runBtn.disabled = true;
+      try {
+        const fetchFresh = fetchFreshEl.checked;
+        const pcIp = String(pcIpEl.value || '').trim();
+        if (fetchFresh && !pcIp) throw new Error('PC IP is required when Fetch Fresh is enabled.');
+        if (!fetchFresh && !logFileEl.value.trim()) throw new Error('Local log file path is required when not fetching fresh.');
+
+        const { since, until } = getTimeRange();
+        const payload = {
+          pc_ip:          pcIp,
+          username:       String(sshUserEl.value || '').trim(),
+          password:       String(sshPassEl.value || ''),
+          fetch_fresh:    fetchFresh,
+          log_file:       String(logFileEl.value || '').trim(),
+          processor_file: String(procFileEl.value || '').trim(),
+          kubeconfig:     String(kubeconfigEl.value || '').trim(),
+          since:          since  || undefined,
+          until:          until  || undefined,
+        };
+        const resp = await fetch('/api/sc/network_log_analyzer/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start analysis');
+        window.location.href = data.job_url;
+      } catch (err) {
+        runMsg.className = 'msg error';
+        runMsg.textContent = String(err);
+        runBtn.disabled = false;
+      }
+    });
+
+    // ── SC Security Reports Analyzer ─────────────────────────────────────────
+    scSecBtn.addEventListener('click', async () => {
+      scSecMsg.className = 'msg';
+      scSecMsg.textContent = 'Starting security reports analysis…';
+      scSecBtn.disabled = true;
+      try {
+        const dataDir = String(scDataDirEl.value || '').trim();
+        if (!dataDir) throw new Error('Data directory path is required.');
+        const resp = await fetch('/api/sc/security_reports/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data_dir: dataDir }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start analysis');
+        window.location.href = data.job_url;
+      } catch (err) {
+        scSecMsg.className = 'msg error';
+        scSecMsg.textContent = String(err);
+        scSecBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

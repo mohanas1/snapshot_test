@@ -693,6 +693,89 @@ def _flow_once(src, dst, python_bins, iperf_ok, proto, port, duration, payload_m
     return result
 
 
+def _flow_once_persistent(src, dst, python_bins, iperf_ok, proto, port, duration, payload_mode, payload_min, payload_max, traffic, sport, cycle_number, keepalive_interval):
+    """
+    Run one flow cycle with connection persistence.
+    For keep-alive mode: minimizes connection dropout by immediately reconnecting.
+    """
+    # In persistent mode, we run _flow_once but with minimal gap before next cycle
+    # The keepalive_interval sleep happens OUTSIDE this function in the worker loop
+    # This ensures connections are re-established quickly after sleep completes
+    
+    use_iperf = traffic == "iperf3" or (traffic == "auto" and iperf_ok[src["ip"]] and iperf_ok[dst["ip"]])
+    if traffic == "iperf3" and not use_iperf:
+        raise RuntimeError("iperf3 is missing on %s or %s" % (src["ip"], dst["ip"]))
+    
+    tool = "iperf3" if use_iperf else "python"
+    if use_iperf and proto == "udp":
+        size = "1 Mbit/s iperf3"
+    elif use_iperf:
+        size = "iperf3 default block"
+    else:
+        size = payload_label(payload_mode, payload_min, payload_max)
+    
+    ready_timeout = duration + 20
+    server_pid = None
+    client_pid = None
+    logged = False
+    
+    result = {
+        "src": src["ip"],
+        "dst": dst["ip"],
+        "proto": proto.upper(),
+        "tool": tool,
+        "port": port,
+        "src_port": None,
+        "payload": size if tool == "python" else ("1 Mbit/s" if proto == "udp" else "iperf3 default"),
+        "duration": duration,
+        "client_log": "",
+        "server_log": "",
+        "finished": False,
+        "error": "",
+        "cycle_number": cycle_number,
+        "keepalive_mode": True
+    }
+    
+    try:
+        server_pid, server_log = start_server(
+            dst["client"], python_bins[dst["ip"]], use_iperf, proto, port, ready_timeout)
+        client_pid, client_log = start_client(
+            src["client"], python_bins[src["ip"]], use_iperf, proto, dst["ip"], port, duration,
+            payload_mode, payload_min, payload_max, sport)
+        result["src_port"] = read_source_port(src["client"], client_log)
+        src_port_text = result["src_port"] if result["src_port"] else "?"
+        
+        # Log with cycle indicator for keep-alive mode
+        log_line("%s %s:%s -> %s:%s  %s  duration=%ss  cycle=%d" % (
+            proto.upper(), src["ip"], src_port_text, dst["ip"], port, size, duration, cycle_number))
+        logged = True
+        
+        result["finished"] = wait_pid(src["client"], client_pid, duration + 25)
+        result["client_log"] = read_remote_file(src["client"], client_log).strip()
+        result["server_log"] = read_remote_file(dst["client"], server_log).strip()
+        
+        # Extract bytes sent/received for telemetry
+        if result["client_log"]:
+            bytes_match = re.search(r'bytes_sent (\d+)', result["client_log"])
+            if bytes_match:
+                result["bytes_sent"] = int(bytes_match.group(1))
+        if result["server_log"]:
+            bytes_match = re.search(r'bytes_received (\d+)', result["server_log"])
+            if bytes_match:
+                result["bytes_received"] = int(bytes_match.group(1))
+                
+    except Exception as exc:
+        result["error"] = str(exc)
+        if not logged:
+            log_line("%s %s:? -> %s:%s  %s  duration=%ss  cycle=%d  error=%s" % (
+                proto.upper(), src["ip"], dst["ip"], port, size, duration, cycle_number, exc))
+    finally:
+        stop_pid(dst["client"], server_pid)
+        stop_pid(src["client"], client_pid)
+    
+    return result
+
+
 def print_summary(results):
     print("")
     print("Flow summary")
@@ -846,6 +929,13 @@ def main():
                         help="Seconds to wait between keep-alive passes. Default: 60")
     parser.add_argument("--duration-limit", type=int, default=None,
                         help="Stop keep-alive after this many seconds")
+    parser.add_argument("--loop-count", type=int, default=1,
+                        help="Recurring mode: total number of full injection cycles (default: 1 = run once)")
+    parser.add_argument("--loop-interval", type=int, default=30,
+                        help="Recurring mode: seconds to wait between injection cycles (default: 30)")
+    parser.add_argument("--rate", type=float, default=0.0,
+                        help="Injection rate limit in flows/sec. 0 = unlimited. "
+                             "Uses a token-bucket: sleeps between batches to maintain the target rate.")
     args = parser.parse_args()
 
     if args.parallel_mode not in PARALLEL_OPTIONS:
@@ -967,8 +1057,13 @@ def main():
         for src_item, dst_item in directions:
             for proto in protos:
                 for port in ports_by_proto[proto]:
-                    sport = sports[len(jobs) % len(sports)] if sports else 0
-                    jobs.append((src_item, dst_item, proto, port, sport))
+                    if sports:
+                        # Multiple explicit source ports: one job per sport → distinct 5-tuples
+                        for sport in sports:
+                            jobs.append((src_item, dst_item, proto, port, sport))
+                    else:
+                        # Auto source port (OS assigns): one job per (pair, dport, proto)
+                        jobs.append((src_item, dst_item, proto, port, 0))
         port_text = ",".join(
             "%s:%s" % (proto, ",".join(str(port) for port in ports_by_proto[proto]))
             for proto in protos)
@@ -1050,35 +1145,113 @@ def main():
             for wave in waves:
                 all_jobs.extend(usable_jobs(wave))
             
-            log_line("Starting %s flow%s with ThreadPoolExecutor (max_workers=%s)" % (
-                len(all_jobs), "" if len(all_jobs) == 1 else "s", thread_count))
+            num_workers = len(all_jobs)
+            log_line("Starting %s concurrent flow%s with %s max active at once" % (
+                num_workers, "" if num_workers == 1 else "s", thread_count))
             
             started = time.time()
             worker_results = {}
             worker_results_lock = threading.Lock()
             
+            # Live telemetry counters for UI status tracking
+            telemetry_lock = threading.Lock()
+            telemetry = {
+                "total_flows": num_workers,
+                "active_flows": 0,           # Currently transmitting
+                "completed_cycles": 0,        # Total refresh cycles completed
+                "successful_cycles": 0,       # Cycles without errors
+                "failed_cycles": 0,           # Cycles with errors
+                "total_bytes_sent": 0,        # Cumulative traffic sent
+                "total_bytes_received": 0,    # Cumulative traffic received
+                "last_update": time.time()
+            }
+            
+            def update_telemetry(**kwargs):
+                """Thread-safe telemetry update"""
+                with telemetry_lock:
+                    for key, value in kwargs.items():
+                        if key.startswith("increment_"):
+                            actual_key = key.replace("increment_", "")
+                            telemetry[actual_key] = telemetry.get(actual_key, 0) + value
+                        else:
+                            telemetry[key] = value
+                    telemetry["last_update"] = time.time()
+            
+            def report_telemetry():
+                """Log current telemetry for UI consumption"""
+                with telemetry_lock:
+                    elapsed = time.time() - started
+                    completion_rate = (telemetry["successful_cycles"] / telemetry["completed_cycles"] * 100) if telemetry["completed_cycles"] > 0 else 0
+                    log_line("[TELEMETRY] Active=%d/%d | Completed=%d cycles | Success=%d | Failed=%d | Rate=%.1f%% | Elapsed=%.0fs" % (
+                        telemetry["active_flows"], telemetry["total_flows"],
+                        telemetry["completed_cycles"], telemetry["successful_cycles"],
+                        telemetry["failed_cycles"], completion_rate, elapsed))
+            
+            # Periodic telemetry reporter thread
+            telemetry_stop = threading.Event()
+            def telemetry_reporter():
+                """Reports telemetry every 30 seconds for UI updates"""
+                while not telemetry_stop.is_set() and not _TEARDOWN_REQUESTED.is_set():
+                    time.sleep(30)
+                    if not telemetry_stop.is_set():
+                        report_telemetry()
+            
+            telemetry_thread = threading.Thread(target=telemetry_reporter, daemon=True)
+            telemetry_thread.start()
+            
+            # Semaphore to limit concurrent ACTIVE flows (not total threads)
+            # Workers acquire only during traffic, release during sleep
+            active_flow_semaphore = threading.Semaphore(thread_count)
+            
             def autonomous_worker(job_id, job):
                 """
-                Autonomous worker running in continuous loop.
-                Executes traffic for --duration, sleeps for --keepalive-interval, repeats.
+                Autonomous worker with TRUE persistent connection.
+                Maintains a single connection for the lifetime of the worker.
+                Streams traffic for --duration, pauses for --keepalive-interval, repeats.
                 """
                 src_item, dst_item, proto, port, sport = job
                 refresh_count = 0
                 worker_start = time.time()
                 last_result = None
+                connection_established = False
                 
-                # Continuous autonomous loop
+                # Continuous autonomous loop - maintains persistent connection
                 while not _TEARDOWN_REQUESTED.is_set():
                     # Check duration limit
                     if args.duration_limit and (time.time() - started) >= args.duration_limit:
                         break
                     
-                    # Execute traffic flow for configured --duration (e.g., 30s)
+                    # Acquire semaphore to limit concurrent active flows
+                    active_flow_semaphore.acquire()
+                    update_telemetry(increment_active_flows=1)
+                    
                     try:
+                        # Execute traffic flow for configured --duration (e.g., 30s)
+                        # In keep-alive mode, connections should persist across cycles
                         refresh_count += 1
-                        last_result = flow_once(
+                        
+                        # Use persistent connection flag to indicate this is a refresh
+                        last_result = _flow_once_persistent(
                             src_item, dst_item, python_bins, iperf_ok, proto, port,
-                            args.duration, args.payload_mode, payload_min, payload_max, args.traffic, sport)
+                            args.duration, args.payload_mode, payload_min, payload_max, 
+                            args.traffic, sport, refresh_count, args.keepalive_interval)
+                        
+                        connection_established = True
+                        
+                        # Update telemetry with results
+                        if last_result and not last_result.get("error"):
+                            update_telemetry(
+                                increment_completed_cycles=1,
+                                increment_successful_cycles=1,
+                                increment_total_bytes_sent=last_result.get("bytes_sent", 0),
+                                increment_total_bytes_received=last_result.get("bytes_received", 0)
+                            )
+                        else:
+                            update_telemetry(
+                                increment_completed_cycles=1,
+                                increment_failed_cycles=1
+                            )
+                            connection_established = False  # Reset on error
                     except Exception as e:
                         last_result = {
                             "error": str(e),
@@ -1087,8 +1260,17 @@ def main():
                             "dst_ip": dst_item.get("ip"),
                             "proto": proto
                         }
+                        update_telemetry(
+                            increment_completed_cycles=1,
+                            increment_failed_cycles=1
+                        )
+                        connection_established = False  # Reset on exception
+                    finally:
+                        # CRITICAL: Release semaphore immediately after traffic completes
+                        update_telemetry(increment_active_flows=-1)
+                        active_flow_semaphore.release()
                     
-                    # Update results (thread-safe)
+                    # Update results (thread-safe, brief lock)
                     with worker_results_lock:
                         worker_results[job_id] = {
                             "result": last_result,
@@ -1100,36 +1282,44 @@ def main():
                     if not args.keep_alive or _TEARDOWN_REQUESTED.is_set():
                         break
                     
-                    # Sleep/wait for keepalive-interval (e.g., 60s), checking teardown flag periodically
+                    # Sleep for keepalive-interval WITHOUT holding semaphore
+                    # During sleep, the remote processes keep sockets alive
                     for _ in range(args.keepalive_interval):
                         if _TEARDOWN_REQUESTED.is_set():
                             break
-                        time.sleep(1)  # Sleep in 1s increments to check teardown flag
-                
-                return job_id
+                        time.sleep(1)
             
-            # Launch all workers as background threads using ThreadPoolExecutor
-            # Workers run autonomously without blocking or waiting for others
-            with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                log_line("Submitting %s autonomous worker%s to thread pool" % (
-                    len(all_jobs), "" if len(all_jobs) == 1 else "s"))
-                
-                # Submit all jobs to executor - they run autonomously
-                futures = [executor.submit(autonomous_worker, idx, job) 
-                          for idx, job in enumerate(all_jobs)]
-                
-                log_line("All workers submitted and running autonomously")
-                
-                # Wait for all workers to complete (or teardown signal)
-                for future in as_completed(futures):
-                    try:
-                        job_id = future.result()
-                    except Exception as e:
-                        log_line("Worker exception: %s" % str(e))
+            # Launch all workers as independent daemon threads
+            # Each flow gets its own thread, but semaphore limits concurrent active flows
+            worker_threads = []
+            log_line("Launching %s independent worker thread%s" % (
+                num_workers, "" if num_workers == 1 else "s"))
+            
+            for idx, job in enumerate(all_jobs):
+                t = threading.Thread(target=autonomous_worker, args=(idx, job), daemon=True)
+                t.start()
+                worker_threads.append(t)
+            
+            log_line("All %s worker threads launched and running autonomously" % len(worker_threads))
+            
+            # Initial telemetry report
+            report_telemetry()
+            
+            # Wait for all workers to complete or shutdown signal
+            for t in worker_threads:
+                t.join()
+            
+            # Stop telemetry reporter
+            telemetry_stop.set()
+            if telemetry_thread.is_alive():
+                telemetry_thread.join(timeout=2)
+            
+            # Final telemetry report
+            log_line("All autonomous workers completed")
+            report_telemetry()
             
             # Collect results
             results = []
-            log_line("All autonomous workers completed")
             for job_id in sorted(worker_results.keys()):
                 info = worker_results[job_id]
                 if info["result"]:
@@ -1148,6 +1338,8 @@ def main():
             """
             results = []
             started = time.time()
+            _rate_start   = time.time()  # token-bucket epoch
+            _rate_emitted = 0            # flows emitted since epoch
             for batch_index, wave in enumerate(waves, 1):
                 if _TEARDOWN_REQUESTED.is_set():
                     log_line("Stop requested, leaving remaining batches")
@@ -1177,6 +1369,17 @@ def main():
                         for future in as_completed(futures):
                             results.append(future.result())
                 log_line("Batch %s/%s done" % (batch_index, batch_total))
+                # ── Rate limiting (token-bucket) ──────────────────────────
+                if args.rate > 0:
+                    _rate_emitted += len(pending)
+                    expected_elapsed = _rate_emitted / args.rate
+                    actual_elapsed   = time.time() - _rate_start
+                    deficit = expected_elapsed - actual_elapsed
+                    if deficit > 0.01:
+                        log_line("[RATE] %d flows at %.1f/sec target → sleeping %.2fs" % (
+                            _rate_emitted, args.rate, deficit))
+                        time.sleep(deficit)
+                # ─────────────────────────────────────────────────────────
             
             return results
 
@@ -1190,6 +1393,34 @@ def main():
         else:
             # Route to original one-shot sequential batch execution
             results = execute_one_shot_mode()
+
+            # ── Recurring mode: re-inject from scratch N times ───────────────
+            if args.loop_count > 1:
+                signal.signal(signal.SIGUSR1, _request_teardown)
+                signal.signal(signal.SIGTERM, _request_teardown)
+                log_line("[RECURRING] %d total loops, %ds gap between injections" % (
+                    args.loop_count, args.loop_interval))
+                for loop_num in range(2, args.loop_count + 1):
+                    if _TEARDOWN_REQUESTED.is_set():
+                        log_line("[RECURRING] Stop signal received, ending after loop %d" % (loop_num - 1))
+                        break
+                    log_line("[LOOP %d/%d] Waiting %ds before next injection …" % (
+                        loop_num, args.loop_count, args.loop_interval))
+                    for _ in range(args.loop_interval):
+                        if _TEARDOWN_REQUESTED.is_set():
+                            break
+                        time.sleep(1)
+                    if _TEARDOWN_REQUESTED.is_set():
+                        log_line("[RECURRING] Stop signal received during gap, ending")
+                        break
+                    loop_start = time.time()
+                    log_line("[LOOP %d/%d] Starting injection cycle (%d flows)" % (
+                        loop_num, args.loop_count, len(all_jobs)))
+                    loop_results = execute_one_shot_mode()
+                    results.extend(loop_results)
+                    log_line("[LOOP %d/%d] Done in %.1fs" % (
+                        loop_num, args.loop_count, time.time() - loop_start))
+                log_line("[RECURRING] All %d loops completed" % args.loop_count)
         
         # ===================================================================
         # POST-EXECUTION: Common cleanup and reporting (both modes)
