@@ -87,8 +87,8 @@
     /* conditional visibility */
     .hidden { display: none !important; }
     /* time preset chips */
-    .time-preset { padding: 0.22rem 0.65rem; font-size: 0.82rem; border-radius: 999px; }
-    .time-preset.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+    .time-preset, .sc-pl-time-preset { padding: 0.22rem 0.65rem; font-size: 0.82rem; border-radius: 999px; }
+    .time-preset.active, .sc-pl-time-preset.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
   </style>
 </head>
 <body>
@@ -120,7 +120,7 @@
         <div class="grid">
           <div>
             <label for="pc-ip">PC IP</label>
-            <input id="pc-ip" type="text" value="10.122.28.20" />
+            <input id="pc-ip" type="text" value="10.122.27.208" />
           </div>
           <div>
             <label for="ssh-username">SSH Username</label>
@@ -160,6 +160,68 @@
         <div class="actions">
           <button id="run-sc-security-btn" class="btn btn-primary" type="button">Analyse SC Reports</button>
           <span id="sc-security-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <!-- ── Section 2.5: SC Pipeline Pod Log Analyzer ─────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">SC Pipeline Pod Log Analyzer</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Analyse <code>ncm-sc</code> namespace pod logs — Flink CDC events, BQL query stats,
+          ML worker status, cron job outcomes, and errors.
+        </p>
+
+        <!-- Fetch Fresh toggle -->
+        <div class="toggle-box" style="margin-bottom:0.9rem;">
+          <label>
+            <input id="sc-pl-fetch-fresh" type="checkbox" checked />
+            Fetch fresh pod logs from PC before analysing
+          </label>
+          <div class="toggle-hint">
+            When enabled, the kubeconfig is pulled from Prism Central via SSH,
+            then <code>kubectl logs</code> is run for every <code>ncm-sc</code> pod.
+            Disable to analyse a pod-logs directory already on disk.
+          </div>
+        </div>
+
+        <!-- Local dir row (shown only when fetch-fresh is OFF) -->
+        <div id="sc-pl-local-row" class="grid hidden" style="margin-bottom:0.9rem;">
+          <div style="grid-column: 1 / -1;">
+            <label for="sc-pl-logs-dir">Pod Logs Directory</label>
+            <input id="sc-pl-logs-dir" type="text" placeholder="/path/to/pod-logs_20261031_142434" />
+            <div style="font-size:0.82rem;color:#6B7280;margin-top:0.3rem;">
+              Directory containing <code>*.log</code> files collected from ncm-sc namespace.
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Range (shown when fetch-fresh is ON) -->
+        <div id="sc-pl-fresh-opts" style="margin-bottom:0.9rem;">
+          <label style="margin-bottom:0.45rem;">Analyse Time Range</label>
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset active" data-preset="all">All</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="1h">Last 1h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="6h">Last 6h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="24h">Last 24h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="7d">Last 7d</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="custom">Custom…</button>
+          </div>
+          <div id="sc-pl-custom-range-row" class="grid hidden" style="margin-bottom:0.5rem;">
+            <div>
+              <label for="sc-pl-range-from">From (UTC)</label>
+              <input type="datetime-local" id="sc-pl-range-from" />
+            </div>
+            <div>
+              <label for="sc-pl-range-to">To (UTC)</label>
+              <input type="datetime-local" id="sc-pl-range-to" />
+            </div>
+          </div>
+          <div id="sc-pl-range-preview" style="font-size:0.83rem; color:#6b7280;"></div>
+        </div>
+
+        <div class="actions">
+          <button id="run-sc-pipeline-btn" class="btn btn-primary" type="button">Collect &amp; Analyse SC Pipeline</button>
+          <span id="sc-pl-msg" class="msg"></span>
         </div>
       </div>
 
@@ -256,6 +318,8 @@
               <td>
                 {% if row.job_kind == 'sc_security_analyzer' %}
                   <span style="background:#dbeafe;color:#1e40af;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;font-weight:600;">Security Reports</span>
+                {% elif row.job_kind == 'sc_pipeline_analyzer' %}
+                  <span style="background:#f0fdf4;color:#166534;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;font-weight:600;">SC Pipeline</span>
                 {% else %}
                   <span style="background:#dcfce7;color:#166534;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;font-weight:600;">Network Log</span>
                 {% endif %}
@@ -269,6 +333,14 @@
                     VMs: {{ ar.get('vm_assignment',{}).get('total_unique_vms','—') }} ·
                     Audits: {{ ar.get('audits',{}).get('total','—') }} ·
                     Queries: {{ ar.get('queries',{}).get('total_success','—') }}
+                  {% else %}
+                    <span style="color:#d97706;">no report data</span>
+                  {% endif %}
+                {% elif row.job_kind == 'sc_pipeline_analyzer' %}
+                  {% set sm = row.summary or {} %}
+                  {% if sm.get('total_pods') %}
+                    Pods: {{ sm.get('total_pods','—') }} ·
+                    Issues: {{ sm.get('issues','—') }}
                   {% else %}
                     <span style="color:#d97706;">no report data</span>
                   {% endif %}
@@ -451,6 +523,94 @@
         scSecMsg.className = 'msg error';
         scSecMsg.textContent = String(err);
         scSecBtn.disabled = false;
+      }
+    });
+
+    // ── SC Pipeline Pod Log Analyzer ──────────────────────────────────────────
+    const scPlFetchFreshEl    = document.getElementById('sc-pl-fetch-fresh');
+    const scPlLocalRow        = document.getElementById('sc-pl-local-row');
+    const scPlFreshOpts       = document.getElementById('sc-pl-fresh-opts');
+    const scPlLogsDir         = document.getElementById('sc-pl-logs-dir');
+    const scPlMsg             = document.getElementById('sc-pl-msg');
+    const scPlBtn             = document.getElementById('run-sc-pipeline-btn');
+    const scPlCustomRangeRow  = document.getElementById('sc-pl-custom-range-row');
+    const scPlRangeFromEl     = document.getElementById('sc-pl-range-from');
+    const scPlRangeToEl       = document.getElementById('sc-pl-range-to');
+    const scPlRangePreview    = document.getElementById('sc-pl-range-preview');
+
+    let scPlActivePreset = 'all';
+
+    function scPlGetTimeRange() {
+      if (scPlActivePreset === 'all') return { since: null, until: null };
+      if (scPlActivePreset === 'custom') {
+        const since = scPlRangeFromEl.value ? new Date(scPlRangeFromEl.value).toISOString() : null;
+        const until = scPlRangeToEl.value   ? new Date(scPlRangeToEl.value).toISOString()   : null;
+        return { since, until };
+      }
+      const hours = PRESET_HOURS[scPlActivePreset];
+      return { since: isoOffset(hours), until: null };
+    }
+
+    function scPlUpdateRangePreview() {
+      const { since, until } = scPlGetTimeRange();
+      if (!since && !until) {
+        scPlRangePreview.textContent = 'All available logs in Fluentd will be analysed.';
+        return;
+      }
+      const fmt = (iso) => iso ? iso.replace('T', ' ').replace(/\.\d+Z$/, ' UTC') : '—';
+      scPlRangePreview.textContent = `Window: ${fmt(since)} → ${fmt(until || isoNow())}`;
+    }
+
+    document.querySelectorAll('.sc-pl-time-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.sc-pl-time-preset').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        scPlActivePreset = btn.dataset.preset;
+        scPlCustomRangeRow.classList.toggle('hidden', scPlActivePreset !== 'custom');
+        scPlUpdateRangePreview();
+      });
+    });
+    scPlRangeFromEl.addEventListener('change', scPlUpdateRangePreview);
+    scPlRangeToEl.addEventListener('change', scPlUpdateRangePreview);
+    scPlUpdateRangePreview();
+
+    scPlFetchFreshEl.addEventListener('change', () => {
+      scPlLocalRow.classList.toggle('hidden', scPlFetchFreshEl.checked);
+      scPlFreshOpts.classList.toggle('hidden', !scPlFetchFreshEl.checked);
+    });
+
+    scPlBtn.addEventListener('click', async () => {
+      scPlMsg.className = 'msg';
+      scPlMsg.textContent = 'Starting analysis job…';
+      scPlBtn.disabled = true;
+      try {
+        const fetchFresh = scPlFetchFreshEl.checked;
+        const pcIp = String(pcIpEl.value || '').trim();
+        if (fetchFresh && !pcIp) throw new Error('PC IP is required (set in PC Connection section).');
+        if (!fetchFresh && !scPlLogsDir.value.trim()) throw new Error('Pod logs directory path is required.');
+
+        const { since, until } = scPlGetTimeRange();
+        const payload = {
+          fetch_fresh:  fetchFresh,
+          pc_ip:        pcIp,
+          username:     String(sshUserEl.value || '').trim(),
+          password:     String(sshPassEl.value || ''),
+          since:        since  || undefined,
+          until:        until  || undefined,
+          pod_logs_dir: String(scPlLogsDir.value || '').trim() || undefined,
+        };
+        const resp = await fetch('/api/sc/pipeline_analyzer/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.message || 'Failed to start');
+        window.location.href = data.job_url;
+      } catch (err) {
+        scPlMsg.className = 'msg error';
+        scPlMsg.textContent = String(err);
+        scPlBtn.disabled = false;
       }
     });
   </script>

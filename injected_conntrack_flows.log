@@ -385702,3 +385702,899 @@ Matched 52 conntrack entries.
 
 [COMPLETE] Results logged to: /home/mohan.as1/projects/snapshot_test/injected_conntrack_flows.log
 
+
+--- INGEST & INSPECT RUN: 2026-10-30 05:32:46 ---
+pattern=1:1 n=10 proto=both mode=randomized_mesh update_existing=True
+Loaded 1083 IPs from /home/mohan.as1/projects/snapshot_test/data/ipfix_vm_lists/selected_43ab1994920e4b36a10119fb9209c378.txt
+Loaded VM→host map for 1083 IPs from /home/mohan.as1/projects/snapshot_test/data/ipfix_vm_lists/selected_43ab1994920e4b36a10119fb9209c378_hostmap.json
+conntrack via ssh root@10.122.44.189,10.122.44.205,10.122.44.169
+CVM SSH sessions=1; each keeps one root@hypervisor shell and runs that thread's commands there
+Built 3787 flows for pattern 1:1
+Mode=randomized_mesh parallel=True thread_count=50 batches=76
+randomly selects source and destination pairs for chaos testing
+[1/2] Injecting mock flows into conntrack...
+Batch 1/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 1/76 done
+[RATE] 50 flows at 1.0/sec target → sleeping 46.79s
+Batch 2/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 2/76 done
+[RATE] 100 flows at 1.0/sec target → sleeping 46.92s
+Batch 3/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 3/76 done
+[RATE] 150 flows at 1.0/sec target → sleeping 46.87s
+Batch 4/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 4/76 done
+[RATE] 200 flows at 1.0/sec target → sleeping 46.59s
+Batch 5/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 5/76 done
+[RATE] 250 flows at 1.0/sec target → sleeping 46.96s
+Batch 6/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 6/76 done
+[RATE] 300 flows at 1.0/sec target → sleeping 47.91s
+Batch 7/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 7/76 done
+[RATE] 350 flows at 1.0/sec target → sleeping 47.60s
+Batch 8/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 8/76 done
+[RATE] 400 flows at 1.0/sec target → sleeping 47.91s
+Batch 9/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 9/76 done
+[RATE] 450 flows at 1.0/sec target → sleeping 46.65s
+Batch 10/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 10/76 done
+[RATE] 500 flows at 1.0/sec target → sleeping 46.38s
+Batch 11/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 11/76 done
+[RATE] 550 flows at 1.0/sec target → sleeping 46.94s
+Batch 12/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 12/76 done
+[RATE] 600 flows at 1.0/sec target → sleeping 46.62s
+Batch 13/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 13/76 done
+[RATE] 650 flows at 1.0/sec target → sleeping 47.75s
+Batch 14/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 14/76 done
+[RATE] 700 flows at 1.0/sec target → sleeping 46.54s
+Batch 15/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=92  root_shells=1
+Batch 15/76 done
+[RATE] 750 flows at 1.0/sec target → sleeping 46.97s
+Batch 16/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 16/76 done
+[RATE] 800 flows at 1.0/sec target → sleeping 46.58s
+Batch 17/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 17/76 done
+[RATE] 850 flows at 1.0/sec target → sleeping 46.82s
+Batch 18/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 18/76 done
+[RATE] 900 flows at 1.0/sec target → sleeping 47.91s
+Batch 19/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 19/76 done
+[RATE] 950 flows at 1.0/sec target → sleeping 46.93s
+Batch 20/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 20/76 done
+[RATE] 1000 flows at 1.0/sec target → sleeping 46.89s
+Batch 21/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 21/76 done
+[RATE] 1050 flows at 1.0/sec target → sleeping 47.70s
+Batch 22/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 22/76 done
+[RATE] 1100 flows at 1.0/sec target → sleeping 47.69s
+Batch 23/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 23/76 done
+[RATE] 1150 flows at 1.0/sec target → sleeping 46.62s
+Batch 24/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 24/76 done
+[RATE] 1200 flows at 1.0/sec target → sleeping 47.05s
+Batch 25/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 25/76 done
+[RATE] 1250 flows at 1.0/sec target → sleeping 47.87s
+Batch 26/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 26/76 done
+[RATE] 1300 flows at 1.0/sec target → sleeping 46.88s
+Batch 27/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 27/76 done
+[RATE] 1350 flows at 1.0/sec target → sleeping 46.84s
+Batch 28/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 28/76 done
+[RATE] 1400 flows at 1.0/sec target → sleeping 46.88s
+Batch 29/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 29/76 done
+[RATE] 1450 flows at 1.0/sec target → sleeping 47.69s
+Batch 30/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 30/76 done
+[RATE] 1500 flows at 1.0/sec target → sleeping 46.96s
+Batch 31/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 31/76 done
+[RATE] 1550 flows at 1.0/sec target → sleeping 47.72s
+Batch 32/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 32/76 done
+[RATE] 1600 flows at 1.0/sec target → sleeping 47.83s
+Batch 33/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 33/76 done
+[RATE] 1650 flows at 1.0/sec target → sleeping 46.96s
+Batch 34/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 34/76 done
+[RATE] 1700 flows at 1.0/sec target → sleeping 46.75s
+Batch 35/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 35/76 done
+[RATE] 1750 flows at 1.0/sec target → sleeping 46.66s
+Batch 36/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 36/76 done
+[RATE] 1800 flows at 1.0/sec target → sleeping 47.54s
+Batch 37/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 37/76 done
+[RATE] 1850 flows at 1.0/sec target → sleeping 47.88s
+Batch 38/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 38/76 done
+[RATE] 1900 flows at 1.0/sec target → sleeping 46.77s
+Batch 39/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 39/76 done
+[RATE] 1950 flows at 1.0/sec target → sleeping 46.52s
+Batch 40/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 40/76 done
+[RATE] 2000 flows at 1.0/sec target → sleeping 46.66s
+Batch 41/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 41/76 done
+[RATE] 2050 flows at 1.0/sec target → sleeping 46.39s
+Batch 42/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 42/76 done
+[RATE] 2100 flows at 1.0/sec target → sleeping 47.56s
+Batch 43/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 43/76 done
+[RATE] 2150 flows at 1.0/sec target → sleeping 47.62s
+Batch 44/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 44/76 done
+[RATE] 2200 flows at 1.0/sec target → sleeping 47.33s
+Batch 45/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 45/76 done
+[RATE] 2250 flows at 1.0/sec target → sleeping 46.78s
+Batch 46/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 46/76 done
+[RATE] 2300 flows at 1.0/sec target → sleeping 46.24s
+Batch 47/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 47/76 done
+[RATE] 2350 flows at 1.0/sec target → sleeping 46.36s
+Batch 48/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 48/76 done
+[RATE] 2400 flows at 1.0/sec target → sleeping 46.66s
+Batch 49/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 49/76 done
+[RATE] 2450 flows at 1.0/sec target → sleeping 47.39s
+Batch 50/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 50/76 done
+[RATE] 2500 flows at 1.0/sec target → sleeping 46.38s
+Batch 51/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 51/76 done
+[RATE] 2550 flows at 1.0/sec target → sleeping 46.62s
+Batch 52/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 52/76 done
+[RATE] 2600 flows at 1.0/sec target → sleeping 46.24s
+Batch 53/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 53/76 done
+[RATE] 2650 flows at 1.0/sec target → sleeping 47.56s
+Batch 54/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 54/76 done
+[RATE] 2700 flows at 1.0/sec target → sleeping 47.57s
+Batch 55/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 55/76 done
+[RATE] 2750 flows at 1.0/sec target → sleeping 46.45s
+Batch 56/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 56/76 done
+[RATE] 2800 flows at 1.0/sec target → sleeping 46.41s
+Batch 57/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 57/76 done
+[RATE] 2850 flows at 1.0/sec target → sleeping 46.41s
+Batch 58/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 58/76 done
+[RATE] 2900 flows at 1.0/sec target → sleeping 47.49s
+Batch 59/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 59/76 done
+[RATE] 2950 flows at 1.0/sec target → sleeping 47.41s
+Batch 60/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 60/76 done
+[RATE] 3000 flows at 1.0/sec target → sleeping 46.35s
+Batch 61/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 61/76 done
+[RATE] 3050 flows at 1.0/sec target → sleeping 47.22s
+Batch 62/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 62/76 done
+[RATE] 3100 flows at 1.0/sec target → sleeping 46.38s
+Batch 63/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 63/76 done
+[RATE] 3150 flows at 1.0/sec target → sleeping 47.82s
+Batch 64/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 64/76 done
+[RATE] 3200 flows at 1.0/sec target → sleeping 46.20s
+Batch 65/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 65/76 done
+[RATE] 3250 flows at 1.0/sec target → sleeping 47.46s
+Batch 66/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 66/76 done
+[RATE] 3300 flows at 1.0/sec target → sleeping 46.60s
+Batch 67/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 67/76 done
+[RATE] 3350 flows at 1.0/sec target → sleeping 47.80s
+Batch 68/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 68/76 done
+[RATE] 3400 flows at 1.0/sec target → sleeping 46.40s
+Batch 69/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 69/76 done
+[RATE] 3450 flows at 1.0/sec target → sleeping 46.53s
+Batch 70/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 70/76 done
+[RATE] 3500 flows at 1.0/sec target → sleeping 46.80s
+Batch 71/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 71/76 done
+[RATE] 3550 flows at 1.0/sec target → sleeping 48.04s
+Batch 72/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 72/76 done
+[RATE] 3600 flows at 1.0/sec target → sleeping 46.91s
+Batch 73/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 73/76 done
+[RATE] 3650 flows at 1.0/sec target → sleeping 46.92s
+Batch 74/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 74/76 done
+[RATE] 3700 flows at 1.0/sec target → sleeping 47.90s
+Batch 75/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 75/76 done
+[RATE] 3750 flows at 1.0/sec target → sleeping 46.89s
+Batch 76/76  mode=randomized_mesh  thread_count=50  starting 37 flows  vms=72  root_shells=1
+Batch 76/76 done
+[RATE] 3787 flows at 1.0/sec target → sleeping 33.37s
+
+[2/2] Inspecting only injected flows from active table...
+ssh root@10.122.44.189 conntrack -L
+[2026-10-30 06:35:53.627311] ERROR querying conntrack: __CT_END_429__ 0
+sh: line 21: /usr/sbin/conntrack: No such file or directory
+ssh root@10.122.44.205 conntrack -L
+[2026-10-30 06:35:54.656073] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+ssh root@10.122.44.169 conntrack -L
+[2026-10-30 06:35:55.733691] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+
+[RECURRING] 5 total loops, 120s gap between injections
+  Send SIGUSR1 or SIGTERM to stop early
+
+[LOOP 2/5] Waiting 120s before next injection...
+[LOOP 2/5] Injecting 3787 flows...
+Batch 1/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 1/76 done
+Batch 2/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 2/76 done
+Batch 3/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 3/76 done
+Batch 4/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 4/76 done
+Batch 5/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 5/76 done
+Batch 6/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 6/76 done
+Batch 7/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 7/76 done
+Batch 8/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 8/76 done
+Batch 9/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 9/76 done
+Batch 10/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 10/76 done
+Batch 11/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 11/76 done
+Batch 12/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 12/76 done
+Batch 13/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 13/76 done
+Batch 14/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 14/76 done
+Batch 15/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=92  root_shells=1
+Batch 15/76 done
+Batch 16/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 16/76 done
+Batch 17/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 17/76 done
+Batch 18/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 18/76 done
+Batch 19/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 19/76 done
+Batch 20/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 20/76 done
+Batch 21/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 21/76 done
+Batch 22/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 22/76 done
+Batch 23/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 23/76 done
+Batch 24/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 24/76 done
+Batch 25/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 25/76 done
+Batch 26/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 26/76 done
+Batch 27/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 27/76 done
+Batch 28/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 28/76 done
+Batch 29/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 29/76 done
+Batch 30/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 30/76 done
+Batch 31/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 31/76 done
+Batch 32/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 32/76 done
+Batch 33/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 33/76 done
+Batch 34/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 34/76 done
+Batch 35/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 35/76 done
+Batch 36/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 36/76 done
+Batch 37/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 37/76 done
+Batch 38/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 38/76 done
+Batch 39/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 39/76 done
+Batch 40/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 40/76 done
+Batch 41/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 41/76 done
+Batch 42/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 42/76 done
+Batch 43/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 43/76 done
+Batch 44/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 44/76 done
+Batch 45/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 45/76 done
+Batch 46/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 46/76 done
+Batch 47/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 47/76 done
+Batch 48/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 48/76 done
+Batch 49/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 49/76 done
+Batch 50/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 50/76 done
+Batch 51/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 51/76 done
+Batch 52/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 52/76 done
+Batch 53/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 53/76 done
+Batch 54/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 54/76 done
+Batch 55/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 55/76 done
+Batch 56/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 56/76 done
+Batch 57/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 57/76 done
+Batch 58/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 58/76 done
+Batch 59/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 59/76 done
+Batch 60/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 60/76 done
+Batch 61/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 61/76 done
+Batch 62/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 62/76 done
+Batch 63/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 63/76 done
+Batch 64/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 64/76 done
+Batch 65/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 65/76 done
+Batch 66/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 66/76 done
+Batch 67/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 67/76 done
+Batch 68/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 68/76 done
+Batch 69/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 69/76 done
+Batch 70/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 70/76 done
+Batch 71/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 71/76 done
+Batch 72/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 72/76 done
+Batch 73/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 73/76 done
+Batch 74/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 74/76 done
+Batch 75/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 75/76 done
+Batch 76/76  mode=randomized_mesh  thread_count=50  starting 37 flows  vms=72  root_shells=1
+Batch 76/76 done
+[2026-10-30 06:41:29.532712] ERROR querying conntrack: __CT_END_863__ 0
+sh: line 21: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:41:30.565108] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:41:31.696429] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[LOOP 2/5] Done in 216.0s.
+
+[LOOP 3/5] Waiting 120s before next injection...
+[LOOP 3/5] Injecting 3787 flows...
+Batch 1/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 1/76 done
+Batch 2/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 2/76 done
+Batch 3/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 3/76 done
+Batch 4/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 4/76 done
+Batch 5/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 5/76 done
+Batch 6/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 6/76 done
+Batch 7/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 7/76 done
+Batch 8/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 8/76 done
+Batch 9/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 9/76 done
+Batch 10/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 10/76 done
+Batch 11/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 11/76 done
+Batch 12/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 12/76 done
+Batch 13/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 13/76 done
+Batch 14/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 14/76 done
+Batch 15/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=92  root_shells=1
+Batch 15/76 done
+Batch 16/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 16/76 done
+Batch 17/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 17/76 done
+Batch 18/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 18/76 done
+Batch 19/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 19/76 done
+Batch 20/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 20/76 done
+Batch 21/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 21/76 done
+Batch 22/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 22/76 done
+Batch 23/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 23/76 done
+Batch 24/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 24/76 done
+Batch 25/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 25/76 done
+Batch 26/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 26/76 done
+Batch 27/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 27/76 done
+Batch 28/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 28/76 done
+Batch 29/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 29/76 done
+Batch 30/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 30/76 done
+Batch 31/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 31/76 done
+Batch 32/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 32/76 done
+Batch 33/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 33/76 done
+Batch 34/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 34/76 done
+Batch 35/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 35/76 done
+Batch 36/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 36/76 done
+Batch 37/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 37/76 done
+Batch 38/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 38/76 done
+Batch 39/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 39/76 done
+Batch 40/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 40/76 done
+Batch 41/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 41/76 done
+Batch 42/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 42/76 done
+Batch 43/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 43/76 done
+Batch 44/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 44/76 done
+Batch 45/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 45/76 done
+Batch 46/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 46/76 done
+Batch 47/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 47/76 done
+Batch 48/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 48/76 done
+Batch 49/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 49/76 done
+Batch 50/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 50/76 done
+Batch 51/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 51/76 done
+Batch 52/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 52/76 done
+Batch 53/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 53/76 done
+Batch 54/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 54/76 done
+Batch 55/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 55/76 done
+Batch 56/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 56/76 done
+Batch 57/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 57/76 done
+Batch 58/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 58/76 done
+Batch 59/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 59/76 done
+Batch 60/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 60/76 done
+Batch 61/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 61/76 done
+Batch 62/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 62/76 done
+Batch 63/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 63/76 done
+Batch 64/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 64/76 done
+Batch 65/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 65/76 done
+Batch 66/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 66/76 done
+Batch 67/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 67/76 done
+Batch 68/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 68/76 done
+Batch 69/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 69/76 done
+Batch 70/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 70/76 done
+Batch 71/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 71/76 done
+Batch 72/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 72/76 done
+Batch 73/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 73/76 done
+Batch 74/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 74/76 done
+Batch 75/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 75/76 done
+Batch 76/76  mode=randomized_mesh  thread_count=50  starting 37 flows  vms=72  root_shells=1
+Batch 76/76 done
+[2026-10-30 06:47:06.090378] ERROR querying conntrack: __CT_END_1297__ 0
+sh: line 21: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:47:07.120609] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:47:08.150135] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[LOOP 3/5] Done in 216.4s.
+
+[LOOP 4/5] Waiting 120s before next injection...
+[LOOP 4/5] Injecting 3787 flows...
+Batch 1/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 1/76 done
+Batch 2/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 2/76 done
+Batch 3/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 3/76 done
+Batch 4/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 4/76 done
+Batch 5/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 5/76 done
+Batch 6/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 6/76 done
+Batch 7/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 7/76 done
+Batch 8/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 8/76 done
+Batch 9/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 9/76 done
+Batch 10/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 10/76 done
+Batch 11/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 11/76 done
+Batch 12/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 12/76 done
+Batch 13/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 13/76 done
+Batch 14/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 14/76 done
+Batch 15/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=92  root_shells=1
+Batch 15/76 done
+Batch 16/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 16/76 done
+Batch 17/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 17/76 done
+Batch 18/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 18/76 done
+Batch 19/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 19/76 done
+Batch 20/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 20/76 done
+Batch 21/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 21/76 done
+Batch 22/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 22/76 done
+Batch 23/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 23/76 done
+Batch 24/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 24/76 done
+Batch 25/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 25/76 done
+Batch 26/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 26/76 done
+Batch 27/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 27/76 done
+Batch 28/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 28/76 done
+Batch 29/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 29/76 done
+Batch 30/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 30/76 done
+Batch 31/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 31/76 done
+Batch 32/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 32/76 done
+Batch 33/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 33/76 done
+Batch 34/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 34/76 done
+Batch 35/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 35/76 done
+Batch 36/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 36/76 done
+Batch 37/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 37/76 done
+Batch 38/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 38/76 done
+Batch 39/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 39/76 done
+Batch 40/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 40/76 done
+Batch 41/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 41/76 done
+Batch 42/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 42/76 done
+Batch 43/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 43/76 done
+Batch 44/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 44/76 done
+Batch 45/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 45/76 done
+Batch 46/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 46/76 done
+Batch 47/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 47/76 done
+Batch 48/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 48/76 done
+Batch 49/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 49/76 done
+Batch 50/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 50/76 done
+Batch 51/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 51/76 done
+Batch 52/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 52/76 done
+Batch 53/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 53/76 done
+Batch 54/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 54/76 done
+Batch 55/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 55/76 done
+Batch 56/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 56/76 done
+Batch 57/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 57/76 done
+Batch 58/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 58/76 done
+Batch 59/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 59/76 done
+Batch 60/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 60/76 done
+Batch 61/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 61/76 done
+Batch 62/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 62/76 done
+Batch 63/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 63/76 done
+Batch 64/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 64/76 done
+Batch 65/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 65/76 done
+Batch 66/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 66/76 done
+Batch 67/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 67/76 done
+Batch 68/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 68/76 done
+Batch 69/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 69/76 done
+Batch 70/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 70/76 done
+Batch 71/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 71/76 done
+Batch 72/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 72/76 done
+Batch 73/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 73/76 done
+Batch 74/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 74/76 done
+Batch 75/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 75/76 done
+Batch 76/76  mode=randomized_mesh  thread_count=50  starting 37 flows  vms=72  root_shells=1
+Batch 76/76 done
+[2026-10-30 06:52:41.581215] ERROR querying conntrack: __CT_END_1731__ 0
+sh: line 21: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:52:42.552863] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:52:43.671329] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[LOOP 4/5] Done in 215.5s.
+
+[LOOP 5/5] Waiting 120s before next injection...
+[LOOP 5/5] Injecting 3787 flows...
+Batch 1/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 1/76 done
+Batch 2/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 2/76 done
+Batch 3/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 3/76 done
+Batch 4/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 4/76 done
+Batch 5/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 5/76 done
+Batch 6/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 6/76 done
+Batch 7/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 7/76 done
+Batch 8/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 8/76 done
+Batch 9/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 9/76 done
+Batch 10/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 10/76 done
+Batch 11/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 11/76 done
+Batch 12/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 12/76 done
+Batch 13/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 13/76 done
+Batch 14/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 14/76 done
+Batch 15/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=92  root_shells=1
+Batch 15/76 done
+Batch 16/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 16/76 done
+Batch 17/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 17/76 done
+Batch 18/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 18/76 done
+Batch 19/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 19/76 done
+Batch 20/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 20/76 done
+Batch 21/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 21/76 done
+Batch 22/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 22/76 done
+Batch 23/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 23/76 done
+Batch 24/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 24/76 done
+Batch 25/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 25/76 done
+Batch 26/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 26/76 done
+Batch 27/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 27/76 done
+Batch 28/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 28/76 done
+Batch 29/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 29/76 done
+Batch 30/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 30/76 done
+Batch 31/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 31/76 done
+Batch 32/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 32/76 done
+Batch 33/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 33/76 done
+Batch 34/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 34/76 done
+Batch 35/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 35/76 done
+Batch 36/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 36/76 done
+Batch 37/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 37/76 done
+Batch 38/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 38/76 done
+Batch 39/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 39/76 done
+Batch 40/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 40/76 done
+Batch 41/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 41/76 done
+Batch 42/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 42/76 done
+Batch 43/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 43/76 done
+Batch 44/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 44/76 done
+Batch 45/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 45/76 done
+Batch 46/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 46/76 done
+Batch 47/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 47/76 done
+Batch 48/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 48/76 done
+Batch 49/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 49/76 done
+Batch 50/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 50/76 done
+Batch 51/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 51/76 done
+Batch 52/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 52/76 done
+Batch 53/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 53/76 done
+Batch 54/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 54/76 done
+Batch 55/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 55/76 done
+Batch 56/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 56/76 done
+Batch 57/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 57/76 done
+Batch 58/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 58/76 done
+Batch 59/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 59/76 done
+Batch 60/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 60/76 done
+Batch 61/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 61/76 done
+Batch 62/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 62/76 done
+Batch 63/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 63/76 done
+Batch 64/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 64/76 done
+Batch 65/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=100  root_shells=1
+Batch 65/76 done
+Batch 66/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 66/76 done
+Batch 67/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=90  root_shells=1
+Batch 67/76 done
+Batch 68/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 68/76 done
+Batch 69/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 69/76 done
+Batch 70/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 70/76 done
+Batch 71/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 71/76 done
+Batch 72/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 72/76 done
+Batch 73/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=98  root_shells=1
+Batch 73/76 done
+Batch 74/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=96  root_shells=1
+Batch 74/76 done
+Batch 75/76  mode=randomized_mesh  thread_count=50  starting 50 flows  vms=94  root_shells=1
+Batch 75/76 done
+Batch 76/76  mode=randomized_mesh  thread_count=50  starting 37 flows  vms=72  root_shells=1
+Batch 76/76 done
+[2026-10-30 06:58:13.198782] ERROR querying conntrack: __CT_END_2165__ 0
+sh: line 21: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:58:14.173810] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[2026-10-30 06:58:15.200493] ERROR querying conntrack: sh: line 3: /usr/sbin/conntrack: No such file or directory
+[LOOP 5/5] Done in 211.5s.
+
+[RECURRING] All 5 loops completed.
+
+[COMPLETE] Results logged to: /home/mohan.as1/projects/snapshot_test/injected_conntrack_flows.log
+

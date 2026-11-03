@@ -3196,9 +3196,13 @@ def _get_run_info(run_id: str):
                     # Lazy-load analysis_result from disk (not stored in JSONL to keep file small)
                     _summ = rec.get("summary") or {}
                     if _summ and "analysis_result" not in _summ:
-                        _json_out = _summ.get("json_output")
+                        _json_out = _summ.get("output_json") or _summ.get("json_output")
                         if not _json_out and _summ.get("output_dir"):
-                            _json_out = str(Path(_summ["output_dir"]) / "network_receiver_analysis.json")
+                            _p_cand = Path(_summ["output_dir"]) / "sc_pipeline_analysis.json"
+                            if _p_cand.is_file():
+                                _json_out = str(_p_cand)
+                            else:
+                                _json_out = str(Path(_summ["output_dir"]) / "network_receiver_analysis.json")
                         if _json_out and Path(_json_out).is_file():
                             try:
                                 _summ["analysis_result"] = json.loads(
@@ -3213,6 +3217,28 @@ def _get_run_info(run_id: str):
     if not path.is_file():
         path = _legacy_run_log_path(run_id)
     if path.is_file():
+        jk = ""
+        summ = None
+        if run_id.startswith(("sc-pl_", "sc_pl_")):
+            jk = "sc_pipeline_analyzer"
+            out_dir = RUN_LOG_DIR / run_id
+            json_file = out_dir / "sc_pipeline_analysis.json"
+            summ = {"output_dir": str(out_dir), "output_json": str(json_file)}
+            if json_file.is_file():
+                try:
+                    summ["analysis_result"] = json.loads(json_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+        elif run_id.startswith(("sc-na_", "sc_na_")):
+            jk = "sc_network_analyzer"
+            out_dir = RUN_LOG_DIR / run_id
+            json_file = out_dir / "network_receiver_analysis.json"
+            summ = {"output_dir": str(out_dir), "output_json": str(json_file)}
+            if json_file.is_file():
+                try:
+                    summ["analysis_result"] = json.loads(json_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
         return {
             "status": "complete",
             "log_path": str(path),
@@ -3222,7 +3248,8 @@ def _get_run_info(run_id: str):
             "pc_host_key": "",
             "queued_at": "",
             "finished_at": "",
-            "summary": None,
+            "job_kind": jk,
+            "summary": summ,
         }
     return None
 
@@ -4006,7 +4033,7 @@ def job_status(run_id: str):
     if not info:
         # Try normalizing: if underscores were used instead of hyphens in the
         # SC job prefix (e.g. sc_na_ → sc-na_), redirect to the canonical form.
-        canonical = run_id.replace("sc_na_", "sc-na_", 1).replace("sc_sec_", "sc-sec_", 1)
+        canonical = run_id.replace("sc_na_", "sc-na_", 1).replace("sc_sec_", "sc-sec_", 1).replace("sc_pl_", "sc-pl_", 1)
         if canonical != run_id:
             info = _get_run_info(canonical)
             if info:
@@ -4117,6 +4144,7 @@ def api_job(run_id: str):
             "power_progress": info.get("power_progress"),
             "pipeline_progress": info.get("pipeline_progress"),
             "ipfix_live_stats": info.get("ipfix_live_stats") if jk == "ipfix" else None,
+            "sc_pipeline_logs_url": url_for("api_sc_pipeline_parsed_logs", run_id=run_id) if jk == "sc_pipeline_analyzer" else None,
             "cg_live_logs": [
                 {
                     "path": str(p),
@@ -10207,6 +10235,7 @@ def api_running_jobs():
 # ─────────────────────────────────────────────────────────────────────────────
 
 SC_ANALYZER_SCRIPT_PATH = Path(__file__).parent / "analyze_network_log_receiver.py"
+SC_PIPELINE_ANALYZER_SCRIPT_PATH = Path(__file__).parent / "analyze_sc_pipeline_logs.py"
 SC_JOBS_HISTORY_FILE = PROJECT_DIR / "data" / "sc_jobs_history.jsonl"
 SC_JOBS_HISTORY_FILE.parent.mkdir(exist_ok=True)
 
@@ -10962,6 +10991,149 @@ def _enqueue_sc_security_analyzer_run(payload: dict) -> str:
     return run_id
 
 
+def _enqueue_sc_pipeline_analyzer_run(payload: dict) -> str:
+    """Create and start a background SC pipeline pod-log-analyzer job."""
+    run_id, log_path = _allocate_run_id_and_path("sc_pl")
+    queued_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    cancel_ev = threading.Event()
+    summary_init: dict[str, Any] = {
+        "pc_ip": str(payload.get("pc_ip") or ""),
+        "fetch_fresh": bool(payload.get("fetch_fresh", False)),
+        "pod_logs_dir": str(payload.get("pod_logs_dir") or ""),
+    }
+    with runs_lock:
+        runs[run_id] = {
+            "status": "queued",
+            "log_path": str(log_path),
+            "error": "",
+            "queued_at": queued_at,
+            "cancel_event": cancel_ev,
+            "job_kind": "sc_pipeline_analyzer",
+            "job_details": dict(payload),
+            "summary": dict(summary_init),
+        }
+
+    def _worker() -> None:
+        with runs_lock:
+            if run_id in runs:
+                runs[run_id]["status"] = "running"
+                runs[run_id]["running_started_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        start_ts = dt.datetime.now(dt.timezone.utc)
+        exit_code = 1
+        proc: subprocess.Popen | None = None
+        try:
+            out_dir = RUN_LOG_DIR / run_id
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_json = out_dir / "sc_pipeline_analysis.json"
+
+            _fetch_fresh  = bool(payload.get("fetch_fresh", False))
+            _pc_ip        = str(payload.get("pc_ip") or "").strip()
+            _pc_user      = str(payload.get("username") or "nutanix").strip()
+            _pc_pass      = str(payload.get("password") or "")
+            _since        = str(payload.get("since") or "").strip()
+            _until        = str(payload.get("until") or "").strip()
+            _pod_logs_dir = str(payload.get("pod_logs_dir") or "").strip()
+            # kubeconfig is saved per-run; reused on subsequent runs from same out_dir
+            _kc_path      = str(out_dir / "pc_kube.txt")
+
+            cmd = [sys.executable, str(SC_PIPELINE_ANALYZER_SCRIPT_PATH)]
+            if _fetch_fresh:
+                # Fetch kubeconfig from PC via mspctl (same as Network Log Analyzer)
+                # then copy logs from Fluentd aggregator pod
+                cmd += ["--fetch-fresh", "--pc-ip", _pc_ip,
+                        "--pc-user", _pc_user, "--pc-pass", _pc_pass,
+                        "--kubeconfig", _kc_path]
+                # cluster defaults to "nc" inside the script; only pass if overridden
+                _cluster = str(payload.get("cluster") or "").strip()
+                if _cluster:
+                    cmd += ["--cluster", _cluster]
+            else:
+                cmd += ["--pod-logs-dir", _pod_logs_dir]
+
+            if _since:
+                cmd += ["--since", _since]
+            if _until:
+                cmd += ["--until", _until]
+
+            cmd += ["--out-dir", str(out_dir), "--out", "sc_pipeline_analysis.json"]
+
+            env = dict(os.environ)
+            env["PYTHONUNBUFFERED"] = "1"
+            with open(log_path, "w", encoding="utf-8") as log_fh:
+                log_fh.write(
+                    f"{start_ts.isoformat()} [INFO] SC Pipeline Pod Log Analyzer started\n"
+                    f"{start_ts.isoformat()} [INFO] Fetch fresh: {_fetch_fresh}\n"
+                    + (f"{start_ts.isoformat()} [INFO] PC IP: {_pc_ip} (kubeconfig via mspctl → Fluentd kubectl cp)\n" if _fetch_fresh else "")
+                    + (f"{start_ts.isoformat()} [INFO] Pod logs dir: {_pod_logs_dir}\n" if not _fetch_fresh else "")
+                    + f"{start_ts.isoformat()} [INFO] Output dir: {out_dir}\n\n"
+                )
+                log_fh.flush()
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        text=True, bufsize=1, env=env)
+                with runs_lock:
+                    if run_id in runs:
+                        runs[run_id]["process"] = proc
+                for line in (proc.stdout or []):
+                    log_fh.write(line)
+                    log_fh.flush()
+                    if cancel_ev.is_set() and proc.poll() is None:
+                        proc.terminate()
+                        break
+                try:
+                    exit_code = proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    exit_code = proc.wait()
+            if exit_code == 0 and out_json.is_file():
+                try:
+                    analysis = json.loads(out_json.read_text(encoding="utf-8"))
+                    with runs_lock:
+                        if run_id in runs:
+                            runs[run_id]["summary"] = {
+                                "pc_ip": _pc_ip,
+                                "fetch_fresh": _fetch_fresh,
+                                "pod_logs_dir": analysis.get("pod_logs_dir") or analysis.get("logs_dir") or _pod_logs_dir,
+                                "total_pods": analysis.get("total_pods", 0),
+                                "status_counts": analysis.get("status_counts", {}),
+                                "issues": len(analysis.get("issues", [])),
+                                "output_dir": str(out_dir),
+                                "output_json": str(out_json),
+                                "analysis_result": analysis,
+                            }
+                except Exception:
+                    pass
+        except Exception as exc:
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["error"] = str(exc)
+        finally:
+            status = "done" if exit_code == 0 else "error"
+            finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
+            rec: dict[str, Any] = {}
+            with runs_lock:
+                if run_id in runs:
+                    runs[run_id]["status"] = status
+                    runs[run_id]["finished_at"] = finished_at
+                    runs[run_id]["exit_code"] = exit_code
+                    rec = dict(runs[run_id])
+                    rec.pop("cancel_event", None)
+                    rec.pop("process", None)
+                    rec.pop("thread", None)
+            if rec:
+                try:
+                    append_record(SC_JOBS_HISTORY_FILE, {k: v for k, v in rec.items()
+                                                         if k not in ("cancel_event", "process", "thread")})
+                except Exception:
+                    pass
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    with runs_lock:
+        if run_id in runs:
+            runs[run_id]["thread"] = t
+    return run_id
+
+
 @app.route("/sc")
 def sc_page():
     """Render the SC — Network Log Analyzer page."""
@@ -10973,7 +11145,7 @@ def sc_page():
         active = list(runs.items())
     for rid, info in active:
         jk = str(info.get("job_kind") or "")
-        if jk not in ("sc_network_analyzer", "sc_security_analyzer"):
+        if jk not in ("sc_network_analyzer", "sc_security_analyzer", "sc_pipeline_analyzer"):
             continue
         status_v = str(info.get("status") or "")
         if status_v not in ("queued", "running"):
@@ -11067,6 +11239,49 @@ def api_sc_test_connection():
     })
 
 
+@app.route("/api/sc/detect_clusters", methods=["POST"])
+def api_sc_detect_clusters():
+    """SSH into PC and run 'mspctl cls list' to discover available MSP cluster names."""
+    payload = request.get_json(silent=True) or {}
+    pc_ip    = _resolve_pc_ip(str(payload.get("pc_ip") or "").strip())
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if not pc_ip or not username or not password:
+        return jsonify({"ok": False, "message": "pc_ip, username, and password are required"}), 400
+
+    cmd = [
+        "sshpass", "-p", password,
+        "ssh",
+        *CG_SSH_OPTIONS,
+        f"{username}@{pc_ip}",
+        "/usr/local/nutanix/cluster/bin/mspctl cls list",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=20, check=False)
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "message": "SSH timed out"}), 408
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+    raw = (res.stdout or "").strip()
+    # Parse cluster names: first column of each non-header line
+    clusters: list[str] = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("NAME") or line.startswith("---") or line.startswith("Prism Central"):
+            continue
+        name = line.split()[0]
+        if name:
+            clusters.append(name)
+
+    return jsonify({
+        "ok": True,
+        "clusters": clusters,
+        "raw": raw,
+        "exit_code": res.returncode,
+    })
+
+
 @app.route("/api/sc/network_log_analyzer/start", methods=["POST"])
 def api_sc_network_log_analyzer_start():
     """Start a SC network-log-analyzer background job."""
@@ -11095,10 +11310,38 @@ def api_sc_network_log_analyzer_start():
     })
 
 
+@app.route("/api/sc/pipeline_analyzer/start", methods=["POST"])
+def api_sc_pipeline_analyzer_start():
+    """Start an SC pipeline pod-log-analyzer job."""
+    payload = request.get_json(silent=True) or {}
+    fetch_fresh = bool(payload.get("fetch_fresh", False))
+    pc_ip = str(payload.get("pc_ip") or "").strip()
+    pod_logs_dir = str(payload.get("pod_logs_dir") or "").strip()
+
+    if fetch_fresh:
+        if not pc_ip:
+            return jsonify({"ok": False, "message": "pc_ip is required when fetch_fresh is enabled"}), 400
+    else:
+        if not pod_logs_dir:
+            return jsonify({"ok": False, "message": "pod_logs_dir is required when not using fetch_fresh"}), 400
+        if not Path(pod_logs_dir).is_dir():
+            return jsonify({"ok": False, "message": f"Directory not found: {pod_logs_dir}"}), 400
+    if not SC_PIPELINE_ANALYZER_SCRIPT_PATH.is_file():
+        return jsonify({"ok": False, "message": f"Analyzer script not found: {SC_PIPELINE_ANALYZER_SCRIPT_PATH}"}), 500
+    try:
+        run_id = _enqueue_sc_pipeline_analyzer_run(payload)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+    return jsonify({"ok": True, "run_id": run_id, "job_url": url_for("job_status", run_id=run_id)})
+
+
 @app.route("/api/sc/jobs/recent")
 def api_sc_jobs_recent():
     """Return recent SC jobs."""
-    rows = [r for r in _index_recent_runs(100) if str(r.get("job_kind") or "") == "sc_network_analyzer"][:20]
+    rows = [r for r in _index_recent_runs(100)
+            if str(r.get("job_kind") or "") in (
+                "sc_network_analyzer", "sc_security_analyzer", "sc_pipeline_analyzer"
+            )][:20]
     return jsonify({"ok": True, "jobs": rows})
 
 
@@ -11119,6 +11362,232 @@ def download_sc_analysis_file(run_id: str, filename: str):
     if not file_path.is_file():
         abort(404)
     return send_file(str(file_path), as_attachment=True, download_name=filename)
+
+
+def _sc_pipeline_to_markdown(analysis: dict, run_id: str) -> str:
+    """Generate a Markdown summary from sc_pipeline_analysis.json."""
+    import datetime as _dt2
+    now = _dt2.datetime.now(_dt2.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    sc = analysis.get("status_counts") or {}
+    families = analysis.get("families") or {}
+    issues = analysis.get("issues") or []
+
+    lines: list[str] = [
+        f"# SC Pipeline Pod Log Analysis",
+        f"",
+        f"**Run ID:** `{run_id}`  ",
+        f"**Generated:** {now}  ",
+        f"**Pod logs dir:** `{analysis.get('pod_logs_dir') or analysis.get('logs_dir', '—')}`",
+        f"",
+        f"---",
+        f"",
+        f"## Overview",
+        f"",
+        f"| Metric | Value |",
+        f"|--------|-------|",
+        f"| Total pods | **{analysis.get('total_pods', 0)}** |",
+        f"| Running | {sc.get('Running', 0)} |",
+        f"| Succeeded | {sc.get('Succeeded', 0)} |",
+        f"| Failed | {sc.get('Failed', 0)} |",
+        f"| Pod families | {len(families)} |",
+        f"| Issues detected | {len(issues)} |",
+        f"",
+        f"---",
+        f"",
+        f"## Issues",
+        f"",
+    ]
+    if issues:
+        for issue in issues:
+            lines.append(f"- ⚠️  {issue}")
+    else:
+        lines.append("*No issues detected.*")
+
+    lines += ["", "---", "", "## Pod Families", ""]
+    for fam_name, fam in sorted(families.items()):
+        pod_count = fam.get("pod_count", 0)
+        fam_sc = fam.get("status_counts") or {}
+        status_parts = [f"{k}: {v}" for k, v in fam_sc.items() if v]
+        err = fam.get("error_count") or fam.get("total_errors") or 0
+
+        lines.append(f"### `{fam_name}`  ({pod_count} pod{'s' if pod_count != 1 else ''})")
+        if status_parts:
+            lines.append(f"**Status:** {' · '.join(status_parts)}")
+        # Key metrics
+        for key, label in [
+            ("bql_queries_ok",     "BQL queries ok"),
+            ("queries_received",   "Queries received"),
+            ("queries_responded",  "Queries responded"),
+            ("total_rows_returned","Total rows returned"),
+            ("ch_connected_pods",  "ClickHouse connected pods"),
+            ("workers_started",    "Workers started"),
+            ("metrics_inserted",   "Metrics inserted"),
+            ("total_ingested",     "Total ingested"),
+            ("reconciliations",    "Reconciliations"),
+            ("fully_reconciled",   "Fully reconciled"),
+        ]:
+            val = fam.get(key)
+            if val is not None and val != 0:
+                lines.append(f"- {label}: **{val}**")
+        if err:
+            lines.append(f"- ⚠️  Error lines: **{err}**")
+        # Missing account types
+        mat = fam.get("missing_account_by_type") or {}
+        if mat:
+            lines.append(f"- Missing account types: " + ", ".join(f"{t}={c}" for t, c in sorted(mat.items())))
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+@app.route("/download/sc_pipeline/<run_id>/<fmt>")
+def download_sc_pipeline_report(run_id: str, fmt: str):
+    """Download SC Pipeline analysis report as JSON or Markdown."""
+    if fmt not in ("json", "md"):
+        abort(400)
+    info = _get_run_info(run_id)
+    if not info or str(info.get("job_kind") or "") != "sc_pipeline_analyzer":
+        abort(404)
+    summ = info.get("summary") or {}
+    out_json_path = Path(str(summ.get("output_json") or ""))
+    if not out_json_path.is_file():
+        abort(404)
+
+    if fmt == "json":
+        return send_file(str(out_json_path), as_attachment=True,
+                         download_name=f"sc_pipeline_{run_id}.json",
+                         mimetype="application/json")
+
+    # Generate Markdown on the fly
+    try:
+        analysis = json.loads(out_json_path.read_text(encoding="utf-8"))
+    except Exception:
+        abort(500)
+    md_text = _sc_pipeline_to_markdown(analysis, run_id)
+    return Response(
+        md_text,
+        mimetype="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="sc_pipeline_{run_id}.md"'},
+    )
+
+
+@app.route("/download/sc_pipeline_pod_log/<run_id>/<pod_name>")
+def download_sc_pipeline_pod_log(run_id: str, pod_name: str):
+    """Download individual pod log file for a SC Pipeline Analyzer run."""
+    info = _get_run_info(run_id)
+    jk = str((info or {}).get("job_kind") or "")
+    if not info or (jk != "sc_pipeline_analyzer" and not run_id.startswith(("sc-pl_", "sc_pl_"))):
+        abort(404)
+    summ = info.get("summary") or {}
+
+    raw_name = Path(pod_name).name
+    file_name = raw_name if raw_name.endswith(".log") else f"{raw_name}.log"
+
+    pod_file = None
+
+    # 1. Search in RUN_LOG_DIR / run_id
+    run_dir = RUN_LOG_DIR / run_id
+    if run_dir.is_dir():
+        for d in sorted(run_dir.glob("pod-logs_*")):
+            cand = d / file_name
+            if cand.is_file():
+                pod_file = cand
+                break
+        if not pod_file:
+            cand = run_dir / file_name
+            if cand.is_file():
+                pod_file = cand
+
+    # 2. Search in summary pod_logs_dir / output_dir
+    if not pod_file:
+        pld = summ.get("pod_logs_dir") or summ.get("logs_dir")
+        if pld and Path(pld).is_dir():
+            cand = Path(pld) / file_name
+            if cand.is_file():
+                pod_file = cand
+
+    if not pod_file and summ.get("output_dir"):
+        out_dir = Path(summ["output_dir"])
+        for d in sorted(out_dir.glob("pod-logs_*")):
+            cand = d / file_name
+            if cand.is_file():
+                pod_file = cand
+                break
+
+    if not pod_file or not pod_file.is_file():
+        abort(404)
+
+    return send_file(str(pod_file), as_attachment=True, download_name=file_name)
+
+
+@app.route("/api/sc/pipeline/<run_id>/logs", methods=["GET"])
+@app.route("/api/sc/pipeline/<run_id>/parsed_logs", methods=["GET"])
+def api_sc_pipeline_parsed_logs(run_id: str):
+    """
+    Ingest target run logs for an sc-pl_* run directory and return structured JSON:
+    timestamps, log levels, pod names, error counts, signatures, and time series.
+    """
+    level = request.args.get("level", "").strip().upper() or None
+    if level == "ALL":
+        level = None
+    pod = request.args.get("pod", "").strip() or None
+    family = request.args.get("family", "").strip() or None
+    search = request.args.get("search", "").strip() or None
+    since = request.args.get("since", "").strip() or None
+    until = request.args.get("until", "").strip() or None
+    force = request.args.get("force", "").strip() in ("1", "true", "yes")
+    limit = int(request.args.get("limit", 200))
+    offset = int(request.args.get("offset", 0))
+
+    try:
+        from analyze_sc_pipeline_logs import ingest_sc_pipeline_run_logs
+        payload = ingest_sc_pipeline_run_logs(
+            target=run_id,
+            runs_dir=RUN_LOG_DIR,
+            force=force,
+            since=since,
+            until=until,
+            level=level,
+            pod=pod,
+            family=family,
+            search=search,
+            limit=limit,
+            offset=offset,
+        )
+        return jsonify(payload)
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "error": str(exc), "run_id": run_id}), 404
+    except Exception as exc:
+        SC_LOGGER.exception("Failed to ingest SC pipeline run logs for %s", run_id)
+        return jsonify({"ok": False, "error": str(exc), "run_id": run_id}), 500
+
+
+@app.route("/api/sc/pipeline/parse", methods=["POST", "GET"])
+def api_sc_pipeline_parse():
+    """Ingest and parse any target SC pipeline run directory or logs directory."""
+    req_data = request.get_json(silent=True) or {}
+    target = req_data.get("run_id") or req_data.get("target") or req_data.get("pod_logs_dir") or request.args.get("target") or ""
+    if not target:
+        return jsonify({"ok": False, "error": "Target run_id or directory path is required"}), 400
+    level = req_data.get("level") or request.args.get("level") or None
+    search = req_data.get("search") or request.args.get("search") or None
+    limit = int(req_data.get("limit") or request.args.get("limit") or 200)
+    offset = int(req_data.get("offset") or request.args.get("offset") or 0)
+    force = bool(req_data.get("force") or request.args.get("force") in ("1", "true"))
+    try:
+        from analyze_sc_pipeline_logs import ingest_sc_pipeline_run_logs
+        payload = ingest_sc_pipeline_run_logs(
+            target=target,
+            runs_dir=RUN_LOG_DIR,
+            force=force,
+            level=level,
+            search=search,
+            limit=limit,
+            offset=offset,
+        )
+        return jsonify(payload)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 if __name__ == "__main__":

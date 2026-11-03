@@ -2126,5 +2126,2989 @@
         "message": "All requested loops were queued."
       }
     ]
+  },
+  "schedule_1793336953_82052d": {
+    "schedule_job_id": "schedule_1793336953_82052d",
+    "pc_ip": "10.122.27.208",
+    "kind": "recurring",
+    "job_type": "snapshot",
+    "status": "cancelled",
+    "created_at": "2026-10-30T05:09:13.097365+00:00",
+    "next_run_utc": "2026-10-30T05:39:13.097246+00:00",
+    "requested_runs": 0,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "*/30 * * * *",
+    "recent_jobs": [],
+    "events": [
+      {
+        "ts": "2026-10-30T05:09:13.097371+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.122.27.208 as recurring (snapshot)."
+      },
+      {
+        "ts": "2026-10-30T05:09:56.278564+00:00",
+        "type": "schedule_cancelled",
+        "message": "Schedule cancelled from UI."
+      }
+    ]
+  },
+  "schedule_1793339746_52cb23": {
+    "schedule_job_id": "schedule_1793339746_52cb23",
+    "pc_ip": "10.122.27.239",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "completed",
+    "created_at": "2026-10-30T05:55:46.744327+00:00",
+    "next_run_utc": "2026-10-30T05:55:42.894796+00:00",
+    "requested_runs": 10,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T055556_989486",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T055556_989486"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T060056_999787",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T060056_999787"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T060557_019928",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T060557_019928"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T061057_046373",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T061057_046373"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T061557_067222",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T061557_067222"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T062057_092653",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T062057_092653"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T062557_115978",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T062557_115978"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T063057_141651",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T063057_141651"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T063557_162291",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T063557_162291"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T064057_183333",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T064057_183333"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-10-30T05:55:46.744335+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.122.27.239 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-10-30T05:55:56.990062+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T055556_989486.",
+        "run_id": "10-122-27-239-pipeline_20261030T055556_989486",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T055556_989486"
+      },
+      {
+        "ts": "2026-10-30T06:00:57.000330+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T060056_999787.",
+        "run_id": "10-122-27-239-pipeline_20261030T060056_999787",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T060056_999787"
+      },
+      {
+        "ts": "2026-10-30T06:05:57.020460+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T060557_019928.",
+        "run_id": "10-122-27-239-pipeline_20261030T060557_019928",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T060557_019928"
+      },
+      {
+        "ts": "2026-10-30T06:10:57.046932+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T061057_046373.",
+        "run_id": "10-122-27-239-pipeline_20261030T061057_046373",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T061057_046373"
+      },
+      {
+        "ts": "2026-10-30T06:15:57.067979+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T061557_067222.",
+        "run_id": "10-122-27-239-pipeline_20261030T061557_067222",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T061557_067222"
+      },
+      {
+        "ts": "2026-10-30T06:20:57.093284+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T062057_092653.",
+        "run_id": "10-122-27-239-pipeline_20261030T062057_092653",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T062057_092653"
+      },
+      {
+        "ts": "2026-10-30T06:25:57.116563+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T062557_115978.",
+        "run_id": "10-122-27-239-pipeline_20261030T062557_115978",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T062557_115978"
+      },
+      {
+        "ts": "2026-10-30T06:30:57.142190+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T063057_141651.",
+        "run_id": "10-122-27-239-pipeline_20261030T063057_141651",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T063057_141651"
+      },
+      {
+        "ts": "2026-10-30T06:35:57.162844+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T063557_162291.",
+        "run_id": "10-122-27-239-pipeline_20261030T063557_162291",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T063557_162291"
+      },
+      {
+        "ts": "2026-10-30T06:40:57.183854+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T064057_183333.",
+        "run_id": "10-122-27-239-pipeline_20261030T064057_183333",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T064057_183333"
+      },
+      {
+        "ts": "2026-10-30T06:40:57.188684+00:00",
+        "type": "loop_finished",
+        "message": "All requested loops were queued."
+      }
+    ]
+  },
+  "schedule_1793340103_8aee88": {
+    "schedule_job_id": "schedule_1793340103_8aee88",
+    "pc_ip": "10.53.56.95",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "completed",
+    "created_at": "2026-10-30T06:01:43.375943+00:00",
+    "next_run_utc": "2026-10-30T06:01:36.965849+00:00",
+    "requested_runs": 10,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T060157_008916",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T060157_008916"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T060657_030194",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T060657_030194"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T061157_055940",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T061157_055940"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T061657_082365",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T061657_082365"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T062157_104650",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T062157_104650"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T062657_126078",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T062657_126078"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T063157_151227",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T063157_151227"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T063657_172024",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T063657_172024"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T064157_196394",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T064157_196394"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T064657_207824",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T064657_207824"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-10-30T06:01:43.375950+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.53.56.95 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-10-30T06:01:57.009483+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T060157_008916.",
+        "run_id": "10-53-56-95-pipeline_20261030T060157_008916",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T060157_008916"
+      },
+      {
+        "ts": "2026-10-30T06:06:57.030822+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T060657_030194.",
+        "run_id": "10-53-56-95-pipeline_20261030T060657_030194",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T060657_030194"
+      },
+      {
+        "ts": "2026-10-30T06:11:57.056459+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T061157_055940.",
+        "run_id": "10-53-56-95-pipeline_20261030T061157_055940",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T061157_055940"
+      },
+      {
+        "ts": "2026-10-30T06:16:57.082868+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T061657_082365.",
+        "run_id": "10-53-56-95-pipeline_20261030T061657_082365",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T061657_082365"
+      },
+      {
+        "ts": "2026-10-30T06:21:57.105225+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T062157_104650.",
+        "run_id": "10-53-56-95-pipeline_20261030T062157_104650",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T062157_104650"
+      },
+      {
+        "ts": "2026-10-30T06:26:57.126685+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T062657_126078.",
+        "run_id": "10-53-56-95-pipeline_20261030T062657_126078",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T062657_126078"
+      },
+      {
+        "ts": "2026-10-30T06:31:57.151768+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T063157_151227.",
+        "run_id": "10-53-56-95-pipeline_20261030T063157_151227",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T063157_151227"
+      },
+      {
+        "ts": "2026-10-30T06:36:57.172557+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T063657_172024.",
+        "run_id": "10-53-56-95-pipeline_20261030T063657_172024",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T063657_172024"
+      },
+      {
+        "ts": "2026-10-30T06:41:57.196971+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T064157_196394.",
+        "run_id": "10-53-56-95-pipeline_20261030T064157_196394",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T064157_196394"
+      },
+      {
+        "ts": "2026-10-30T06:46:57.208403+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T064657_207824.",
+        "run_id": "10-53-56-95-pipeline_20261030T064657_207824",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T064657_207824"
+      },
+      {
+        "ts": "2026-10-30T06:46:57.213483+00:00",
+        "type": "loop_finished",
+        "message": "All requested loops were queued."
+      }
+    ]
+  },
+  "schedule_1793344998_13227d": {
+    "schedule_job_id": "schedule_1793344998_13227d",
+    "pc_ip": "10.122.27.239",
+    "kind": "for_loop",
+    "job_type": "snapshot",
+    "status": "cancelled",
+    "created_at": "2026-10-30T07:23:18.413776+00:00",
+    "next_run_utc": "2026-10-30T07:23:18.413638+00:00",
+    "requested_runs": 50,
+    "remaining_runs": 50,
+    "schedule_cron_expr": "",
+    "recent_jobs": [],
+    "events": [
+      {
+        "ts": "2026-10-30T07:23:18.413781+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.122.27.239 as for_loop (snapshot)."
+      },
+      {
+        "ts": "2026-10-30T07:23:34.208441+00:00",
+        "type": "schedule_cancelled",
+        "message": "Schedule cancelled from UI."
+      }
+    ]
+  },
+  "schedule_1793345397_b2c128": {
+    "schedule_job_id": "schedule_1793345397_b2c128",
+    "pc_ip": "10.122.27.239",
+    "kind": "for_loop",
+    "job_type": "snapshot",
+    "status": "cancelled",
+    "created_at": "2026-10-30T07:29:57.280962+00:00",
+    "next_run_utc": "2026-10-30T07:29:57.280835+00:00",
+    "requested_runs": 50,
+    "remaining_runs": 49,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-122-27-239_20261030T073017_236939",
+        "job_url": "/job/10-122-27-239_20261030T073017_236939"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-10-30T07:29:57.280966+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.122.27.239 as for_loop (snapshot)."
+      },
+      {
+        "ts": "2026-10-30T07:30:17.237450+00:00",
+        "type": "job_launched",
+        "message": "Launched snapshot run 10-122-27-239_20261030T073017_236939.",
+        "run_id": "10-122-27-239_20261030T073017_236939",
+        "job_url": "/job/10-122-27-239_20261030T073017_236939"
+      },
+      {
+        "ts": "2026-10-30T07:33:14.628446+00:00",
+        "type": "schedule_cancelled",
+        "message": "Schedule cancelled from UI."
+      }
+    ]
+  },
+  "schedule_1793345662_067259": {
+    "schedule_job_id": "schedule_1793345662_067259",
+    "pc_ip": "10.122.27.239",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "completed",
+    "created_at": "2026-10-30T07:34:22.957864+00:00",
+    "next_run_utc": "2026-10-30T07:34:18.853780+00:00",
+    "requested_runs": 50,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T100458_646798",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T100458_646798"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T100958_685365",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T100958_685365"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T101458_740770",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T101458_740770"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T101958_799081",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T101958_799081"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T102458_837937",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T102458_837937"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T102958_927734",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T102958_927734"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T103458_949070",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T103458_949070"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T103959_021087",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T103959_021087"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T104459_066057",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T104459_066057"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T104959_114588",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T104959_114588"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T105459_191548",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T105459_191548"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T105959_222309",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T105959_222309"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T110459_304306",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T110459_304306"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T110959_346826",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T110959_346826"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T111459_413049",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T111459_413049"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T111959_471336",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T111959_471336"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T112459_523139",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T112459_523139"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T112959_602247",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T112959_602247"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T113459_633383",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T113459_633383"
+      },
+      {
+        "run_id": "10-122-27-239-pipeline_20261030T113959_719725",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T113959_719725"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-10-30T07:34:22.957871+00:00",
+        "type": "schedule_saved",
+        "message": "Schedule saved for 10.122.27.239 as for_loop (full_pipeline)."
+      },
+      {
+        "ts": "2026-10-30T07:34:37.248168+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T073437_247640.",
+        "run_id": "10-122-27-239-pipeline_20261030T073437_247640",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T073437_247640"
+      },
+      {
+        "ts": "2026-10-30T07:39:37.269189+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T07:39:57.273037+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T073957_272491.",
+        "run_id": "10-122-27-239-pipeline_20261030T073957_272491",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T073957_272491"
+      },
+      {
+        "ts": "2026-10-30T07:44:57.311190+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T074457_310607.",
+        "run_id": "10-122-27-239-pipeline_20261030T074457_310607",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T074457_310607"
+      },
+      {
+        "ts": "2026-10-30T07:49:57.339338+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T074957_338806.",
+        "run_id": "10-122-27-239-pipeline_20261030T074957_338806",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T074957_338806"
+      },
+      {
+        "ts": "2026-10-30T07:54:57.388807+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T075457_388199.",
+        "run_id": "10-122-27-239-pipeline_20261030T075457_388199",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T075457_388199"
+      },
+      {
+        "ts": "2026-10-30T07:59:57.417378+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T075957_416782.",
+        "run_id": "10-122-27-239-pipeline_20261030T075957_416782",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T075957_416782"
+      },
+      {
+        "ts": "2026-10-30T08:04:57.453864+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T080457_453246.",
+        "run_id": "10-122-27-239-pipeline_20261030T080457_453246",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T080457_453246"
+      },
+      {
+        "ts": "2026-10-30T08:09:57.502757+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T080957_502139.",
+        "run_id": "10-122-27-239-pipeline_20261030T080957_502139",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T080957_502139"
+      },
+      {
+        "ts": "2026-10-30T08:14:57.527419+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T081457_526868.",
+        "run_id": "10-122-27-239-pipeline_20261030T081457_526868",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T081457_526868"
+      },
+      {
+        "ts": "2026-10-30T08:19:57.592922+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T081957_592391.",
+        "run_id": "10-122-27-239-pipeline_20261030T081957_592391",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T081957_592391"
+      },
+      {
+        "ts": "2026-10-30T08:24:57.619605+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T082457_618982.",
+        "run_id": "10-122-27-239-pipeline_20261030T082457_618982",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T082457_618982"
+      },
+      {
+        "ts": "2026-10-30T08:29:57.683991+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T082957_683301.",
+        "run_id": "10-122-27-239-pipeline_20261030T082957_683301",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T082957_683301"
+      },
+      {
+        "ts": "2026-10-30T08:34:57.729317+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T083457_728650.",
+        "run_id": "10-122-27-239-pipeline_20261030T083457_728650",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T083457_728650"
+      },
+      {
+        "ts": "2026-10-30T08:39:57.771172+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T083957_770523.",
+        "run_id": "10-122-27-239-pipeline_20261030T083957_770523",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T083957_770523"
+      },
+      {
+        "ts": "2026-10-30T08:44:57.831814+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T084457_831176.",
+        "run_id": "10-122-27-239-pipeline_20261030T084457_831176",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T084457_831176"
+      },
+      {
+        "ts": "2026-10-30T08:49:57.860732+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T084957_860128.",
+        "run_id": "10-122-27-239-pipeline_20261030T084957_860128",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T084957_860128"
+      },
+      {
+        "ts": "2026-10-30T08:54:57.930073+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T085457_929503.",
+        "run_id": "10-122-27-239-pipeline_20261030T085457_929503",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T085457_929503"
+      },
+      {
+        "ts": "2026-10-30T08:59:57.956113+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T085957_955431.",
+        "run_id": "10-122-27-239-pipeline_20261030T085957_955431",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T085957_955431"
+      },
+      {
+        "ts": "2026-10-30T09:04:58.014783+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T090458_014120.",
+        "run_id": "10-122-27-239-pipeline_20261030T090458_014120",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T090458_014120"
+      },
+      {
+        "ts": "2026-10-30T09:09:58.057709+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T090958_057055.",
+        "run_id": "10-122-27-239-pipeline_20261030T090958_057055",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T090958_057055"
+      },
+      {
+        "ts": "2026-10-30T09:14:58.105906+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T091458_105288.",
+        "run_id": "10-122-27-239-pipeline_20261030T091458_105288",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T091458_105288"
+      },
+      {
+        "ts": "2026-10-30T09:19:58.176394+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T091958_175800.",
+        "run_id": "10-122-27-239-pipeline_20261030T091958_175800",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T091958_175800"
+      },
+      {
+        "ts": "2026-10-30T09:24:58.196439+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T092458_195861.",
+        "run_id": "10-122-27-239-pipeline_20261030T092458_195861",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T092458_195861"
+      },
+      {
+        "ts": "2026-10-30T09:29:58.274526+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T092958_273915.",
+        "run_id": "10-122-27-239-pipeline_20261030T092958_273915",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T092958_273915"
+      },
+      {
+        "ts": "2026-10-30T09:34:58.301133+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T093458_300524.",
+        "run_id": "10-122-27-239-pipeline_20261030T093458_300524",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T093458_300524"
+      },
+      {
+        "ts": "2026-10-30T09:39:58.365046+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T093958_364174.",
+        "run_id": "10-122-27-239-pipeline_20261030T093958_364174",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T093958_364174"
+      },
+      {
+        "ts": "2026-10-30T09:44:58.414445+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T094458_413771.",
+        "run_id": "10-122-27-239-pipeline_20261030T094458_413771",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T094458_413771"
+      },
+      {
+        "ts": "2026-10-30T09:49:58.466755+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T094958_465991.",
+        "run_id": "10-122-27-239-pipeline_20261030T094958_465991",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T094958_465991"
+      },
+      {
+        "ts": "2026-10-30T09:54:58.534582+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T095458_533884.",
+        "run_id": "10-122-27-239-pipeline_20261030T095458_533884",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T095458_533884"
+      },
+      {
+        "ts": "2026-10-30T09:59:58.572117+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T095958_571462.",
+        "run_id": "10-122-27-239-pipeline_20261030T095958_571462",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T095958_571462"
+      },
+      {
+        "ts": "2026-10-30T10:04:58.647394+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T100458_646798.",
+        "run_id": "10-122-27-239-pipeline_20261030T100458_646798",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T100458_646798"
+      },
+      {
+        "ts": "2026-10-30T10:09:58.686098+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T100958_685365.",
+        "run_id": "10-122-27-239-pipeline_20261030T100958_685365",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T100958_685365"
+      },
+      {
+        "ts": "2026-10-30T10:14:58.741377+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T101458_740770.",
+        "run_id": "10-122-27-239-pipeline_20261030T101458_740770",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T101458_740770"
+      },
+      {
+        "ts": "2026-10-30T10:19:58.799752+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T101958_799081.",
+        "run_id": "10-122-27-239-pipeline_20261030T101958_799081",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T101958_799081"
+      },
+      {
+        "ts": "2026-10-30T10:24:58.838595+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T102458_837937.",
+        "run_id": "10-122-27-239-pipeline_20261030T102458_837937",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T102458_837937"
+      },
+      {
+        "ts": "2026-10-30T10:29:58.928358+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T102958_927734.",
+        "run_id": "10-122-27-239-pipeline_20261030T102958_927734",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T102958_927734"
+      },
+      {
+        "ts": "2026-10-30T10:34:58.949736+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T103458_949070.",
+        "run_id": "10-122-27-239-pipeline_20261030T103458_949070",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T103458_949070"
+      },
+      {
+        "ts": "2026-10-30T10:39:59.021710+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T103959_021087.",
+        "run_id": "10-122-27-239-pipeline_20261030T103959_021087",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T103959_021087"
+      },
+      {
+        "ts": "2026-10-30T10:44:59.066657+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T104459_066057.",
+        "run_id": "10-122-27-239-pipeline_20261030T104459_066057",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T104459_066057"
+      },
+      {
+        "ts": "2026-10-30T10:49:59.115268+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T104959_114588.",
+        "run_id": "10-122-27-239-pipeline_20261030T104959_114588",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T104959_114588"
+      },
+      {
+        "ts": "2026-10-30T10:54:59.192176+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T105459_191548.",
+        "run_id": "10-122-27-239-pipeline_20261030T105459_191548",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T105459_191548"
+      },
+      {
+        "ts": "2026-10-30T10:59:59.222937+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T105959_222309.",
+        "run_id": "10-122-27-239-pipeline_20261030T105959_222309",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T105959_222309"
+      },
+      {
+        "ts": "2026-10-30T11:04:59.304911+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T110459_304306.",
+        "run_id": "10-122-27-239-pipeline_20261030T110459_304306",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T110459_304306"
+      },
+      {
+        "ts": "2026-10-30T11:09:59.347573+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T110959_346826.",
+        "run_id": "10-122-27-239-pipeline_20261030T110959_346826",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T110959_346826"
+      },
+      {
+        "ts": "2026-10-30T11:14:59.413673+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T111459_413049.",
+        "run_id": "10-122-27-239-pipeline_20261030T111459_413049",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T111459_413049"
+      },
+      {
+        "ts": "2026-10-30T11:19:59.471983+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T111959_471336.",
+        "run_id": "10-122-27-239-pipeline_20261030T111959_471336",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T111959_471336"
+      },
+      {
+        "ts": "2026-10-30T11:24:59.523853+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T112459_523139.",
+        "run_id": "10-122-27-239-pipeline_20261030T112459_523139",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T112459_523139"
+      },
+      {
+        "ts": "2026-10-30T11:29:59.602944+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T112959_602247.",
+        "run_id": "10-122-27-239-pipeline_20261030T112959_602247",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T112959_602247"
+      },
+      {
+        "ts": "2026-10-30T11:34:59.634112+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T113459_633383.",
+        "run_id": "10-122-27-239-pipeline_20261030T113459_633383",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T113459_633383"
+      },
+      {
+        "ts": "2026-10-30T11:39:59.720348+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-122-27-239-pipeline_20261030T113959_719725.",
+        "run_id": "10-122-27-239-pipeline_20261030T113959_719725",
+        "job_url": "/job/10-122-27-239-pipeline_20261030T113959_719725"
+      },
+      {
+        "ts": "2026-10-30T11:39:59.728778+00:00",
+        "type": "loop_finished",
+        "message": "All requested loops were queued."
+      }
+    ]
+  },
+  "schedule_1793345818_63c2b2": {
+    "schedule_job_id": "schedule_1793345818_63c2b2",
+    "pc_ip": "10.53.56.95",
+    "kind": "for_loop",
+    "job_type": "full_pipeline",
+    "status": "completed",
+    "created_at": "2026-10-30T07:36:58.431412+00:00",
+    "next_run_utc": "2026-10-30T07:36:49.176103+00:00",
+    "requested_runs": 50,
+    "remaining_runs": 0,
+    "schedule_cron_expr": "",
+    "recent_jobs": [
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T115519_877832",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T115519_877832"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T120419_968773",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T120419_968773"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T121300_052846",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T121300_052846"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T122140_133183",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T122140_133183"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T123100_227090",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T123100_227090"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T124000_315340",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T124000_315340"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T124840_401164",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T124840_401164"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T125740_492069",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T125740_492069"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T130620_574018",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T130620_574018"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T131440_649478",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T131440_649478"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T132340_740464",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T132340_740464"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T133220_861118",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T133220_861118"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T134040_938958",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T134040_938958"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T134901_024899",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T134901_024899"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T135721_104052",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T135721_104052"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T140541_187475",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T140541_187475"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T141401_275271",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T141401_275271"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T142221_350779",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T142221_350779"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T143021_423178",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T143021_423178"
+      },
+      {
+        "run_id": "10-53-56-95-pipeline_20261030T143921_510965",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T143921_510965"
+      }
+    ],
+    "events": [
+      {
+        "ts": "2026-10-30T09:52:38.501136+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:52:58.505674+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:53:18.510188+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:53:38.514888+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:53:58.519562+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:54:18.524137+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:54:38.528750+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:54:58.548513+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T09:55:18.555014+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T095518_554336.",
+        "run_id": "10-53-56-95-pipeline_20261030T095518_554336",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T095518_554336"
+      },
+      {
+        "ts": "2026-10-30T10:00:18.585266+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:00:38.589887+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:00:58.594594+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:01:18.599413+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:01:38.604775+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:01:58.610512+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:02:18.617662+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:02:38.622308+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:02:58.627657+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:03:18.633090+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T100318_632452.",
+        "run_id": "10-53-56-95-pipeline_20261030T100318_632452",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T100318_632452"
+      },
+      {
+        "ts": "2026-10-30T10:08:18.661548+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:08:38.666222+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:08:58.670889+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:09:18.675698+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:09:38.680659+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:09:58.698825+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:10:18.702825+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:10:38.707431+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:10:58.711977+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:11:18.716592+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:11:38.721327+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:11:58.726756+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T101158_726075.",
+        "run_id": "10-53-56-95-pipeline_20261030T101158_726075",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T101158_726075"
+      },
+      {
+        "ts": "2026-10-30T10:16:58.754731+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:17:18.759599+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:17:38.764824+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:17:58.769951+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:18:18.774675+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:18:38.779193+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:18:58.784449+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:19:18.789287+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:19:38.794134+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:19:58.812879+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:20:18.816999+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:20:38.822297+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T102038_821656.",
+        "run_id": "10-53-56-95-pipeline_20261030T102038_821656",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T102038_821656"
+      },
+      {
+        "ts": "2026-10-30T10:25:38.852004+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:25:58.856791+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:26:18.861583+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:26:38.866625+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:26:58.871425+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:27:18.876188+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:27:38.881028+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:27:58.885804+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:28:18.890448+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:28:38.895244+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:28:58.900356+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:29:18.906668+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:29:38.912465+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T102938_911827.",
+        "run_id": "10-53-56-95-pipeline_20261030T102938_911827",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T102938_911827"
+      },
+      {
+        "ts": "2026-10-30T10:34:38.944041+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:34:58.962833+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:35:18.967016+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:35:38.971730+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:35:58.976802+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:36:18.981631+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:36:38.986469+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:36:58.991199+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:37:18.996024+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:37:39.000881+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:37:59.006730+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T103759_006145.",
+        "run_id": "10-53-56-95-pipeline_20261030T103759_006145",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T103759_006145"
+      },
+      {
+        "ts": "2026-10-30T10:42:59.036273+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:43:19.041408+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:43:39.046508+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:43:59.051606+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:44:19.056440+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:44:39.061222+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:44:59.079694+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:45:19.083936+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:45:39.088875+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:45:59.093791+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:46:19.099510+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T104619_098883.",
+        "run_id": "10-53-56-95-pipeline_20261030T104619_098883",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T104619_098883"
+      },
+      {
+        "ts": "2026-10-30T10:51:19.131694+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:51:39.137070+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:51:59.143362+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:52:19.148517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:52:39.153499+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:52:59.158411+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:53:19.163389+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:53:39.168916+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:53:59.174893+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:54:19.181608+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:54:39.186429+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T10:54:59.207069+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T105459_206590.",
+        "run_id": "10-53-56-95-pipeline_20261030T105459_206590",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T105459_206590"
+      },
+      {
+        "ts": "2026-10-30T10:59:59.236687+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:00:19.240889+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:00:39.245819+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:00:59.250928+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:01:19.257673+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:01:39.262687+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:01:59.267748+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:02:19.273063+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:02:39.278379+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:02:59.283432+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:03:19.289144+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T110319_288496.",
+        "run_id": "10-53-56-95-pipeline_20261030T110319_288496",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T110319_288496"
+      },
+      {
+        "ts": "2026-10-30T11:08:19.320377+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:08:39.326232+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:08:59.331363+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:09:19.336360+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:09:39.341490+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:09:59.361540+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:10:19.365902+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:10:39.371023+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:10:59.376206+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:11:19.381382+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:11:39.386583+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:11:59.391724+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:12:19.397763+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T111219_397113.",
+        "run_id": "10-53-56-95-pipeline_20261030T111219_397113",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T111219_397113"
+      },
+      {
+        "ts": "2026-10-30T11:17:19.428810+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:17:39.434130+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:17:59.439429+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:18:19.444578+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:18:39.450007+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:18:59.455306+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:19:19.460612+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:19:39.465969+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:19:59.486027+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:20:19.490507+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:20:39.495915+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:20:59.501190+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:21:19.507327+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T112119_506637.",
+        "run_id": "10-53-56-95-pipeline_20261030T112119_506637",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T112119_506637"
+      },
+      {
+        "ts": "2026-10-30T11:26:19.540833+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:26:39.546239+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:26:59.551603+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:27:19.557145+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:27:39.562864+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:27:59.568251+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:28:19.573730+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:28:39.579346+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:28:59.584919+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:29:19.590441+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:29:39.596681+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:29:59.617605+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T112959_617163.",
+        "run_id": "10-53-56-95-pipeline_20261030T112959_617163",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T112959_617163"
+      },
+      {
+        "ts": "2026-10-30T11:34:59.649092+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:35:19.653786+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:35:39.659219+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:35:59.664481+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:36:19.670170+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:36:39.675747+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:36:59.681228+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:37:19.686810+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:37:39.692365+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:37:59.697773+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:38:19.704147+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T113819_703464.",
+        "run_id": "10-53-56-95-pipeline_20261030T113819_703464",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T113819_703464"
+      },
+      {
+        "ts": "2026-10-30T11:43:19.743406+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:43:39.748924+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:43:59.754277+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:44:19.759727+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:44:39.765254+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:44:59.771278+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:45:19.777098+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:45:39.782933+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:45:59.788178+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:46:19.793451+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:46:39.798700+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:46:59.804887+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T114659_804182.",
+        "run_id": "10-53-56-95-pipeline_20261030T114659_804182",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T114659_804182"
+      },
+      {
+        "ts": "2026-10-30T11:51:59.822657+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:52:19.828131+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:52:39.833607+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:52:59.839401+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:53:19.845357+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:53:39.850825+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:53:59.856161+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:54:19.861502+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:54:39.866941+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:54:59.872267+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T11:55:19.878442+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T115519_877832.",
+        "run_id": "10-53-56-95-pipeline_20261030T115519_877832",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T115519_877832"
+      },
+      {
+        "ts": "2026-10-30T12:00:19.894997+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:00:39.901089+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:00:59.906989+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:01:19.916204+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:01:39.923507+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:01:59.928999+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:02:19.934726+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:02:39.940572+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:02:59.946120+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:03:19.951972+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:03:39.957290+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:03:59.962804+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:04:19.969496+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T120419_968773.",
+        "run_id": "10-53-56-95-pipeline_20261030T120419_968773",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T120419_968773"
+      },
+      {
+        "ts": "2026-10-30T12:09:19.990506+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:09:39.995991+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:10:00.001248+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:10:20.007057+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:10:40.012889+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:11:00.018464+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:11:20.024089+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:11:40.029832+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:12:00.035462+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:12:20.041187+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:12:40.046904+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:13:00.053568+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T121300_052846.",
+        "run_id": "10-53-56-95-pipeline_20261030T121300_052846",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T121300_052846"
+      },
+      {
+        "ts": "2026-10-30T12:18:00.071758+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:18:20.077206+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:18:40.082772+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:19:00.088411+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:19:20.093952+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:19:40.099552+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:20:00.105157+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:20:20.110756+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:20:40.116502+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:21:00.121979+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:21:20.127517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:21:40.133833+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T122140_133183.",
+        "run_id": "10-53-56-95-pipeline_20261030T122140_133183",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T122140_133183"
+      },
+      {
+        "ts": "2026-10-30T12:26:40.152329+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:27:00.157977+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:27:20.163449+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:27:40.169034+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:28:00.174886+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:28:20.180427+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:28:40.186233+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:29:00.191911+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:29:20.197570+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:29:40.203486+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:30:00.209925+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:30:20.215726+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:30:40.221343+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:31:00.227758+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T123100_227090.",
+        "run_id": "10-53-56-95-pipeline_20261030T123100_227090",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T123100_227090"
+      },
+      {
+        "ts": "2026-10-30T12:36:00.245022+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:36:20.250908+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:36:40.256842+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:37:00.263000+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:37:20.270549+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:37:40.276378+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:38:00.281902+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:38:20.287431+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:38:40.292941+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:39:00.298636+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:39:20.304139+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:39:40.309732+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:40:00.316106+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T124000_315340.",
+        "run_id": "10-53-56-95-pipeline_20261030T124000_315340",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T124000_315340"
+      },
+      {
+        "ts": "2026-10-30T12:45:00.333608+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:45:20.339109+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:45:40.345019+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:46:00.350398+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:46:20.355807+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:46:40.361192+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:47:00.367088+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:47:20.373763+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:47:40.380046+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:48:00.389276+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:48:20.394949+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:48:40.401805+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T124840_401164.",
+        "run_id": "10-53-56-95-pipeline_20261030T124840_401164",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T124840_401164"
+      },
+      {
+        "ts": "2026-10-30T12:53:40.422459+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:54:00.427991+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:54:20.434148+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:54:40.439846+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:55:00.445457+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:55:20.451249+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:55:40.456972+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:56:00.462416+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:56:20.468282+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:56:40.474173+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:57:00.480507+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:57:20.486357+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T12:57:40.492755+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T125740_492069.",
+        "run_id": "10-53-56-95-pipeline_20261030T125740_492069",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T125740_492069"
+      },
+      {
+        "ts": "2026-10-30T13:02:40.509842+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:03:00.515660+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:03:20.521195+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:03:40.526752+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:04:00.533184+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:04:20.539254+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:04:40.544860+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:05:00.550675+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:05:20.557181+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:05:40.562755+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:06:00.568491+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:06:20.574719+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T130620_574018.",
+        "run_id": "10-53-56-95-pipeline_20261030T130620_574018",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T130620_574018"
+      },
+      {
+        "ts": "2026-10-30T13:11:20.591864+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:11:40.597467+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:12:00.603094+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:12:20.609434+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:12:40.615325+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:13:00.621039+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:13:20.626817+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:13:40.632352+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:14:00.637892+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:14:20.643463+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:14:40.650232+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T131440_649478.",
+        "run_id": "10-53-56-95-pipeline_20261030T131440_649478",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T131440_649478"
+      },
+      {
+        "ts": "2026-10-30T13:19:40.668351+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:20:00.674399+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:20:20.680279+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:20:40.686161+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:21:00.691953+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:21:20.697782+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:21:40.703437+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:22:00.709155+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:22:20.715361+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:22:40.721103+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:23:00.727038+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:23:20.733169+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:23:40.741090+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T132340_740464.",
+        "run_id": "10-53-56-95-pipeline_20261030T132340_740464",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T132340_740464"
+      },
+      {
+        "ts": "2026-10-30T13:28:40.759601+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:29:00.765517+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:29:20.771288+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:29:40.777179+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:30:00.783108+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:30:20.788834+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:30:40.794282+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:31:00.800020+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:31:20.805838+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:31:40.811712+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:32:00.855242+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:32:20.861876+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T133220_861118.",
+        "run_id": "10-53-56-95-pipeline_20261030T133220_861118",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T133220_861118"
+      },
+      {
+        "ts": "2026-10-30T13:37:20.879757+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:37:40.886264+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:38:00.891952+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:38:20.897685+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:38:40.903397+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:39:00.909020+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:39:20.914764+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:39:40.921080+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:40:00.926956+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:40:20.933029+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:40:40.939753+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T134040_938958.",
+        "run_id": "10-53-56-95-pipeline_20261030T134040_938958",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T134040_938958"
+      },
+      {
+        "ts": "2026-10-30T13:45:40.959365+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:46:00.965483+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:46:20.972641+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:46:40.978387+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:47:00.984261+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:47:20.991224+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:47:40.999892+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:48:01.006324+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:48:21.012186+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:48:41.017915+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:49:01.025562+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T134901_024899.",
+        "run_id": "10-53-56-95-pipeline_20261030T134901_024899",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T134901_024899"
+      },
+      {
+        "ts": "2026-10-30T13:54:01.043027+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:54:21.048857+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:54:41.054353+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:55:01.060194+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:55:21.065932+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:55:41.071739+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:56:01.078477+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:56:21.084052+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:56:41.089914+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:57:01.098300+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T13:57:21.104820+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T135721_104052.",
+        "run_id": "10-53-56-95-pipeline_20261030T135721_104052",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T135721_104052"
+      },
+      {
+        "ts": "2026-10-30T14:02:21.122016+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:02:41.127628+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:03:01.134382+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:03:21.144512+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:03:41.150397+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:04:01.157383+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:04:21.163339+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:04:41.169226+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:05:01.175423+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:05:21.181279+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:05:41.188325+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T140541_187475.",
+        "run_id": "10-53-56-95-pipeline_20261030T140541_187475",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T140541_187475"
+      },
+      {
+        "ts": "2026-10-30T14:10:41.214215+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:11:01.220328+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:11:21.227226+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:11:41.233130+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:12:01.238882+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:12:21.244605+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:12:41.250370+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:13:01.256168+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:13:21.262133+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:13:41.268711+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:14:01.276015+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T141401_275271.",
+        "run_id": "10-53-56-95-pipeline_20261030T141401_275271",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T141401_275271"
+      },
+      {
+        "ts": "2026-10-30T14:19:01.293984+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:19:21.299649+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:19:41.305429+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:20:01.311466+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:20:21.317134+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:20:41.322550+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:21:01.328075+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:21:21.333556+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:21:41.339105+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:22:01.345037+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:22:21.351481+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T142221_350779.",
+        "run_id": "10-53-56-95-pipeline_20261030T142221_350779",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T142221_350779"
+      },
+      {
+        "ts": "2026-10-30T14:27:21.369655+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:27:41.375406+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:28:01.381503+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:28:21.387001+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:28:41.392795+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:29:01.398554+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:29:21.404430+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:29:41.410198+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:30:01.416245+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:30:21.423986+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T143021_423178.",
+        "run_id": "10-53-56-95-pipeline_20261030T143021_423178",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T143021_423178"
+      },
+      {
+        "ts": "2026-10-30T14:35:21.441018+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:35:41.446979+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:36:01.452711+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:36:21.458753+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:36:41.464222+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:37:01.470413+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:37:21.475867+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:37:41.481337+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:38:01.487196+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:38:21.492803+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:38:41.499494+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:39:01.505310+00:00",
+        "type": "loop_skipped_in_progress",
+        "message": "Previous scheduled run is still active; waiting."
+      },
+      {
+        "ts": "2026-10-30T14:39:21.511621+00:00",
+        "type": "job_launched",
+        "message": "Launched full_pipeline run 10-53-56-95-pipeline_20261030T143921_510965.",
+        "run_id": "10-53-56-95-pipeline_20261030T143921_510965",
+        "job_url": "/job/10-53-56-95-pipeline_20261030T143921_510965"
+      },
+      {
+        "ts": "2026-10-30T14:39:21.521047+00:00",
+        "type": "loop_finished",
+        "message": "All requested loops were queued."
+      }
+    ]
   }
 }

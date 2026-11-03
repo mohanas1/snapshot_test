@@ -7,6 +7,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
+              }
+            }
+          }
+        }
+      };
+    }
+  </script>
   <style>
     :root {
       font-family: var(--font-sans);
@@ -158,7 +182,7 @@
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.75);
       }
     }
-    .status-complete { background: #d1fae5; color: #065f46; }
+    .status-complete, .status-done { background: #d1fae5; color: #065f46; }
     .status-error { background: #fee2e2; color: #991b1b; }
     .status-aborted { background: #fef3c7; color: #92400e; }
     pre#log {
@@ -174,6 +198,90 @@
     }
     pre#log.disk-job-log {
       max-height: min(52vh, 36rem); font-size: 0.82rem; line-height: 1.35;
+    }
+
+    /* ── Structured Log Viewer ─────────────────────────────────────────── */
+    #lv-wrap {
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1c1e;
+      overflow: hidden;
+      font-size: 0.8rem;
+      color: #e8eaed;
+    }
+    #lv-metrics {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      padding: .45rem .8rem;
+      background: #24272b;
+      border-bottom: 1px solid #333;
+      font-size: .76rem;
+    }
+    #lv-total { color: #9ca3af; }
+    .lv-badge {
+      display: inline-block; padding: .1rem .45rem; border-radius: 4px;
+      font-weight: 700; font-size: .72rem; cursor: pointer;
+    }
+    .lv-badge-err  { background: #450a0a; color: #fca5a5; }
+    .lv-badge-warn { background: #451a03; color: #fcd34d; }
+    .lv-badge-info { background: #0c1a2e; color: #93c5fd; }
+    .lv-exc { background: #2d1b4e; color: #c4b5fd; }
+    #lv-filter {
+      display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+      padding: .4rem .8rem;
+      background: #1e2124;
+      border-bottom: 1px solid #333;
+    }
+    .lv-lvl-btn {
+      border: 1px solid #444; border-radius: 999px;
+      padding: .15rem .55rem; font-size: .72rem; font-weight: 700;
+      cursor: pointer; background: transparent; color: #9ca3af;
+      transition: all .15s;
+    }
+    .lv-lvl-btn.active           { background: #374151; color: #f9fafb; border-color: #6b7280; }
+    .lv-lvl-btn.active[data-l="ERROR"] { background: #7f1d1d; color: #fca5a5; border-color: #ef4444; }
+    .lv-lvl-btn.active[data-l="WARN"]  { background: #78350f; color: #fcd34d; border-color: #f59e0b; }
+    .lv-lvl-btn.active[data-l="INFO"]  { background: #1e3a5f; color: #93c5fd; border-color: #3b82f6; }
+    #lv-search {
+      flex: 1; min-width: 160px; background: #111; border: 1px solid #444;
+      border-radius: 6px; padding: .25rem .6rem; color: #e8eaed; font-size: .8rem;
+    }
+    #lv-search::placeholder { color: #6b7280; }
+    #lv-search:focus { outline: none; border-color: #3b82f6; }
+    #lv-viewport {
+      overflow-y: auto;
+      max-height: 60vh;
+      position: relative;
+    }
+    #lv-spacer-top, #lv-spacer-bot { width: 100%; pointer-events: none; }
+    .lv-row {
+      display: flex; align-items: baseline; gap: .5rem;
+      padding: .18rem .8rem;
+      border-bottom: 1px solid #222;
+      line-height: 1.45;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: .78rem;
+    }
+    .lv-row:hover { background: #23272b; }
+    .lv-ts   { color: #6b7280; white-space: nowrap; flex-shrink: 0; font-size: .72rem; }
+    .lv-lvl  { flex-shrink: 0; width: 44px; text-align: center; border-radius: 3px;
+               font-size: .68rem; font-weight: 800; padding: .05rem 0; }
+    .lv-lvl-E { background: #450a0a; color: #fca5a5; }
+    .lv-lvl-W { background: #451a03; color: #fcd34d; }
+    .lv-lvl-I { background: #0c1a2e; color: #93c5fd; }
+    .lv-lvl-D { background: #1c1c1c; color: #6b7280; }
+    .lv-lvl-S { background: #052e16; color: #86efac; }  /* success (✓) */
+    .lv-lvl-F { background: #450a0a; color: #fca5a5; }  /* fail (✗) */
+    .lv-msg  { flex: 1; white-space: pre-wrap; word-break: break-word; color: #d1d5db; }
+    .lv-msg-err  { color: #fca5a5; }
+    .lv-msg-warn { color: #fcd34d; }
+    .lv-msg-ok   { color: #86efac; }
+    .lv-msg-fail { color: #fca5a5; }
+    #lv-empty {
+      text-align: center; padding: 2rem; color: #6b7280; font-size: .85rem;
+    }
+    #lv-trunc {
+      padding: .4rem .8rem; background: #1e2124; color: #6b7280;
+      font-size: .75rem; border-top: 1px solid #333; text-align: center;
     }
     .disk-progress {
       background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); 
@@ -959,7 +1067,7 @@
   <!-- Fixed Top Action Bar -->
   <div class="job-top-bar">
     <div class="job-top-bar-left">
-      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% elif info.get('job_kind') == 'ipfix' %}IPFIX Traffic Job{% elif info.get('job_kind') == 'sc_network_analyzer' %}SC Network Log Analyzer{% elif info.get('job_kind') == 'sc_security_analyzer' %}SC Security Reports Analyzer{% else %}Bulk Snapshot Run{% endif %}</span>
+      <span class="job-top-bar-title">{% if info.get('job_kind') == 'disk' %}Bulk VM Disk Job{% elif info.get('job_kind') == 'power' %}VM Power Operations{% elif info.get('job_kind') == 'recovery_delete' %}Recovery Points Delete Job{% elif info.get('job_kind') == 'pipeline' %}Full Pipeline Run (Disk + Snapshot){% elif info.get('job_kind') == 'cg_reports' %}CG Reports Download Job{% elif info.get('job_kind') == 'cg_data_loader' %}CG Data Loader Job{% elif info.get('job_kind') == 'ipfix' %}IPFIX Traffic Job{% elif info.get('job_kind') == 'sc_network_analyzer' %}SC Network Log Analyzer{% elif info.get('job_kind') == 'sc_security_analyzer' %}SC Security Reports Analyzer{% elif info.get('job_kind') == 'sc_pipeline_analyzer' %}SC Pipeline Analyzer{% else %}Bulk Snapshot Run{% endif %}</span>
       <div class="job-top-bar-status">
         <span style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Status:</span>
         <span id="status-badge" class="status status-{{ info.status }}">{{ info.status }}</span>
@@ -975,7 +1083,7 @@
         </div>
       </div>
       <a id="dl" class="btn disabled" href="{{ url_for('download', run_id=run_id) }}" download>Download log</a>
-      <a class="btn secondary" href="{% if info.get('job_kind') == 'ipfix' %}{{ url_for('ipfix_traffic') }}{% elif info.get('job_kind') in ('sc_network_analyzer', 'sc_security_analyzer') %}{{ url_for('sc_page') }}{% else %}{{ url_for('index') }}{% endif %}">New run</a>
+      <a class="btn secondary" href="{% if info.get('job_kind') == 'ipfix' %}{{ url_for('ipfix_traffic') }}{% elif info.get('job_kind') in ('sc_network_analyzer', 'sc_security_analyzer', 'sc_pipeline_analyzer') %}{{ url_for('sc_page') }}{% else %}{{ url_for('index') }}{% endif %}">New run</a>
     </div>
   </div>
 
@@ -997,7 +1105,7 @@
 
   <div id="run-error" class="errbox" style="display:none;"></div>
   <p id="cancel-msg" class="meta" style="display:none;"></p>
-  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer') %}
+  {% if info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer', 'sc_pipeline_analyzer') %}
   <div id="snapshot-info-wrap" class="disk-progress" style="display:block; margin-top: 1rem;">
     <strong>Snapshot Run Info</strong>
     <div id="snapshot-info-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
@@ -3981,7 +4089,1620 @@
   </div>
   {% endif %}
 
-  <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
+  {# ── SC Pipeline Analyzer Results ─────────────────────────────────── #}
+  {% if info.get('job_kind') == 'sc_pipeline_analyzer' %}
+  {% set sc_pl_summ   = info.get('summary', {}) %}
+  {% set sc_pl_result = sc_pl_summ.get('analysis_result', {}) %}
+  <div id="sc-pl-wrap" style="margin-top:1rem;">
+
+  <style>
+    /* ── SC Pipeline controls bar ───────────────────────────────────────── */
+    #scpl-ctrl-bar{
+      position:sticky;top:60px;z-index:110;background:#fff;
+      border:1px solid #e2e8f0;border-radius:10px;padding:.55rem 1rem;
+      margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
+      box-shadow:0 2px 6px rgba(0,0,0,.07);
+    }
+    #scpl-poll-indicator{display:none;align-items:center;gap:.35rem;font-size:.74rem;color:#6b7280;}
+    #scpl-poll-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;
+                   animation:scpl-pulse 2s infinite;}
+    @keyframes scpl-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    #scpl-duration{font-size:.77rem;color:#9ca3af;}
+    .scpl-export-btn{
+      border:1px solid #d1d5db;border-radius:7px;padding:.25rem .7rem;
+      font-size:.78rem;font-weight:600;cursor:pointer;background:#f9fafb;
+      color:#374151;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;
+      transition:all .15s;
+    }
+    .scpl-export-btn:hover{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
+
+    /* ── KPI cards (match scn-kpi-card style) ───────────────────────────── */
+    .scpl-sec{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.2rem;margin-bottom:1rem;}
+    .scpl-sec-title{font-size:1rem;font-weight:700;margin:0 0 1rem;display:flex;align-items:center;gap:.5rem;}
+    .scpl-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin-bottom:.5rem;}
+    .scpl-kpi-card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;
+                   padding:.75rem 1rem;transition:all .2s;position:relative;}
+    .scpl-kpi-label{font-size:.72rem;color:#6b7280;font-weight:600;text-transform:uppercase;
+                    letter-spacing:.04em;margin-bottom:.3rem;}
+    .scpl-kpi-value{font-size:1.45rem;font-weight:700;color:#111827;line-height:1;}
+    .scpl-kpi-sub  {font-size:.72rem;color:#9ca3af;margin-top:.2rem;}
+
+    /* ── Family accordion (unchanged) ───────────────────────────────────── */
+    .scpl-family{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:.7rem;overflow:hidden;}
+    .scpl-family-hdr{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;
+                     background:#f8fafc;cursor:pointer;user-select:none;}
+    .scpl-family-hdr:hover{background:#f1f5f9;}
+    .scpl-family-name{font-weight:700;font-size:.9rem;flex:1;}
+    .scpl-family-body{padding:1rem;border-top:1px solid #e5e7eb;display:none;}
+    .scpl-family-body.open{display:block;}
+    .scpl-badge{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.75rem;font-weight:700;}
+    .scpl-issue{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;
+                font-size:.88rem;color:#991b1b;margin-bottom:.5rem;}
+    .scpl-metric-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;}
+    .scpl-metric{background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;
+                 padding:.35rem .65rem;font-size:.82rem;}
+    .scpl-metric-lbl{color:#0369a1;font-weight:600;}
+    .scpl-metric-val{color:#0c4a6e;font-weight:700;margin-left:.3rem;}
+  </style>
+
+  {# ── Sticky Controls Bar ──────────────────────────────────────────────── #}
+  {% set js = info.get('status','') %}
+  <div id="scpl-ctrl-bar">
+    <!-- Title + live polling indicator -->
+    <div style="display:flex;align-items:center;gap:.55rem;">
+      <span style="font-weight:700;font-size:.92rem;">SC Pipeline Pod Log Analyzer</span>
+      <div id="scpl-poll-indicator">
+        <span id="scpl-poll-dot"></span>
+        <span>Updating every 2s</span>
+      </div>
+    </div>
+
+    <!-- Pod logs source -->
+    {% set _src_dir = sc_pl_summ.get('pod_logs_dir','') or sc_pl_summ.get('pc_ip','') %}
+    {% if _src_dir %}
+    <span style="font-size:.75rem;color:#9ca3af;overflow:hidden;text-overflow:ellipsis;
+                 white-space:nowrap;max-width:260px;" title="{{ _src_dir }}">
+      📁 {{ _src_dir.split('/')[-1] or _src_dir }}
+    </span>
+    {% endif %}
+
+    <!-- Status badge + duration -->
+    <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+      <span id="scpl-duration"></span>
+      <span style="font-weight:700;padding:.15rem .55rem;border-radius:5px;font-size:.8rem;
+        {% if js=='complete' or js=='done' %}background:#dcfce7;color:#15803d;
+        {% elif js in ('running','queued') %}background:#dbeafe;color:#1d4ed8;
+        {% elif js=='error' %}background:#fee2e2;color:#b91c1c;
+        {% else %}background:#f3f4f6;color:#374151;{% endif %}">
+        {{ js or '—' }}
+      </span>
+      {% if sc_pl_summ.get('output_json') %}
+      <a href="{{ url_for('download_sc_pipeline_report', run_id=run_id, fmt='json') }}"
+         class="scpl-export-btn" title="Download full analysis as JSON">
+        ⬇ JSON
+      </a>
+      <a href="{{ url_for('download_sc_pipeline_report', run_id=run_id, fmt='md') }}"
+         class="scpl-export-btn" title="Download analysis summary as Markdown">
+        ⬇ Markdown
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if sc_pl_result %}
+  {# ── Summary KPI Banner ───────────────────────────────────────────────── #}
+  <div class="scpl-sec">
+    <div class="scpl-sec-title">📊 Summary</div>
+    {% set sc = sc_pl_result.get('status_counts', {}) %}
+    {% set n_issues = sc_pl_result.get('issues', [])|length %}
+    {% set n_fam    = sc_pl_result.get('families', {})|length %}
+    <div class="scpl-kpi-grid">
+
+      <div class="scpl-kpi-card" style="border-left:4px solid #3b82f6;">
+        <div class="scpl-kpi-label">Total Pods</div>
+        <div class="scpl-kpi-value">{{ sc_pl_result.get('total_pods', '—') }}</div>
+        <div class="scpl-kpi-sub">analyzed from Fluentd</div>
+      </div>
+
+      <div class="scpl-kpi-card" style="border-left:4px solid #10b981;">
+        <div class="scpl-kpi-label">Running</div>
+        <div class="scpl-kpi-value" style="color:#059669;">{{ sc.get('Running', 0) }}</div>
+        <div class="scpl-kpi-sub">currently active</div>
+      </div>
+
+      <div class="scpl-kpi-card" style="border-left:4px solid #6366f1;">
+        <div class="scpl-kpi-label">Succeeded</div>
+        <div class="scpl-kpi-value" style="color:#4f46e5;">{{ sc.get('Succeeded', 0) }}</div>
+        <div class="scpl-kpi-sub">completed ok</div>
+      </div>
+
+      <div class="scpl-kpi-card" style="border-left:4px solid #ef4444;">
+        <div class="scpl-kpi-label">Failed</div>
+        <div class="scpl-kpi-value" style="color:#dc2626;">{{ sc.get('Failed', 0) }}</div>
+        <div class="scpl-kpi-sub">terminated with error</div>
+      </div>
+
+      <div class="scpl-kpi-card" style="border-left:4px solid #8b5cf6;">
+        <div class="scpl-kpi-label">Pod Families</div>
+        <div class="scpl-kpi-value">{{ n_fam }}</div>
+        <div class="scpl-kpi-sub">active pod group{{ 's' if n_fam != 1 else '' }}</div>
+      </div>
+
+      <div class="scpl-kpi-card" style="border-left:4px solid {{ '#ef4444' if n_issues else '#10b981' }};">
+        <div class="scpl-kpi-label">Issues</div>
+        <div class="scpl-kpi-value" style="color:{{ '#dc2626' if n_issues else '#059669' }};">
+          {{ n_issues }}
+        </div>
+        <div class="scpl-kpi-sub">{{ 'detected — see below' if n_issues else 'all clear' }}</div>
+      </div>
+
+      {% if info.get('timing') %}
+      <div class="scpl-kpi-card" style="border-left:4px solid #94a3b8;">
+        <div class="scpl-kpi-label">Duration</div>
+        <div class="scpl-kpi-value">{{ '%.0f'%(info['timing'].get('duration_sec',0)) }}s</div>
+        <div class="scpl-kpi-sub">job runtime</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Pod logs dir -->
+    {% if sc_pl_result.get('logs_dir') or sc_pl_result.get('pod_logs_dir') %}
+    <div style="font-size:.78rem;color:#6b7280;margin-top:.5rem;display:flex;align-items:center;gap:.3rem;">
+      <span>📁</span>
+      <code style="background:#f1f5f9;padding:.1rem .35rem;border-radius:4px;">{{ sc_pl_result.get('pod_logs_dir') or sc_pl_result.get('logs_dir') }}</code>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════════════════════
+     E2E Pipeline Health — stage topology + component cards + throughput
+     ══════════════════════════════════════════════════════════════════════ #}
+  {% set fams = sc_pl_result.get('families', {}) %}
+
+  {# ── Per-family shortcuts ── #}
+  {% set f_rt   = fams.get('common-sc-realtime-service', {}) %}
+  {% set f_fjm  = fams.get('fsc-flink-cluster', {}) %}
+  {% set f_ftm  = fams.get('fsc-flink-cluster-taskmanager', {}) %}
+  {% set f_bql  = fams.get('sc-bql-thanos', {}) %}
+  {% set f_acc  = fams.get('sc-account-sync-service', {}) %}
+  {% set f_op   = fams.get('ncm-platform-flink-kubernetes-operator', {}) %}
+  {% set f_ml   = fams.get('sc-sp-ml-worker', {}) %}
+  {% set f_met  = fams.get('ncm-sc-metrics-job', {}) %}
+  {% set f_cfs  = fams.get('sc-cron-flow-stats-worker', {}) %}
+  {% set f_cis  = fams.get('sc-cron-issue-stats-worker', {}) %}
+  {% set f_ccu  = fams.get('sc-cron-cleanup-worker', {}) %}
+
+  {# ── Derive per-service health (ok / warn / error / idle) ── #}
+  {% set h_rt  = 'ok'   if f_rt.get('pg_pools_ready',0) > 0 and f_rt.get('error_count',0) == 0
+                 else 'warn' if f_rt.get('bql_queries_ok',0) > 0
+                 else 'error' if f_rt.get('error_count',0) > 0
+                 else 'idle' %}
+  {% set h_fjm = 'ok'   if f_fjm.get('status_counts',{}).get('Running',0) > 0
+                 else 'warn' if f_fjm.get('pod_count',0) > 0
+                 else 'idle' %}
+  {% set h_ftm = 'warn' if f_ftm.get('missing_account_by_type',{}) or f_ftm.get('warn_count',0) > 100
+                 else 'ok' if f_ftm.get('pod_count',0) > 0
+                 else 'idle' %}
+  {% set h_bql = 'error' if f_bql.get('error_count',0) > 0 and f_bql.get('queries_received',0) == 0
+                 else 'warn' if f_bql.get('error_count',0) > 0
+                 else 'ok'   if f_bql.get('queries_received',0) > 0
+                 else 'idle' %}
+  {% set h_acc = 'ok'   if f_acc.get('status_counts',{}).get('Running',0) > 0
+                 else 'idle' %}
+  {% set h_op  = 'ok'   if f_op.get('fully_reconciled',0) > 0
+                 else 'warn' if f_op.get('reconciliations',0) > 0
+                 else 'idle' %}
+  {% set h_ml  = 'warn' if f_ml.get('status_counts',{}).get('Failed',0) > 0
+                 else 'ok'   if f_ml.get('workers_started',0) > 0
+                 else 'idle' %}
+  {% set h_met = 'ok'   if f_met.get('total_ingested',0) > 0
+                 else 'warn' if f_met.get('pod_count',0) > 0
+                 else 'idle' %}
+
+  {# ── Overall pipeline health ── #}
+  {% set _any_error = (h_bql == 'error') or (h_rt == 'error') %}
+  {% set _any_warn  = (h_ftm == 'warn') or (h_bql == 'warn') or (h_ml == 'warn') or (h_rt == 'warn') %}
+  {% set overall_health = 'degraded' if _any_error else 'warning' if _any_warn else 'healthy' %}
+
+  <div class="scpl-sec" id="scpl-pipeline-health">
+    <div class="scpl-sec-title">
+      🔗 End-to-End Pipeline Health
+      <span style="margin-left:auto;font-size:.78rem;font-weight:600;padding:.2rem .65rem;border-radius:12px;
+        {% if overall_health=='healthy' %}background:#dcfce7;color:#15803d;
+        {% elif overall_health=='degraded' %}background:#fee2e2;color:#b91c1c;
+        {% else %}background:#fef9c3;color:#92400e;{% endif %}">
+        {% if overall_health=='healthy' %}✅ Healthy
+        {% elif overall_health=='degraded' %}❌ Degraded
+        {% else %}⚠️ Warning{% endif %}
+      </span>
+    </div>
+
+    {# ── Alert banners ── #}
+    {% for issue in sc_pl_result.get('issues', []) %}
+    <div style="display:flex;align-items:flex-start;gap:.55rem;padding:.55rem .8rem;margin-bottom:.45rem;
+                border-radius:8px;font-size:.83rem;background:#fef2f2;border:1px solid #fca5a5;">
+      <span style="font-size:1.1rem;line-height:1.3;">🚨</span>
+      <div style="color:#991b1b;">{{ issue }}</div>
+    </div>
+    {% endfor %}
+
+    {# ── Stage Flow Topology Bar ── #}
+    <div style="display:flex;align-items:stretch;gap:0;margin-bottom:1rem;overflow-x:auto;
+                border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;">
+
+      {# helper macro-style set for each stage cell #}
+      {% set stages_def = [
+        {'label': 'SC Realtime Service',    'icon': '🟢', 'h': h_rt,
+         'metric': (f_rt.get('bql_queries_ok',0)|string + ' BQL ok') if f_rt else '—'},
+        {'label': 'Flink Job Manager',       'icon': '⚡', 'h': h_fjm,
+         'metric': (f_fjm.get('pod_count',0)|string + ' pod(s)') if f_fjm else '—'},
+        {'label': 'Flink Task Manager',      'icon': '🔄', 'h': h_ftm,
+         'metric': (f_ftm.get('warn_count',0)|string + ' warnings') if f_ftm else '—'},
+        {'label': 'BQL / Thanos',            'icon': '🔍', 'h': h_bql,
+         'metric': (f_bql.get('queries_received',0)|string + ' queries') if f_bql else '—'},
+        {'label': 'SC SP ML Worker',         'icon': '🤖', 'h': h_ml,
+         'metric': (f_ml.get('workers_started',0)|string + ' started') if f_ml else '—'},
+      ] %}
+      {% for st in stages_def %}
+      {% set sc = st.h %}
+      <div style="flex:1;min-width:110px;padding:.65rem .5rem;text-align:center;
+                  border-right:{% if not loop.last %}1px solid #e5e7eb{% else %}none{% endif %};">
+        <div style="font-size:1.15rem;margin-bottom:.15rem;">{{ st.icon }}</div>
+        <div style="font-size:.71rem;font-weight:700;color:#1f2937;line-height:1.3;">{{ st.label }}</div>
+        <div style="margin:.2rem 0;font-size:.7rem;font-weight:700;
+            {% if sc=='ok' %}color:#15803d;{% elif sc=='error' %}color:#b91c1c;
+            {% elif sc=='warn' %}color:#92400e;{% else %}color:#6b7280;{% endif %}">
+          {% if sc=='ok' %}✅ OK{% elif sc=='error' %}❌ Error{% elif sc=='warn' %}⚠️ Warn{% else %}⏸ Idle{% endif %}
+        </div>
+        <div style="font-size:.67rem;color:#6b7280;">{{ st.metric }}</div>
+      </div>
+      {% if not loop.last %}
+      <div style="display:flex;align-items:center;color:#9ca3af;font-size:1rem;background:#f8fafc;padding:0 .1rem;">→</div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    {# ── Component Health Cards (scn-bp-card style) ── #}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.7rem;margin-bottom:1rem;">
+
+      {# Helper: status → css class and bar color #}
+      {% set _svc_list = [
+        {
+          'name': 'common-sc-realtime-service', 'icon': '🟢',
+          'h': h_rt,
+          'value': (f_rt.get('bql_queries_ok',0)|string + ' BQL queries ok'),
+          'detail': 'PG pools ready: ' ~ f_rt.get('pg_pools_ready',0)
+                  ~ ' · Errors: ' ~ f_rt.get('error_count',0),
+          'pct': [100, (f_rt.get('error_count',0) * 5)] | min
+        },
+        {
+          'name': 'fsc-flink-cluster (Job Manager)', 'icon': '⚡',
+          'h': h_fjm,
+          'value': f_fjm.get('pod_count',0)|string ~ ' pod(s) · '
+                 ~ f_fjm.get('status_counts',{}).get('Running',0)|string ~ ' running',
+          'detail': 'Errors: ' ~ (f_fjm.get('error_count',0)),
+          'pct': 100 if h_fjm == 'ok' else 50
+        },
+        {
+          'name': 'fsc-flink-cluster-taskmanager', 'icon': '🔄',
+          'h': h_ftm,
+          'value': f_ftm.get('warn_count',0)|string ~ ' warn lines',
+          'detail': 'Missing account IDs: '
+                  ~ (f_ftm.get('missing_account_by_type',{})|list|length)|string ~ ' type(s)',
+          'pct': 60 if h_ftm == 'warn' else 100
+        },
+        {
+          'name': 'sc-bql-thanos', 'icon': '🔍',
+          'h': h_bql,
+          'value': f_bql.get('queries_received',0)|string ~ ' queries received',
+          'detail': 'Responded: ' ~ f_bql.get('queries_responded',0)
+                  ~ ' · Rows: ' ~ f_bql.get('total_rows_returned',0)
+                  ~ ' · Errors: ' ~ f_bql.get('error_count',0),
+          'pct': 100 if h_bql == 'ok' else 40 if h_bql == 'error' else 70
+        },
+        {
+          'name': 'sc-account-sync-service', 'icon': '🔁',
+          'h': h_acc,
+          'value': f_acc.get('pod_count',0)|string ~ ' pod(s)',
+          'detail': 'Running: ' ~ f_acc.get('status_counts',{}).get('Running',0),
+          'pct': 100 if h_acc == 'ok' else 0
+        },
+        {
+          'name': 'ncm-platform-flink-operator', 'icon': '🎛️',
+          'h': h_op,
+          'value': f_op.get('reconciliations',0)|string ~ ' reconciliations',
+          'detail': 'Fully reconciled: ' ~ f_op.get('fully_reconciled',0)
+                  ~ ' · Errors: ' ~ f_op.get('error_count',0),
+          'pct': 100 if h_op == 'ok' else 50
+        },
+        {
+          'name': 'sc-sp-ml-worker (batch)', 'icon': '🤖',
+          'h': h_ml,
+          'value': f_ml.get('workers_started',0)|string ~ ' workers started',
+          'detail': 'Failed: ' ~ f_ml.get('status_counts',{}).get('Failed',0)
+                  ~ ' · Groupings: ' ~ f_ml.get('groupings_started',0),
+          'pct': 100 if h_ml == 'ok' else 60
+        },
+        {
+          'name': 'ncm-sc-metrics-job', 'icon': '📈',
+          'h': h_met,
+          'value': f_met.get('total_ingested',0)|string ~ ' metrics ingested',
+          'detail': 'Inserted: ' ~ f_met.get('metrics_inserted',0)
+                  ~ ' · Collectors: ' ~ (f_met.get('collectors',{})|list|length),
+          'pct': 100 if h_met == 'ok' else 0
+        },
+      ] %}
+
+      {% for svc in _svc_list %}
+      {% set h = svc.h %}
+      <div class="scn-bp-card {{ h }}" style="min-height:90px;">
+        <div class="scn-bp-name">{{ svc.icon }} {{ svc.name }}</div>
+        <div class="scn-bp-value">{{ svc.value }}</div>
+        <div class="scn-bp-detail">{{ svc.detail }}</div>
+        <div class="scn-bp-bar">
+          <div class="scn-bp-bar-fill" style="width:{{ svc.pct|int }}%;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# ── Cross-Pipeline Throughput Comparison ── #}
+    {# Build rows from family metrics #}
+    {% set _tput_rows = [] %}
+    {% if f_rt.get('bql_queries_ok',0) %}
+      {% set _ = _tput_rows.append({'stage': 'SC Realtime — BQL queries ok', 'value': f_rt.get('bql_queries_ok',0), 'unit': 'queries', 'bar': 'blue'}) %}
+    {% endif %}
+    {% if f_rt.get('bql_total_results',0) %}
+      {% set _ = _tput_rows.append({'stage': 'SC Realtime — total results', 'value': f_rt.get('bql_total_results',0), 'unit': 'rows', 'bar': 'blue'}) %}
+    {% endif %}
+    {% if f_bql.get('queries_received',0) %}
+      {% set _ = _tput_rows.append({'stage': 'BQL Thanos — queries received', 'value': f_bql.get('queries_received',0), 'unit': 'queries', 'bar': 'purple'}) %}
+    {% endif %}
+    {% if f_bql.get('queries_responded',0) %}
+      {% set _ = _tput_rows.append({'stage': 'BQL Thanos — queries responded', 'value': f_bql.get('queries_responded',0), 'unit': 'queries', 'bar': 'purple'}) %}
+    {% endif %}
+    {% if f_bql.get('total_rows_returned',0) %}
+      {% set _ = _tput_rows.append({'stage': 'BQL Thanos — rows returned', 'value': f_bql.get('total_rows_returned',0), 'unit': 'rows', 'bar': 'purple'}) %}
+    {% endif %}
+    {% if f_ftm.get('warn_count',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Flink TM — warn lines', 'value': f_ftm.get('warn_count',0), 'unit': 'lines', 'bar': 'amber'}) %}
+    {% endif %}
+    {% if f_op.get('reconciliations',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Flink Operator — reconciliations', 'value': f_op.get('reconciliations',0), 'unit': 'events', 'bar': 'green'}) %}
+    {% endif %}
+    {% if f_op.get('fully_reconciled',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Flink Operator — fully reconciled', 'value': f_op.get('fully_reconciled',0), 'unit': 'events', 'bar': 'green'}) %}
+    {% endif %}
+    {% if f_ml.get('workers_started',0) %}
+      {% set _ = _tput_rows.append({'stage': 'SC SP ML — workers started', 'value': f_ml.get('workers_started',0), 'unit': 'pods', 'bar': 'indigo'}) %}
+    {% endif %}
+    {% if f_ml.get('groupings_started',0) %}
+      {% set _ = _tput_rows.append({'stage': 'SC SP ML — groupings started', 'value': f_ml.get('groupings_started',0), 'unit': 'tasks', 'bar': 'indigo'}) %}
+    {% endif %}
+    {% if f_met.get('total_ingested',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Metrics Job — metrics ingested', 'value': f_met.get('total_ingested',0), 'unit': 'metrics', 'bar': 'teal'}) %}
+    {% endif %}
+    {% if f_met.get('metrics_inserted',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Metrics Job — IDF inserts', 'value': f_met.get('metrics_inserted',0), 'unit': 'inserts', 'bar': 'teal'}) %}
+    {% endif %}
+    {% if f_cfs.get('bql_queries_ok',0) %}
+      {% set _ = _tput_rows.append({'stage': 'Flow Stats Cron — BQL queries', 'value': f_cfs.get('bql_queries_ok',0), 'unit': 'queries', 'bar': 'slate'}) %}
+    {% endif %}
+
+    {% if _tput_rows %}
+    <details open>
+      <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:#1e40af;
+                      padding:.35rem 0;list-style:none;user-select:none;">
+        📊 Cross-Pipeline Throughput Comparison ▾
+      </summary>
+      <div style="margin-top:.7rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;">
+        {# Bar chart (horizontal bars) #}
+        <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem;">
+          <div style="font-size:.75rem;color:#6b7280;font-weight:600;margin-bottom:.6rem;
+                      text-transform:uppercase;letter-spacing:.04em;">Volume by pipeline leg</div>
+          {# Find max value for relative bar sizing #}
+          {% set _max_val = namespace(v=1) %}
+          {% for r in _tput_rows %}{% if r.value > _max_val.v %}{% set _max_val.v = r.value %}{% endif %}{% endfor %}
+          {% for r in _tput_rows %}
+          {% set _bar_pct = ((r.value / _max_val.v) * 100) | int %}
+          {% set _bar_color = {
+            'blue':   '#3b82f6', 'purple': '#8b5cf6', 'amber':  '#f59e0b',
+            'green':  '#10b981', 'indigo': '#6366f1', 'teal':   '#14b8a6',
+            'slate':  '#94a3b8',
+          }.get(r.bar, '#6b7280') %}
+          <div style="margin-bottom:.45rem;">
+            <div style="display:flex;justify-content:space-between;font-size:.72rem;
+                        color:#374151;margin-bottom:.2rem;">
+              <span>{{ r.stage }}</span>
+              <span style="font-weight:700;color:#1e40af;">{{ '{:,}'.format(r.value) }}</span>
+            </div>
+            <div style="background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden;">
+              <div style="width:{{ _bar_pct }}%;height:100%;border-radius:999px;
+                          background:{{ _bar_color }};transition:width .4s;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {# Table #}
+        <div class="table-scroll-container" style="max-height:300px;">
+          <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+            <thead>
+              <tr style="background:#f3f4f6;">
+                <th style="text-align:left;padding:.35rem .55rem;border-bottom:2px solid #e5e7eb;
+                            color:#374151;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+                  Pipeline Leg / Stage
+                </th>
+                <th style="text-align:right;padding:.35rem .55rem;border-bottom:2px solid #e5e7eb;
+                            color:#374151;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+                  Volume
+                </th>
+                <th style="text-align:left;padding:.35rem .55rem;border-bottom:2px solid #e5e7eb;
+                            color:#374151;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+                  Unit
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for r in _tput_rows %}
+            <tr style="border-bottom:1px solid #f3f4f6;">
+              <td style="padding:.32rem .55rem;color:#1f2937;font-weight:500;">{{ r.stage }}</td>
+              <td style="padding:.32rem .55rem;text-align:right;font-family:monospace;
+                          font-weight:700;color:#1e40af;">{{ '{:,}'.format(r.value) }}</td>
+              <td style="padding:.32rem .55rem;color:#6b7280;">{{ r.unit }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+    {% endif %}
+  </div>{# /scpl-pipeline-health #}
+
+  {# ══════════════════════════════════════════════════════════════════════
+     Error & Bug Visibility — filterable, sortable, signature-grouped
+     ══════════════════════════════════════════════════════════════════════ #}
+  {# ══════════════════════════════════════════════════════════════════════
+     Error & Bug Visibility — filterable, sortable, signature-grouped
+     ══════════════════════════════════════════════════════════════════════ #}
+  {% set _ecounts = sc_pl_result.get('error_counts', {}) %}
+  {% set _esigs   = sc_pl_result.get('error_signatures', []) %}
+  {% set _eents   = sc_pl_result.get('error_entries',    []) %}
+  {% set _epods   = sc_pl_result.get('pod_summaries',    []) %}
+
+  <div class="bg-white border border-slate-200 rounded-xl p-5 mb-4 shadow-sm" id="scpl-err-section">
+    <!-- Header with Title & Summary Badges -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">🐛</span>
+        <h2 class="text-lg font-bold text-blue-950 m-0">Error &amp; Bug Visibility</h2>
+        <span id="scpl-err-loading-spinner" class="hidden text-xs text-blue-600 font-medium animate-pulse ml-2">
+          ⚡ Syncing…
+        </span>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="scpl-badge-err-count" class="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-2xs">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          <span id="scpl-stat-err-num">{{ _ecounts.get('ERROR', 0) }}</span> ERRORS
+        </span>
+        <span id="scpl-badge-warn-count" class="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-2xs">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          <span id="scpl-stat-warn-num">{{ _ecounts.get('WARN', 0) }}</span> WARNINGS
+        </span>
+        <span id="scpl-badge-info-count" class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-2xs">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span id="scpl-stat-info-num">{{ _ecounts.get('INFO', 0) }}</span> INFO
+        </span>
+        <button id="scpl-err-refresh-btn" type="button" title="Re-ingest logs from run directory"
+                class="bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 text-xs px-2.5 py-1 rounded-lg font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Controls Bar (Filter pills, Tabs & Debounced Search) -->
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <!-- Left: Level Pills & View Tabs -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-1">Level:</span>
+          <button class="scpl-lv-btn active px-2.5 py-1 rounded-full text-xs font-bold transition-all border border-slate-300 bg-blue-600 text-white cursor-pointer" data-l="ALL">ALL</button>
+          <button class="scpl-lv-btn px-2.5 py-1 rounded-full text-xs font-bold transition-all border border-slate-200 bg-white text-rose-700 hover:bg-rose-50 cursor-pointer" data-l="ERROR">ERROR</button>
+          <button class="scpl-lv-btn px-2.5 py-1 rounded-full text-xs font-bold transition-all border border-slate-200 bg-white text-amber-700 hover:bg-amber-50 cursor-pointer" data-l="WARN">WARN</button>
+          <button class="scpl-lv-btn px-2.5 py-1 rounded-full text-xs font-bold transition-all border border-slate-200 bg-white text-blue-700 hover:bg-blue-50 cursor-pointer" data-l="INFO">INFO</button>
+        </div>
+
+        <div class="h-4 w-px bg-slate-300 hidden sm:block"></div>
+
+        <!-- View Tabs -->
+        <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-200/60" id="scpl-err-tabs">
+          <button class="scpl-tab-btn active px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all bg-white text-blue-900 shadow-2xs" data-tab="sigs">
+            By Signature (<span id="scpl-tab-sigs-count">{{ _esigs|length }}</span>)
+          </button>
+          <button class="scpl-tab-btn px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all text-slate-600 hover:text-slate-900" data-tab="raw">
+            Raw Entries (<span id="scpl-tab-raw-count">{{ _eents|length }}</span>)
+          </button>
+          <button class="scpl-tab-btn px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all text-slate-600 hover:text-slate-900" data-tab="pods">
+            Pod Breakdown (<span id="scpl-tab-pods-count">{{ _epods|length }}</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Search Input & Matches Label -->
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <div class="relative flex-1 sm:w-64">
+          <input id="scpl-err-search" type="text" placeholder="🔍 Search signatures, errors, pods…" autocomplete="off"
+                 class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-2xs transition" />
+        </div>
+        <span id="scpl-err-count-label" class="text-xs font-medium text-slate-500 whitespace-nowrap"></span>
+      </div>
+    </div>
+
+    <!-- View 1: Signature Grouping Table -->
+    <div id="scpl-sigs-view" class="overflow-hidden border border-slate-200 rounded-xl shadow-2xs bg-white">
+      <div class="max-h-[460px] overflow-y-auto">
+        <table class="w-full text-left border-collapse text-xs" id="scpl-sig-table">
+          <thead class="sticky top-0 bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10 shadow-2xs">
+            <tr>
+              <th data-col="level" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-24">
+                Level <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="signature" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition">
+                Exception / Error Signature <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="count" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition text-right whitespace-nowrap w-24">
+                Occurrences <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="pod_count" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition text-right whitespace-nowrap w-20">
+                Pods <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="last_ts" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-36">
+                Last Seen (UTC) <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="scpl-sig-tbody" class="divide-y divide-slate-100">
+            <tr><td colspan="5" class="text-center py-8 text-slate-400">Loading signatures…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- View 2: Raw Log Entries Table -->
+    <div id="scpl-raw-view" class="hidden overflow-hidden border border-slate-200 rounded-xl shadow-2xs bg-white">
+      <div class="max-h-[460px] overflow-y-auto">
+        <table class="w-full text-left border-collapse text-xs" id="scpl-raw-table">
+          <thead class="sticky top-0 bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10 shadow-2xs">
+            <tr>
+              <th data-col="timestamp" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-36">
+                Timestamp <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="level" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-24">
+                Level <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="pod_name" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-56">
+                Pod Name <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="message" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition">
+                Message / Details <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="scpl-raw-tbody" class="divide-y divide-slate-100">
+            <tr><td colspan="4" class="text-center py-8 text-slate-400">Loading raw entries…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- View 3: Pods Breakdown Table -->
+    <div id="scpl-pods-view" class="hidden overflow-hidden border border-slate-200 rounded-xl shadow-2xs bg-white">
+      <div class="max-h-[460px] overflow-y-auto">
+        <table class="w-full text-left border-collapse text-xs" id="scpl-pods-table">
+          <thead class="sticky top-0 bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10 shadow-2xs">
+            <tr>
+              <th data-col="pod_name" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition">
+                Pod Name <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="family" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-44">
+                Family <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="status" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition whitespace-nowrap w-24">
+                Status <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="error_count" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition text-right whitespace-nowrap w-20">
+                Errors <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="warn_count" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition text-right whitespace-nowrap w-20">
+                Warns <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+              <th data-col="last_error" class="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100 transition">
+                Latest Error / Exception <span class="sort-icon text-slate-400 text-[10px]"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="scpl-pods-tbody" class="divide-y divide-slate-100">
+            <tr><td colspan="6" class="text-center py-8 text-slate-400">Loading pod summaries…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>{# /scpl-err-section #}
+
+  <script>
+  (function() {
+    const RUN_ID = {{ run_id | tojson }};
+    let SIGS        = {{ _esigs | tojson }};
+    let ENTRIES     = {{ _eents | tojson }};
+    let PODS        = {{ _epods | tojson }};
+    let LEVEL_COUNTS= {{ _ecounts | tojson }};
+
+    let activeLevel  = 'ALL';
+    let searchQuery  = '';
+    let activeTab    = 'sigs';
+    let searchTimer  = null;
+    let isFetching   = false;
+
+    // Sorting state
+    let sigSort  = { col: 'count',       dir: -1 };
+    let rawSort  = { col: 'timestamp',   dir: -1 };
+    let podSort  = { col: 'error_count', dir: -1 };
+
+    // ── Helper formatters ────────────────────────────────────────────────
+    function escH(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function lvlBadge(l) {
+      const up = String(l || '').toUpperCase();
+      if (up === 'ERROR' || up === 'FATAL' || up === 'CRITICAL' || up === 'FAIL') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">ERROR</span>`;
+      }
+      if (up === 'WARN' || up === 'WARNING') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">WARN</span>`;
+      }
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">INFO</span>`;
+    }
+
+    function statusBadge(s) {
+      const st = String(s || '').toLowerCase();
+      if (st === 'running') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">▶ Running</span>`;
+      }
+      if (st === 'succeeded' || st === 'completed' || st === 'done') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">✓ Succeeded</span>`;
+      }
+      if (st === 'failed' || st === 'error') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">✗ Failed</span>`;
+      }
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">${escH(s || 'Unknown')}</span>`;
+    }
+
+    function copyToClipboard(text, btnEl) {
+      if (navigator.clipboard && text) {
+        navigator.clipboard.writeText(text).then(() => {
+          if (btnEl) {
+            const old = btnEl.innerText;
+            btnEl.innerText = 'Copied!';
+            setTimeout(() => { btnEl.innerText = old; }, 1400);
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // ── Fetch parsed logs from backend parser API ────────────────────────
+    async function fetchParsedLogs(force = false) {
+      const spinner = document.getElementById('scpl-err-loading-spinner');
+      if (spinner) spinner.classList.remove('hidden');
+      isFetching = true;
+
+      const url = new URL(`/api/sc/pipeline/${encodeURIComponent(RUN_ID)}/logs`, window.location.origin);
+      if (activeLevel !== 'ALL') url.searchParams.set('level', activeLevel);
+      if (searchQuery) url.searchParams.set('search', searchQuery);
+      if (force) url.searchParams.set('force', '1');
+      url.searchParams.set('limit', '500');
+
+      try {
+        const resp = await fetch(url.toString());
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (data && data.ok) {
+          if (Array.isArray(data.error_signatures)) SIGS = data.error_signatures;
+          if (Array.isArray(data.parsed_logs))      ENTRIES = data.parsed_logs;
+          if (Array.isArray(data.pod_summaries))    PODS = data.pod_summaries;
+          if (data.error_counts)                   LEVEL_COUNTS = data.error_counts;
+
+          updateHeaderStats();
+          render();
+        }
+      } catch (err) {
+        console.warn('Could not fetch parsed SC pipeline logs:', err);
+      } finally {
+        isFetching = false;
+        if (spinner) spinner.classList.add('hidden');
+      }
+    }
+
+    function updateHeaderStats() {
+      const errEl  = document.getElementById('scpl-stat-err-num');
+      const warnEl = document.getElementById('scpl-stat-warn-num');
+      const infoEl = document.getElementById('scpl-stat-info-num');
+      if (errEl)  errEl.innerText  = (LEVEL_COUNTS.ERROR || 0).toLocaleString();
+      if (warnEl) warnEl.innerText = (LEVEL_COUNTS.WARN  || 0).toLocaleString();
+      if (infoEl) infoEl.innerText = (LEVEL_COUNTS.INFO  || 0).toLocaleString();
+
+      const sc = document.getElementById('scpl-tab-sigs-count');
+      const rc = document.getElementById('scpl-tab-raw-count');
+      const pc = document.getElementById('scpl-tab-pods-count');
+      if (sc) sc.innerText = SIGS.length;
+      if (rc) rc.innerText = ENTRIES.length;
+      if (pc) pc.innerText = PODS.length;
+    }
+
+    // ── Client-side Sorting & Filtering ──────────────────────────────────
+    function sortedItems(arr, { col, dir }) {
+      return [...arr].sort((a, b) => {
+        let va = a[col], vb = b[col];
+        if (typeof va === 'number' && typeof vb === 'number') return dir * (va - vb);
+        return dir * String(va || '').localeCompare(String(vb || ''));
+      });
+    }
+
+    // ── Render Signatures View ───────────────────────────────────────────
+    function renderSigs() {
+      const tbody = document.getElementById('scpl-sig-tbody');
+      if (!tbody) return;
+
+      const q = searchQuery.toLowerCase();
+      const filtered = SIGS.filter(s => {
+        if (activeLevel !== 'ALL' && s.level !== activeLevel) return false;
+        if (q) {
+          return (s.signature || '').toLowerCase().includes(q)
+              || (s.example || '').toLowerCase().includes(q)
+              || (s.pods_sample || []).some(p => p.toLowerCase().includes(q));
+        }
+        return true;
+      });
+
+      updateCountLabel(filtered.length, SIGS.length);
+      const items = sortedItems(filtered, sigSort);
+
+      if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">No matching signatures found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items.map((s, idx) => {
+        const typeBadge = s.type === 'exception'
+          ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">Exception</span>`
+          : '';
+        const samplePods = (s.pods_sample || []).slice(0, 4).join(', ');
+
+        return `
+          <tr class="hover:bg-blue-50/40 transition-colors cursor-pointer group" onclick="window.scplToggleRow('sexp-${idx}')">
+            <td class="py-2.5 px-3.5 whitespace-nowrap">${lvlBadge(s.level)}</td>
+            <td class="py-2.5 px-3.5 font-mono text-slate-800 text-xs">
+              <span class="font-semibold text-blue-900">${escH(s.signature)}</span>${typeBadge}
+              <div class="text-[11px] text-slate-400 truncate max-w-xl mt-0.5">${escH(s.example || '')}</div>
+            </td>
+            <td class="py-2.5 px-3.5 text-right font-mono font-bold text-blue-700 text-xs whitespace-nowrap">
+              <span class="bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">${Number(s.count || 0).toLocaleString()}</span>
+            </td>
+            <td class="py-2.5 px-3.5 text-right font-mono text-purple-700 font-semibold text-xs whitespace-nowrap">
+              ${s.pod_count || 1}
+            </td>
+            <td class="py-2.5 px-3.5 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+              ${escH(s.last_ts || '—')}
+            </td>
+          </tr>
+          <tr id="sexp-${idx}" class="hidden bg-slate-50 border-y border-slate-200">
+            <td colspan="5" class="p-4 text-xs">
+              <div class="flex items-start justify-between gap-4 mb-2">
+                <div class="font-semibold text-slate-800">Complete Signature Details</div>
+                <button type="button" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs px-2.5 py-1 rounded shadow-2xs cursor-pointer"
+                        onclick="event.stopPropagation(); window.scplCopyText(decodeURIComponent('${encodeURIComponent(s.example || s.signature)}'), this)">
+                  Copy Exception
+                </button>
+              </div>
+              <pre class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre-wrap">${escH(s.example || s.signature)}</pre>
+              <div class="mt-2 text-slate-500 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                <span><strong>Earliest:</strong> ${escH(s.first_ts || '—')}</span>
+                <span><strong>Latest:</strong> ${escH(s.last_ts || '—')}</span>
+                <span><strong>Sample Pods:</strong> ${escH(samplePods)}</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ── Render Raw Entries View ──────────────────────────────────────────
+    function renderRaw() {
+      const tbody = document.getElementById('scpl-raw-tbody');
+      if (!tbody) return;
+
+      const q = searchQuery.toLowerCase();
+      const filtered = ENTRIES.filter(e => {
+        if (activeLevel !== 'ALL' && e.level !== activeLevel) return false;
+        if (q) {
+          return (e.message || '').toLowerCase().includes(q)
+              || (e.pod_name || '').toLowerCase().includes(q)
+              || (e.timestamp || '').includes(q);
+        }
+        return true;
+      });
+
+      updateCountLabel(filtered.length, ENTRIES.length);
+      const items = sortedItems(filtered, rawSort).slice(0, 400);
+
+      if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">No matching log entries found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items.map((e, idx) => `
+        <tr class="hover:bg-blue-50/40 transition-colors cursor-pointer group" onclick="window.scplToggleRow('rexp-${idx}')">
+          <td class="py-2.5 px-3.5 font-mono text-slate-500 text-[11px] whitespace-nowrap">${escH(e.timestamp || '—')}</td>
+          <td class="py-2.5 px-3.5 whitespace-nowrap">${lvlBadge(e.level)}</td>
+          <td class="py-2.5 px-3.5 font-mono text-slate-700 text-xs truncate max-w-xs" title="${escH(e.pod_name)}">
+            ${escH(e.pod_name || '—')}
+          </td>
+          <td class="py-2.5 px-3.5 font-mono text-slate-800 text-xs">
+            <div class="truncate max-w-2xl">${escH(e.message || '')}</div>
+          </td>
+        </tr>
+        <tr id="rexp-${idx}" class="hidden bg-slate-50 border-y border-slate-200">
+          <td colspan="4" class="p-4 text-xs font-mono">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-slate-600 font-sans font-semibold">Pod: <code>${escH(e.pod_name)}</code> (${escH(e.family || '—')})</span>
+              <button type="button" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs px-2.5 py-1 rounded shadow-2xs cursor-pointer font-sans"
+                      onclick="event.stopPropagation(); window.scplCopyText(decodeURIComponent('${encodeURIComponent(e.message)}'), this)">
+                Copy Message
+              </button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap">${escH(e.message)}</pre>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Render Pods Breakdown View ────────────────────────────────────────
+    function renderPods() {
+      const tbody = document.getElementById('scpl-pods-tbody');
+      if (!tbody) return;
+
+      const q = searchQuery.toLowerCase();
+      const filtered = PODS.filter(p => {
+        if (q) {
+          return (p.pod_name || '').toLowerCase().includes(q)
+              || (p.family || '').toLowerCase().includes(q)
+              || (p.last_error || '').toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      updateCountLabel(filtered.length, PODS.length);
+      const items = sortedItems(filtered, podSort).slice(0, 300);
+
+      if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No matching pods found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items.map(p => `
+        <tr class="hover:bg-blue-50/40 transition-colors">
+          <td class="py-2.5 px-3.5 font-mono font-semibold text-slate-800 text-xs whitespace-nowrap">${escH(p.pod_name)}</td>
+          <td class="py-2.5 px-3.5 text-slate-600 text-xs whitespace-nowrap">${escH(p.family)}</td>
+          <td class="py-2.5 px-3.5 whitespace-nowrap">${statusBadge(p.status)}</td>
+          <td class="py-2.5 px-3.5 text-right font-mono font-bold ${p.error_count > 0 ? 'text-rose-700' : 'text-slate-400'} text-xs">
+            ${Number(p.error_count || 0).toLocaleString()}
+          </td>
+          <td class="py-2.5 px-3.5 text-right font-mono font-semibold ${p.warn_count > 0 ? 'text-amber-700' : 'text-slate-400'} text-xs">
+            ${Number(p.warn_count || 0).toLocaleString()}
+          </td>
+          <td class="py-2.5 px-3.5 font-mono text-[11px] text-slate-600 truncate max-w-md" title="${escH(p.last_error || '')}">
+            ${escH(p.last_error || '—')}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Update Count Label & Dispatch Render ─────────────────────────────
+    function updateCountLabel(shown, total) {
+      const el = document.getElementById('scpl-err-count-label');
+      if (el) {
+        el.innerText = shown === total
+          ? `${total.toLocaleString()} item${total !== 1 ? 's' : ''}`
+          : `${shown.toLocaleString()} / ${total.toLocaleString()} matched`;
+      }
+    }
+
+    function render() {
+      if (activeTab === 'sigs') renderSigs();
+      else if (activeTab === 'raw') renderRaw();
+      else renderPods();
+    }
+
+    // ── Global window helpers ────────────────────────────────────────────
+    window.scplToggleRow = function(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    };
+    window.scplCopyText = copyToClipboard;
+
+    // ── Sorting Click Listeners ──────────────────────────────────────────
+    function bindSort(tableId, sortState, renderFn) {
+      const tbl = document.getElementById(tableId);
+      if (!tbl) return;
+      tbl.querySelectorAll('thead th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          if (sortState.col === col) {
+            sortState.dir *= -1;
+          } else {
+            sortState.col = col;
+            sortState.dir = (col === 'count' || col === 'error_count' || col === 'pod_count') ? -1 : 1;
+          }
+          tbl.querySelectorAll('thead th').forEach(h => {
+            const icon = h.querySelector('.sort-icon');
+            if (icon) icon.innerText = '';
+          });
+          const activeIcon = th.querySelector('.sort-icon');
+          if (activeIcon) activeIcon.innerText = sortState.dir === 1 ? ' ▲' : ' ▼';
+          renderFn();
+        });
+      });
+    }
+
+    // ── Level Buttons ────────────────────────────────────────────────────
+    document.querySelectorAll('.scpl-lv-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.scpl-lv-btn').forEach(b => {
+          b.classList.remove('active', 'bg-blue-600', 'bg-rose-600', 'bg-amber-500', 'bg-blue-500', 'text-white');
+          b.classList.add('bg-white');
+        });
+        btn.classList.add('active', 'text-white');
+        const l = btn.dataset.l;
+        if (l === 'ALL') btn.classList.add('bg-blue-600');
+        else if (l === 'ERROR') btn.classList.add('bg-rose-600');
+        else if (l === 'WARN') btn.classList.add('bg-amber-500');
+        else if (l === 'INFO') btn.classList.add('bg-blue-500');
+
+        activeLevel = l;
+        render();
+        fetchParsedLogs(false);
+      });
+    });
+
+    // ── Search Input (debounced 300ms) ───────────────────────────────────
+    const searchInput = document.getElementById('scpl-err-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          searchQuery = searchInput.value.trim();
+          render();
+        }, 300);
+      });
+      searchInput.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          searchInput.value = '';
+          searchQuery = '';
+          render();
+        }
+      });
+    }
+
+    // ── Tab Switching ────────────────────────────────────────────────────
+    document.querySelectorAll('.scpl-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.scpl-tab-btn').forEach(b => {
+          b.classList.remove('active', 'bg-white', 'text-blue-900', 'shadow-2xs');
+          b.classList.add('text-slate-600');
+        });
+        btn.classList.add('active', 'bg-white', 'text-blue-900', 'shadow-2xs');
+        btn.classList.remove('text-slate-600');
+
+        activeTab = btn.dataset.tab;
+        const sigsView = document.getElementById('scpl-sigs-view');
+        const rawView  = document.getElementById('scpl-raw-view');
+        const podsView = document.getElementById('scpl-pods-view');
+
+        if (sigsView) sigsView.classList.toggle('hidden', activeTab !== 'sigs');
+        if (rawView)  rawView.classList.toggle('hidden', activeTab !== 'raw');
+        if (podsView) podsView.classList.toggle('hidden', activeTab !== 'pods');
+
+        render();
+      });
+    });
+
+    // ── Refresh / Re-ingest button ───────────────────────────────────────
+    const refreshBtn = document.getElementById('scpl-err-refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => fetchParsedLogs(true));
+    }
+
+    // ── Initialize on Mount ──────────────────────────────────────────────
+    bindSort('scpl-sig-table',  sigSort,  renderSigs);
+    bindSort('scpl-raw-table',  rawSort,  renderRaw);
+    bindSort('scpl-pods-table', podSort,  renderPods);
+
+    // Initial render from server-side data, then hydrate/sync from endpoint
+    updateHeaderStats();
+    render();
+    fetchParsedLogs(false);
+  })();
+  </script>
+
+  {# ══════════════════════════════════════════════════════════════════════
+     Performance Time-Series  (Chart.js: hourly throughput, BQL latency,
+     worker gaps)
+     ══════════════════════════════════════════════════════════════════════ #}
+  {% set _ts = sc_pl_result.get('time_series', {}) %}
+  {% if _ts.get('hourly_activity') or _ts.get('bql_percentiles') %}
+  <div class="scpl-sec" id="scpl-timeseries">
+    <div class="scpl-sec-title">📈 Performance Time-Series</div>
+
+    <style>
+      .scpl-ts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem;margin-bottom:1rem;}
+      .scpl-chart-box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:.75rem;}
+      .scpl-chart-title{font-size:.78rem;font-weight:700;color:#374151;
+                        text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;}
+      /* Gap table */
+      #scpl-gap-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+      #scpl-gap-table th{background:#f3f4f6;padding:.35rem .55rem;text-align:left;
+                         border-bottom:2px solid #e5e7eb;font-size:.71rem;
+                         text-transform:uppercase;letter-spacing:.04em;color:#374151;}
+      #scpl-gap-table td{padding:.3rem .55rem;border-bottom:1px solid #f3f4f6;}
+      .gap-ok      {background:#f0fdf4;color:#166534;}
+      .gap-warn    {background:#fffbeb;color:#92400e;}
+      .gap-critical{background:#fef2f2;color:#b91c1c;}
+    </style>
+
+    <div class="scpl-ts-grid">
+
+      {# ── Chart 1: Hourly pod activity + error rate ── #}
+      {% if _ts.get('hourly_activity') %}
+      <div class="scpl-chart-box" style="grid-column:1/-1;">
+        <div class="scpl-chart-title">Hourly Pod Activity &amp; Error Rate</div>
+        <canvas id="scpl-chart-activity" style="max-height:240px;"></canvas>
+      </div>
+      {% endif %}
+
+      {# ── Chart 2: BQL rows-per-query percentiles ── #}
+      {% set _bpcts = _ts.get('bql_percentiles', {}) %}
+      {% if _bpcts %}
+      <div class="scpl-chart-box">
+        <div class="scpl-chart-title">BQL Query Size Distribution (rows/query)</div>
+        <canvas id="scpl-chart-pcts" style="max-height:200px;"></canvas>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;font-size:.72rem;color:#6b7280;">
+          <span>Sample: <strong>{{ _bpcts.get('sample',0) }}</strong> queries</span>
+          <span>P50: <strong>{{ _bpcts.get('p50',0)|int }}</strong></span>
+          <span>P95: <strong>{{ _bpcts.get('p95',0)|int }}</strong></span>
+          <span>P99: <strong>{{ _bpcts.get('p99',0)|int }}</strong></span>
+          <span>Max: <strong>{{ _bpcts.get('max',0)|int }}</strong></span>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Chart 3: BQL hourly throughput ── #}
+      {% if _ts.get('bql_hourly') %}
+      <div class="scpl-chart-box">
+        <div class="scpl-chart-title">BQL Query Throughput (per hour)</div>
+        <canvas id="scpl-chart-bql-hourly" style="max-height:200px;"></canvas>
+      </div>
+      {% endif %}
+
+    </div>
+
+    {# ── Worker Activity Gap Timeline Table ── #}
+    {% set _gaps = _ts.get('worker_gaps', []) %}
+    <details {% if _gaps %}open{% endif %}>
+      <summary style="cursor:pointer;font-weight:600;font-size:.88rem;color:#1e40af;
+                      padding:.35rem 0;list-style:none;user-select:none;">
+        ⏱ Worker Activity Gap Timeline
+        {% if _gaps %}
+        <span style="background:#fee2e2;color:#b91c1c;padding:.1rem .4rem;border-radius:4px;
+                     font-size:.72rem;margin-left:.4rem;">{{ _gaps|length }} gap{{ 's' if _gaps|length!=1 else '' }}</span>
+        {% else %}
+        <span style="background:#dcfce7;color:#166534;padding:.1rem .4rem;border-radius:4px;
+                     font-size:.72rem;margin-left:.4rem;">✅ No gaps detected</span>
+        {% endif %}
+      </summary>
+      <div style="margin-top:.6rem;">
+        {% if _gaps %}
+        <div class="table-scroll-container" style="max-height:260px;">
+          <table id="scpl-gap-table">
+            <thead><tr>
+              <th>From Hour</th>
+              <th>To Hour</th>
+              <th>Gap</th>
+              <th>Severity</th>
+              <th>Notes</th>
+            </tr></thead>
+            <tbody>
+            {% for g in _gaps %}
+            <tr class="gap-{{ g.severity }}">
+              <td style="font-family:monospace;">{{ g.from_hour }}</td>
+              <td style="font-family:monospace;">{{ g.to_hour }}</td>
+              <td style="font-weight:700;">{{ g.gap_hours }}h</td>
+              <td>
+                {% if g.severity == 'critical' %}🔴 Critical
+                {% elif g.severity == 'warn' %}🟡 Warning
+                {% else %}🟢 OK{% endif %}
+              </td>
+              <td style="color:#6b7280;font-size:.77rem;">
+                {% if g.gap_hours > 6 %}No ML workers ran for {{ g.gap_hours }}h — possible stall
+                {% elif g.gap_hours > 3 %}Extended quiet period — check scheduler
+                {% else %}Brief quiet period{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        {# Show hourly heartbeat heatmap ── #}
+        <div style="font-size:.78rem;color:#6b7280;margin-bottom:.4rem;">
+          ML worker heartbeat heatmap (green = active, grey = no pods)
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;">
+        {% for row in _ts.get('hourly_activity', []) %}
+          {% set ml_active = row.get('pod_counts', {}).get('sc-sp-ml-worker', 0) %}
+          <div title="{{ row.hour }} – {{ row.total_pods }} pods, {{ row.errors }} errors"
+               style="width:18px;height:18px;border-radius:3px;
+                      background:{{ '#22c55e' if ml_active > 0 else '#f3f4f6' }};
+                      border:1px solid {{ '#16a34a' if ml_active > 0 else '#e5e7eb' }};
+                      font-size:.6rem;line-height:18px;text-align:center;
+                      color:{{ '#fff' if ml_active > 0 else '#9ca3af' }};">
+            {{ ml_active if ml_active > 0 else '' }}
+          </div>
+        {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </details>
+  </div>{# /scpl-timeseries #}
+
+  <script>
+  /* ── Lazy-load Chart.js then init SC Pipeline time-series charts ──────── */
+  (function () {
+    if (typeof Chart !== 'undefined') { initScplCharts(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload  = initScplCharts;
+    s.onerror = () => { console.warn('Chart.js load failed'); };
+    document.head.appendChild(s);
+
+    function initScplCharts() {
+      const TS       = {{ _ts | tojson }};
+      const ACTIVITY = TS.hourly_activity || [];
+      const BPCTS    = TS.bql_percentiles || {};
+      const BQL_H    = TS.bql_hourly      || [];
+
+      const chartDefaults = {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { font: { size: 11 }, boxWidth: 12 } } },
+        animation: { duration: 400 },
+      };
+
+      /* ── 1. Hourly pod activity + error rate ─────────────────────────── */
+      const actEl = document.getElementById('scpl-chart-activity');
+      if (actEl && ACTIVITY.length) {
+        // Limit to last 72 hours for readability
+        const data = ACTIVITY.slice(-72);
+        const labels = data.map(r => r.hour.slice(5, 16));  // "MM-DD HH:00"
+
+        // Collect all families
+        const famSet = new Set();
+        data.forEach(r => Object.keys(r.pod_counts || {}).forEach(f => famSet.add(f)));
+        const families = [...famSet].sort();
+
+        const FAM_COLORS = {
+          'sc-sp-ml-worker':              '#6366f1',
+          'sc-cron-flow-stats-worker':    '#10b981',
+          'sc-cron-issue-stats-worker':   '#14b8a6',
+          'sc-cron-cleanup-worker':       '#8b5cf6',
+          'common-sc-realtime-service':   '#3b82f6',
+          'fsc-flink-cluster-taskmanager':'#f59e0b',
+          'sc-bql-thanos':                '#a78bfa',
+          'ncm-sc-metrics-job':           '#06b6d4',
+        };
+
+        const datasets = families.map((fam, i) => ({
+          label: fam.replace(/^sc-|^ncm-|^fsc-/, '').replace(/-/g, ' '),
+          data:  data.map(r => (r.pod_counts || {})[fam] || 0),
+          backgroundColor: FAM_COLORS[fam] || `hsl(${(i*47)%360},65%,55%)`,
+          stack: 'pods',
+          yAxisID: 'y',
+        }));
+
+        // Error rate line
+        datasets.push({
+          label: 'Errors',
+          data:  data.map(r => r.errors || 0),
+          type:  'line',
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,.15)',
+          borderWidth: 2,
+          pointRadius: 3,
+          tension: 0.3,
+          yAxisID: 'y2',
+          stack: undefined,
+        });
+
+        new Chart(actEl, {
+          type: 'bar',
+          data: { labels, datasets },
+          options: {
+            ...chartDefaults,
+            scales: {
+              x:  { stacked: true, ticks: { font: { size: 10 }, maxRotation: 45 } },
+              y:  { stacked: true, position: 'left',
+                    title: { display: true, text: 'Pods', font: { size: 10 } },
+                    ticks: { font: { size: 10 } } },
+              y2: { position: 'right', grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Errors', font: { size: 10 } },
+                    ticks: { color: '#ef4444', font: { size: 10 } } },
+            },
+          },
+        });
+      }
+
+      /* ── 2. BQL percentiles horizontal bar ───────────────────────────── */
+      const pctEl = document.getElementById('scpl-chart-pcts');
+      if (pctEl && BPCTS.sample) {
+        new Chart(pctEl, {
+          type: 'bar',
+          data: {
+            labels: ['P50', 'P95', 'P99', 'Max'],
+            datasets: [{
+              label: 'Rows per query',
+              data:  [BPCTS.p50, BPCTS.p95, BPCTS.p99, BPCTS.max],
+              backgroundColor: ['#10b981','#f59e0b','#ef4444','#6b7280'],
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            ...chartDefaults,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { title: { display: true, text: 'Rows', font: { size: 10 } },
+                   ticks: { font: { size: 10 } } },
+              y: { ticks: { font: { size: 11, weight: 'bold' } } },
+            },
+          },
+        });
+      }
+
+      /* ── 3. BQL hourly throughput ────────────────────────────────────── */
+      const bqlEl = document.getElementById('scpl-chart-bql-hourly');
+      if (bqlEl && BQL_H.length) {
+        const bdata = BQL_H.slice(-48);
+        new Chart(bqlEl, {
+          type: 'line',
+          data: {
+            labels: bdata.map(r => r.hour.slice(5, 16)),
+            datasets: [
+              { label: 'Requests',  data: bdata.map(r => r.requests  || 0),
+                borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)',
+                tension: 0.3, fill: true, pointRadius: 2 },
+              { label: 'Responses', data: bdata.map(r => r.responses || 0),
+                borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)',
+                tension: 0.3, fill: true, pointRadius: 2 },
+            ],
+          },
+          options: {
+            ...chartDefaults,
+            scales: {
+              x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+              y: { title: { display: true, text: 'Queries', font: { size: 10 } },
+                   ticks: { font: { size: 10 } }, beginAtZero: true },
+            },
+          },
+        });
+      }
+    }
+  })();
+  </script>
+  {% endif %}{# time_series #}
+
+  <!-- Issues -->
+  {% if sc_pl_result.get('issues') %}
+  <div class="scpl-sec">
+    <div class="scpl-sec-title">⚠️ Issues ({{ sc_pl_result.get('issues', [])|length }})</div>
+    {% for issue in sc_pl_result.get('issues', []) %}
+    <div class="scpl-issue">{{ issue }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Per-family cards (Fully Expandable Accordions) -->
+  <div class="scpl-sec" id="scpl-families-section">
+    <div class="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-slate-200">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🏭</span>
+        <h2 class="text-lg font-bold text-blue-950 m-0">Pod Families</h2>
+        <span class="text-xs text-slate-500 font-normal">({{ sc_pl_result.get('families', {})|length }} active families)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="scplToggleAllFamilies(true)"
+                class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs px-2.5 py-1 rounded-lg font-semibold shadow-2xs cursor-pointer transition">
+          Expand All
+        </button>
+        <button type="button" onclick="scplToggleAllFamilies(false)"
+                class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs px-2.5 py-1 rounded-lg font-semibold shadow-2xs cursor-pointer transition">
+          Collapse All
+        </button>
+      </div>
+    </div>
+
+    {% for fam_name, fam in sc_pl_result.get('families', {}).items() %}
+    {% set fam_pods = fam.get('pod_count', 0) %}
+    {% set fam_status = fam.get('status_counts', {}) %}
+    {% set fam_errs = fam.get('error_count', 0) or fam.get('total_errors', 0) %}
+    {% set pod_instances = fam.get('pods', []) %}
+
+    <div class="scpl-family border border-slate-200 rounded-xl mb-3 overflow-hidden bg-white shadow-2xs">
+      <!-- Family Accordion Header -->
+      <div class="scpl-family-hdr flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-slate-100/80 cursor-pointer select-none transition"
+           onclick="scplToggleFamily('fam-body-{{ loop.index }}', this)">
+        <span class="font-bold text-sm text-slate-900 flex-1 font-mono">{{ fam_name }}</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">{{ fam_pods }} pod{{ 's' if fam_pods != 1 else '' }}</span>
+        {% if fam_status.get('Running') %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">▶ {{ fam_status.get('Running') }} running</span>
+        {% endif %}
+        {% if fam_status.get('Succeeded') %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">✓ {{ fam_status.get('Succeeded') }} ok</span>
+        {% endif %}
+        {% if fam_status.get('Failed') %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">✗ {{ fam_status.get('Failed') }} failed</span>
+        {% endif %}
+        {% if fam_errs %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">⚠ {{ fam_errs }} error{{ 's' if fam_errs != 1 else '' }}</span>
+        {% endif %}
+        <span class="fam-chevron text-slate-400 text-xs transition-transform duration-200">▼</span>
+      </div>
+
+      <!-- Family Accordion Body -->
+      <div class="scpl-family-body hidden p-4 border-t border-slate-200 bg-white" id="fam-body-{{ loop.index }}">
+        <!-- Family Key Metrics Row -->
+        <div class="scpl-metric-row flex flex-wrap gap-2 mb-3">
+          {% if fam.get('bql_queries_ok') is not none and fam.get('bql_queries_ok') != '' %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">BQL queries ok:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('bql_queries_ok') }}</span></div>
+          {% endif %}
+          {% if fam.get('queries_received') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Queries received:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('queries_received') }}</span></div>
+          {% endif %}
+          {% if fam.get('queries_responded') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Queries responded:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('queries_responded') }}</span></div>
+          {% endif %}
+          {% if fam.get('total_rows_returned') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Total rows:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('total_rows_returned') }}</span></div>
+          {% endif %}
+          {% if fam.get('ch_connected_pods') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">CH connected pods:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('ch_connected_pods') }}</span></div>
+          {% endif %}
+          {% if fam.get('workers_started') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Workers started:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('workers_started') }}</span></div>
+          {% endif %}
+          {% if fam.get('groupings_started') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Groupings started:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('groupings_started') }}</span></div>
+          {% endif %}
+          {% if fam.get('pg_pools_ready') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">PG pools ready:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('pg_pools_ready') }}</span></div>
+          {% endif %}
+          {% if fam.get('ch_pool_ready') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">CH pool ready:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('ch_pool_ready') }}</span></div>
+          {% endif %}
+          {% if fam.get('metrics_inserted') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Metrics inserted:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('metrics_inserted') }}</span></div>
+          {% endif %}
+          {% if fam.get('total_ingested') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Total ingested:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('total_ingested') }}</span></div>
+          {% endif %}
+          {% if fam.get('reconciliations') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Reconciliations:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('reconciliations') }}</span></div>
+          {% endif %}
+          {% if fam.get('fully_reconciled') is not none %}
+          <div class="bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-sky-800">Fully reconciled:</span> <span class="font-bold text-sky-950 ml-1">{{ fam.get('fully_reconciled') }}</span></div>
+          {% endif %}
+          {% if fam.get('warn_count') %}
+          <div class="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-xs"><span class="font-semibold text-amber-800">Warnings:</span> <span class="font-bold text-amber-950 ml-1">{{ fam.get('warn_count') }}</span></div>
+          {% endif %}
+        </div>
+
+        <!-- Missing account types (flink taskmanager) -->
+        {% if fam.get('missing_account_by_type') %}
+        <div class="mb-3">
+          <div class="text-xs font-semibold text-slate-700 mb-1">Missing account types:</div>
+          <div class="flex gap-1.5 flex-wrap">
+          {% for atype, cnt in fam.get('missing_account_by_type', {}).items() %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">{{ atype }}: {{ cnt }}</span>
+          {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Collectors (metrics-job) -->
+        {% if fam.get('collectors') %}
+        <div class="mb-3">
+          <div class="text-xs font-semibold text-slate-700 mb-1">Collectors:</div>
+          <div class="flex gap-1.5 flex-wrap">
+          {% for cname, cnt in fam.get('collectors', {}).items() %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">{{ cname }}: {{ cnt }}</span>
+          {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Top errors summary -->
+        {% if fam.get('top_errors') %}
+        <div class="mb-3">
+          <div class="text-xs font-semibold text-slate-700 mb-1">Top recurring errors:</div>
+          <div class="space-y-1">
+          {% for err in fam.get('top_errors', [])[:4] %}
+            <div class="text-xs text-rose-900 bg-rose-50 border border-rose-200 rounded p-1.5 font-mono truncate max-w-full">{{ err }}</div>
+          {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Individual Pod Instances Table -->
+        {% if pod_instances %}
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <span>📦</span> Individual Pod Instances ({{ pod_instances|length }})
+            </div>
+            <span class="text-[11px] text-slate-400">Click a pod log button to download full log</span>
+          </div>
+
+          <div class="overflow-hidden border border-slate-200 rounded-lg shadow-2xs bg-white">
+            <div class="max-h-[360px] overflow-y-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="sticky top-0 bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10">
+                  <tr>
+                    <th class="py-2 px-3">Pod Instance</th>
+                    <th class="py-2 px-3 w-24">Status</th>
+                    <th class="py-2 px-3 w-24 text-right">Restarts</th>
+                    <th class="py-2 px-3">Error / Exception Summary</th>
+                    <th class="py-2 px-3 w-28 text-center">Log File</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  {% for p in pod_instances %}
+                  {% set p_st = p.status|lower %}
+                  <tr class="hover:bg-blue-50/40 transition-colors">
+                    <td class="py-2 px-3 font-mono font-semibold text-slate-800">
+                      <div>{{ p.pod_name }}</div>
+                      {% if p.containers %}
+                      <div class="text-[10px] font-sans text-slate-400 font-normal">Containers: {{ p.containers }}</div>
+                      {% endif %}
+                    </td>
+                    <td class="py-2 px-3 whitespace-nowrap">
+                      {% if p_st == 'running' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">▶ Running</span>
+                      {% elif p_st == 'succeeded' or p_st == 'completed' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">✓ Succeeded</span>
+                      {% elif p_st == 'failed' or p_st == 'error' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">✗ Failed</span>
+                      {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">{{ p.status }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-2 px-3 text-right font-mono font-semibold text-xs whitespace-nowrap">
+                      {% if p.restarts > 0 %}
+                        <span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-bold">{{ p.restarts }} restart{{ 's' if p.restarts != 1 else '' }}</span>
+                      {% else %}
+                        <span class="text-slate-400">0</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-2 px-3 font-mono text-[11px]">
+                      {% if p.error_count > 0 %}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 mr-1.5">{{ p.error_count }} err{{ 's' if p.error_count != 1 else '' }}</span>
+                      {% endif %}
+                      {% if p.warn_count > 0 %}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 mr-1.5">{{ p.warn_count }} warn{{ 's' if p.warn_count != 1 else '' }}</span>
+                      {% endif %}
+                      {% if p.last_error %}
+                        <span class="text-rose-900 truncate inline-block max-w-sm align-bottom" title="{{ p.last_error }}">{{ p.last_error }}</span>
+                      {% elif p.error_count == 0 and p.warn_count == 0 %}
+                        <span class="text-emerald-600 font-sans font-medium text-[11px]">Clean log</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-2 px-3 text-center whitespace-nowrap">
+                      <a href="{{ url_for('download_sc_pipeline_pod_log', run_id=run_id, pod_name=p.pod_name) }}"
+                         class="inline-flex items-center gap-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 text-[11px] px-2.5 py-1 rounded shadow-2xs font-semibold transition cursor-pointer"
+                         title="Download {{ p.pod_name }}.log">
+                        ⬇ Log File
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    function scplToggleFamily(bodyId, headerEl) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      const isHidden = body.classList.contains('hidden');
+      body.classList.toggle('hidden', !isHidden);
+      const chevron = headerEl.querySelector('.fam-chevron');
+      if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+    }
+
+    function scplToggleAllFamilies(expand) {
+      document.querySelectorAll('.scpl-family').forEach(fam => {
+        const body = fam.querySelector('.scpl-family-body');
+        const chevron = fam.querySelector('.fam-chevron');
+        if (body) {
+          body.classList.toggle('hidden', !expand);
+        }
+        if (chevron) {
+          chevron.style.transform = expand ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+      });
+    }
+  </script>
+
+  {% else %}
+  <!-- Still running or no result yet -->
+  <div class="scpl-sec" style="text-align:center;color:#6b7280;padding:2rem;">
+    {% if info.get('status') in ('queued', 'running') %}
+    <div style="font-size:1rem;">⏳ Analysis in progress…</div>
+    <div style="font-size:.85rem;margin-top:.5rem;">The log below shows live progress.</div>
+    {% else %}
+    <div style="font-size:1rem;">No analysis results yet.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  </div>{# /sc-pl-wrap #}
+  {% endif %}{# sc_pipeline_analyzer #}
+
+  {# ── Structured log viewer (non-disk/power jobs) ── #}
+  {% if info.get('job_kind') not in ('disk', 'power') %}
+  <div id="lv-wrap">
+    <div id="lv-metrics">
+      <span id="lv-total">—</span>
+      <span id="lv-err-badge"  class="lv-badge lv-badge-err"  title="Click to filter">0 errors</span>
+      <span id="lv-warn-badge" class="lv-badge lv-badge-warn" title="Click to filter">0 warnings</span>
+      <span id="lv-exc-wrap"></span>
+    </div>
+    <div id="lv-filter">
+      <button class="lv-lvl-btn active" data-l="ALL">All</button>
+      <button class="lv-lvl-btn" data-l="ERROR">ERROR</button>
+      <button class="lv-lvl-btn" data-l="WARN">WARN</button>
+      <button class="lv-lvl-btn" data-l="INFO">INFO</button>
+      <input id="lv-search" type="text" placeholder="🔍  Search logs…" autocomplete="off" />
+    </div>
+    <div id="lv-viewport">
+      <div id="lv-spacer-top"></div>
+      <div id="lv-rows"></div>
+      <div id="lv-spacer-bot"></div>
+      <div id="lv-empty">Loading log…</div>
+    </div>
+    <div id="lv-trunc" style="display:none;"></div>
+  </div>
+  {% endif %}
+  {# ── Raw pre: disk/power jobs only ── #}
+  <pre id="log" class="{% if info.get('job_kind') == 'disk' %}disk-job-log{% elif info.get('job_kind') == 'power' %}disk-job-log{% endif %}"
+       style="{% if info.get('job_kind') not in ('disk', 'power') %}display:none{% endif %}">{% if info.get('job_kind') == 'disk' %}Loading VM summaries…{% elif info.get('job_kind') == 'power' %}Loading power operation status…{% else %}Loading log…{% endif %}</pre>
 
   <script>
     const apiUrl = {{ api_url | tojson }};
@@ -3992,7 +5713,8 @@
     const isIpfixJob = {{ (info.get('job_kind') == 'ipfix') | tojson }};
     const isScNetAnalyzerJob = {{ (info.get('job_kind') == 'sc_network_analyzer') | tojson }};
     const isScSecAnalyzerJob = {{ (info.get('job_kind') == 'sc_security_analyzer') | tojson }};
-    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer')) | tojson }};
+    const isScPlAnalyzerJob  = {{ (info.get('job_kind') == 'sc_pipeline_analyzer') | tojson }};
+    const isSnapshotJob = {{ (info.get('job_kind') not in ('disk', 'power', 'pipeline', 'recovery_delete', 'cg_reports', 'cg_data_loader', 'ipfix', 'sc_network_analyzer', 'sc_security_analyzer', 'sc_pipeline_analyzer')) | tojson }};
     const dl = document.getElementById('dl');
     const logEl = document.getElementById('log');
     const badge = document.getElementById('status-badge');
@@ -4780,7 +6502,7 @@
     function setBadge(st) {
       badge.textContent = st;
       badge.className = 'status status-' + st;
-      const done = (st === 'complete' || st === 'error' || st === 'aborted');
+      const done = (st === 'complete' || st === 'done' || st === 'error' || st === 'aborted');
       dl.classList.toggle('disabled', !done);
       hint.textContent = done ? 'Run finished.' : 'Updating every 2s…';
       if (done) hint.textContent += ' You can download the full log.';
@@ -5385,9 +7107,8 @@
           await renderPipelineProgress(j);
         }
         if (!(j.job_kind === 'disk' || isDiskJob || j.job_kind === 'power')) {
-          logEl.textContent = j.log || '(empty)';
-          
-          // Parse IPFIX log for flow statistics
+          lvSetLog(j.log || '', j.log_truncated || false);
+          // Parse IPFIX log for flow statistics (still needs raw text)
           if (j.job_kind === 'ipfix' || isIpfixJob) {
             parseIpfixLog(j.log || '', j.ipfix_live_stats || null);
           }
@@ -5396,7 +7117,30 @@
           errBox.style.display = 'block';
           errBox.textContent = 'Error: ' + j.error;
         }
-        if (j.status === 'complete' || j.status === 'error' || j.status === 'aborted') return;
+        // ── SC Pipeline Analyzer: live polling indicator + duration ──────
+        if (isScPlAnalyzerJob) {
+          const pollEl = document.getElementById('scpl-poll-indicator');
+          const durEl  = document.getElementById('scpl-duration');
+          if (pollEl) {
+            const alive = j.status === 'running' || j.status === 'queued';
+            pollEl.style.display = alive ? 'flex' : 'none';
+          }
+          if (durEl && j.elapsed_running_sec != null) {
+            const s = Math.round(j.elapsed_running_sec);
+            durEl.textContent = s < 60 ? s + 's' : Math.floor(s/60) + 'm ' + (s%60) + 's';
+          }
+        }
+
+        if (j.status === 'complete' || j.status === 'error' || j.status === 'aborted' || j.status === 'done') {
+          // SC Pipeline Analyzer: reload only if results section is not yet in DOM (e.g. live transition from running -> done)
+          if (isScPlAnalyzerJob) {
+            const hasRenderedResults = document.getElementById('scpl-pipeline-health') || document.getElementById('scpl-err-section');
+            if (!hasRenderedResults) {
+              window.location.reload();
+            }
+          }
+          return;
+        }
       } catch (e) {
         var msg = '[poll error: ' + e + ']';
         if (logEl && logEl.style.display !== 'none') {
@@ -5477,6 +7221,238 @@
     poll();
     setJobStartedAtDisplay({{ (info.get('running_started_at') or '') | tojson }});
     setJobEndedAtDisplay({{ (info.get('finished_at') or '') | tojson }});
+  </script>
+
+  <script>
+  // ════════════════════════════════════════════════════════════════════════
+  //  Structured Log Viewer — virtual-scroll, filter, search, metrics
+  // ════════════════════════════════════════════════════════════════════════
+  (function () {
+    const ROW_H   = 22;   // px per row (approximate fixed height)
+    const BUFFER  = 15;   // rows to render above/below the visible window
+    const PAGE_SZ = 60;   // visible window size
+
+    // ── Parse one log line → {ts, level, msg, raw} ───────────────────────
+    // Handles formats:
+    //   2026-10-31T16:15:30.817616+00:00 [INFO] message
+    //   [INFO] message   [WARN] ...   [ERROR] ...
+    //   ✓ pod-name (success)   ✗ pod-name: err (failure)
+    //   anything else → plain text
+    const RE_FULL  = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2}))\s+\[(\w+)\]\s*(.*)/;
+    const RE_LEVEL = /^\[(\w+)\]\s*(.*)/;
+
+    function parseLine(raw) {
+      let m;
+      if ((m = RE_FULL.exec(raw))) {
+        const ts  = m[1].replace('T', ' ').replace(/\.\d+([+-Z])/, '$1').slice(0, 19) + ' UTC';
+        const lvl = m[2].toUpperCase();
+        return { ts, level: canonLevel(lvl), msg: m[3], raw };
+      }
+      if ((m = RE_LEVEL.exec(raw))) {
+        const lvl = m[1].toUpperCase();
+        return { ts: '', level: canonLevel(lvl), msg: m[2], raw };
+      }
+      const trimmed = raw.trimStart();
+      if (trimmed.startsWith('✓') || trimmed.startsWith('✔'))
+        return { ts: '', level: 'OK',  msg: raw, raw };
+      if (trimmed.startsWith('✗') || trimmed.startsWith('✘'))
+        return { ts: '', level: 'FAIL', msg: raw, raw };
+      return { ts: '', level: '', msg: raw, raw };
+    }
+
+    function canonLevel(l) {
+      if (l === 'ERROR' || l === 'FATAL' || l === 'CRITICAL') return 'ERROR';
+      if (l === 'WARN'  || l === 'WARNING')                   return 'WARN';
+      if (l === 'INFO')                                        return 'INFO';
+      if (l === 'DEBUG' || l === 'TRACE')                     return 'DEBUG';
+      return l;
+    }
+
+    // ── Build metrics ─────────────────────────────────────────────────────
+    function buildMetrics(entries) {
+      let errs = 0, warns = 0;
+      const excMap = {};
+      for (const e of entries) {
+        if (e.level === 'ERROR' || e.level === 'FAIL') errs++;
+        else if (e.level === 'WARN') warns++;
+        // Extract exception class from message
+        const em = e.msg && e.msg.match(/(\w+(?:Error|Exception|Timeout|Failure))/);
+        if (em) excMap[em[1]] = (excMap[em[1]] || 0) + 1;
+      }
+      const topExc = Object.entries(excMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      return { total: entries.length, errs, warns, topExc };
+    }
+
+    // ── Render a single row div ───────────────────────────────────────────
+    function makeRowEl(entry) {
+      const div = document.createElement('div');
+      div.className = 'lv-row';
+
+      if (entry.ts) {
+        const ts = document.createElement('span');
+        ts.className = 'lv-ts';
+        ts.textContent = entry.ts;
+        div.appendChild(ts);
+      }
+
+      if (entry.level) {
+        const badge = document.createElement('span');
+        const cls = { ERROR:'E', WARN:'W', INFO:'I', DEBUG:'D', OK:'S', FAIL:'F' }[entry.level] || 'D';
+        badge.className = `lv-lvl lv-lvl-${cls}`;
+        badge.textContent = entry.level === 'OK' ? '✓' : entry.level === 'FAIL' ? '✗' : entry.level.slice(0, 5);
+        div.appendChild(badge);
+      }
+
+      const msg = document.createElement('span');
+      const msgCls = { ERROR:'lv-msg-err', WARN:'lv-msg-warn', OK:'lv-msg-ok', FAIL:'lv-msg-fail' }[entry.level] || '';
+      msg.className = 'lv-msg' + (msgCls ? ' ' + msgCls : '');
+      msg.textContent = entry.msg || entry.raw;
+      div.appendChild(msg);
+
+      return div;
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────
+    let allEntries    = [];   // all parsed log lines
+    let filtered      = [];   // after level + search filter
+    let activeLevel   = 'ALL';
+    let searchQuery   = '';
+    let searchTimer   = null;
+    let renderStart   = 0;    // first rendered index in filtered[]
+
+    // ── DOM refs ──────────────────────────────────────────────────────────
+    const wrap       = document.getElementById('lv-wrap');
+    const viewport   = document.getElementById('lv-viewport');
+    const rowsEl     = document.getElementById('lv-rows');
+    const spacerTop  = document.getElementById('lv-spacer-top');
+    const spacerBot  = document.getElementById('lv-spacer-bot');
+    const emptyEl    = document.getElementById('lv-empty');
+    const truncEl    = document.getElementById('lv-trunc');
+    const totalEl    = document.getElementById('lv-total');
+    const errBadge   = document.getElementById('lv-err-badge');
+    const warnBadge  = document.getElementById('lv-warn-badge');
+    const excWrap    = document.getElementById('lv-exc-wrap');
+    const searchEl   = document.getElementById('lv-search');
+
+    if (!wrap) return; // disk/power jobs don't have the viewer
+
+    // ── Apply filter ──────────────────────────────────────────────────────
+    function applyFilter() {
+      const q = searchQuery.toLowerCase();
+      filtered = allEntries.filter(e => {
+        if (activeLevel !== 'ALL' && e.level !== activeLevel) return false;
+        if (q && !e.raw.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      renderStart = 0;
+      renderWindow();
+    }
+
+    // ── Virtual-scroll render ─────────────────────────────────────────────
+    function renderWindow() {
+      const total = filtered.length;
+      emptyEl.style.display = total === 0 ? 'block' : 'none';
+      emptyEl.textContent   = allEntries.length === 0 ? 'Loading log…'
+                            : total === 0             ? 'No lines match the current filter.'
+                            : '';
+
+      const scrollTop    = viewport.scrollTop;
+      const firstVisible = Math.max(0, Math.floor(scrollTop / ROW_H) - BUFFER);
+      const lastVisible  = Math.min(total, firstVisible + PAGE_SZ + 2 * BUFFER);
+
+      spacerTop.style.height = (firstVisible * ROW_H) + 'px';
+      spacerBot.style.height = ((total - lastVisible) * ROW_H) + 'px';
+
+      // Diff with current DOM content — only replace if range changed
+      const curFirst = parseInt(rowsEl.dataset.first || '-1');
+      const curLast  = parseInt(rowsEl.dataset.last  || '-1');
+      if (curFirst === firstVisible && curLast === lastVisible) return;
+
+      rowsEl.dataset.first = firstVisible;
+      rowsEl.dataset.last  = lastVisible;
+
+      const frag = document.createDocumentFragment();
+      for (let i = firstVisible; i < lastVisible; i++) {
+        frag.appendChild(makeRowEl(filtered[i]));
+      }
+      rowsEl.replaceChildren(frag);
+    }
+
+    // ── Update metrics bar ────────────────────────────────────────────────
+    function updateMetrics() {
+      const m = buildMetrics(allEntries);
+      totalEl.textContent  = m.total.toLocaleString() + ' lines';
+      errBadge.textContent = m.errs.toLocaleString()  + ' error' + (m.errs !== 1 ? 's' : '');
+      warnBadge.textContent = m.warns.toLocaleString() + ' warning' + (m.warns !== 1 ? 's' : '');
+      errBadge.style.display  = m.errs  ? '' : 'none';
+      warnBadge.style.display = m.warns ? '' : 'none';
+
+      excWrap.innerHTML = '';
+      for (const [name, cnt] of m.topExc) {
+        const s = document.createElement('span');
+        s.className = 'lv-badge lv-exc';
+        s.textContent = `${name} ×${cnt}`;
+        s.title = `Click to search for "${name}"`;
+        s.style.cursor = 'pointer';
+        s.addEventListener('click', () => {
+          searchEl.value = name;
+          searchQuery = name.toLowerCase();
+          applyFilter();
+          searchEl.focus();
+        });
+        excWrap.appendChild(s);
+      }
+    }
+
+    // ── Public: set full log text ─────────────────────────────────────────
+    window.lvSetLog = function (text, truncated) {
+      const lines = (text || '').split('\n');
+      allEntries = lines.map(parseLine);
+      updateMetrics();
+      applyFilter();
+      if (truncated) {
+        truncEl.style.display = 'block';
+        truncEl.textContent   = '⚠ Log truncated — showing most recent lines only.';
+      } else {
+        truncEl.style.display = 'none';
+      }
+    };
+
+    // ── Scroll → virtual render ───────────────────────────────────────────
+    viewport.addEventListener('scroll', renderWindow, { passive: true });
+
+    // ── Level filter buttons ──────────────────────────────────────────────
+    document.querySelectorAll('.lv-lvl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.lv-lvl-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeLevel = btn.dataset.l;
+        applyFilter();
+      });
+    });
+
+    // Clicking the error/warn badges activates the corresponding filter
+    errBadge.addEventListener('click',  () => { document.querySelector('.lv-lvl-btn[data-l="ERROR"]').click(); });
+    warnBadge.addEventListener('click', () => { document.querySelector('.lv-lvl-btn[data-l="WARN"]').click(); });
+
+    // ── Search with 300 ms debounce ───────────────────────────────────────
+    searchEl.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        searchQuery = searchEl.value.toLowerCase();
+        applyFilter();
+      }, 300);
+    });
+
+    // ── Keyboard: Escape clears search ───────────────────────────────────
+    searchEl.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        searchEl.value = '';
+        searchQuery = '';
+        applyFilter();
+      }
+    });
+  })();
   </script>
   
   <!-- VM Logs Modal -->
