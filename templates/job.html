@@ -2173,11 +2173,11 @@
           ⚙️ Network Log Data Processor
         </div>
         <div style="font-size:.8rem;color:#374151;line-height:1.9;">
-          <div>Pipeline: <strong>{{ pl_dp.get('pipeline') or '—' }}</strong></div>
-          <div>Stream/Consumer: <strong>{{ pl_dp.get('stream') or '—' }} / {{ pl_dp.get('consumer') or '—' }}</strong></div>
+          <div>Pipeline: <strong>{{ pl_dp.get('pipeline_name') or '—' }}</strong></div>
+          <div>Stream/Consumer: <strong>{{ pl_dp.get('stream_name') or '—' }} / {{ pl_dp.get('consumer_name') or '—' }}</strong></div>
           <div>Subject: <strong style="font-family:monospace;">{{ pl_dp.get('subject') or '—' }}</strong></div>
-          <div>Workers: <strong>{{ pl_dp.get('workers') or '—' }}</strong></div>
-          <div>Subscribed: <strong>{{ '✅ yes' if pl_dp.get('subscription_active') else '❌ no' }}</strong></div>
+          <div>Workers: <strong>{{ pl_dp.get('worker_count') or '—' }}</strong></div>
+          <div>Subscribed: <strong>{{ '✅ yes' if pl_dp.get('subscription_added') else '❌ no' }}</strong></div>
           {% if pl_dp.get('total_replicas', 0) > 0 %}
           <div>Replicas subscribed:
             <strong {% if pl_dp.get('subscribed_replicas',0) < pl_dp.get('total_replicas',0) %}style="color:#b91c1c;"{% endif %}>
@@ -2185,25 +2185,35 @@
             </strong>
           </div>
           {% endif %}
+          
+          <!-- NATS Connection Failures -->
+          {% if pl_dp.get('nats_pull_errors', 0) > 0 %}
+          <div style="margin-top:.5rem;padding:.5rem;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;">
+            <div style="color:#dc2626;font-weight:600;font-size:.82rem;margin-bottom:.3rem;">⚠ NATS Connection Failure</div>
+            <div style="font-size:.75rem;color:#7f1d1d;">
+              <div>Pull errors: <strong>{{ '{:,}'.format(pl_dp.get('nats_pull_errors')) }}</strong></div>
+              <div>No responders: <strong>{{ '{:,}'.format(pl_dp.get('no_responders_errors', 0)) }}</strong></div>
+              <div style="margin-top:.3rem;color:#991b1b;font-weight:600;">
+                ⟶ <strong>0 messages consumed</strong> due to NATS unavailability
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          
           {% if pl_dp.get('subscription_failures', 0) > 0 %}
           <div style="color:#d97706;">⚠ {{ pl_dp.get('subscription_failures') }} subscription failure(s) — consumer was offline</div>
           {% endif %}
-          {% if pl_dp.get('no_responders_errors', 0) > 0 %}
-          <div style="color:#b91c1c;font-weight:600;">⚠ {{ pl_dp.get('no_responders_errors') }} 'no responders' errors — replica(s) cannot reach NATS</div>
-          {% endif %}
           {# ── Consumed / processed / dropped ────────────────────────────── #}
-          {% if pl_dp.get('msgs_consumed') is not none %}
-          <div>Messages consumed: <strong>{{ pl_dp.get('msgs_consumed') }}</strong></div>
-          {% if pl_dp.get('msgs_successfully_processed') is not none and pl_dp.get('msgs_successfully_processed', 0) > 0 %}
-          <div style="color:#15803d;">✔ {{ pl_dp.get('msgs_successfully_processed') }} processed successfully</div>
+          <div>Effective consumed: <strong style="color:{% if pl_dp.get('effective_consumed',0) > 0 %}#059669{% else %}#dc2626{% endif %};">
+            {{ pl_dp.get('effective_consumed', 0) }}</strong>
+            <span style="font-size:.74rem;color:#6b7280;">(within time window)</span>
+          </div>
+          {% if pl_dp.get('watch_callbacks_processed', 0) > 0 %}
+          <div style="color:#15803d;font-size:.75rem;">✔ {{ pl_dp.get('watch_callbacks_processed') }} watch callbacks processed</div>
           {% endif %}
           {% if pl_dp.get('msg_terminated', 0) > 0 %}
-          <div>Dropped (this run): <strong style="color:#b91c1c;">{{ pl_dp.get('msg_terminated') }}</strong>
+          <div style="margin-top:.3rem;">Dropped (this run): <strong style="color:#b91c1c;">{{ pl_dp.get('msg_terminated') }}</strong>
             <span style="font-size:.74rem;color:#6b7280;">(terminated/error)</span></div>
-          {% endif %}
-          {% else %}
-          <div>Messages consumed: <strong>{{ pl_dp.get('msg_terminated',0) }}</strong>
-            <span style="font-size:.74rem;color:#6b7280;">(terminated/dropped)</span></div>
           {% endif %}
           {% if pl_dp.get('msg_terminated_outside_window', 0) > 0 %}
           <div style="font-size:.74rem;color:#6b7280;margin-top:.15rem;">
@@ -2495,7 +2505,13 @@
            data-tooltip="Cumulative flow records across all published batches. One 'flow' = one IPFIX/netflow record describing a network connection.">
         <div class="scn-kpi-label">Total Flows</div>
         <div class="scn-kpi-value">{{ '{:,}'.format(totals.get('flows',0)) }}</div>
-        <div class="scn-kpi-sub">{{ '%.3f'%totals.get('gibibytes',0) }} GiB</div>
+        <div class="scn-kpi-sub">{{ '%.0f'%((totals.get('flows',1) / rate.get('span_minutes',1)) if rate.get('span_minutes',0) > 0 else 0) }} flows/min</div>
+      </div>
+      <div class="scn-kpi-card" style="border-left:4px solid #10b981;"
+           data-tooltip="Total payload volume published to NATS (sum of all batch size_bytes). Shows both raw MB and average per batch.">
+        <div class="scn-kpi-label">Volume Published</div>
+        <div class="scn-kpi-value">{{ '%.1f' % (totals.get('bytes',0) / 1048576) }} MB</div>
+        <div class="scn-kpi-sub">{{ '%.1f' % ((totals.get('bytes',0) / totals.get('batches_published',1)) / 1024) if totals.get('batches_published',0) > 0 else 0 }} KB/batch</div>
       </div>
       <div class="scn-kpi-card" style="border-left:4px solid #f59e0b;"
            data-tooltip="Publish lag = time between a batch being received and it being published to NATS. Median is the 50th percentile; p99 is the 99th percentile (worst 1% of batches).">
@@ -2627,96 +2643,186 @@
   </div>
   {% endif %}
 
-  <!-- ══ 6. Errors & Gaps ════════════════════════════════════════════════════ -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-
-    <!-- Errors -->
-    {% if errs %}
-    <div id="scn-errors-section" class="scn-sec scn-warn" style="margin-bottom:0;">
-      <div class="scn-sec-title" style="color:#dc2626;">⚠ {{ errs|length }} Error Entries</div>
+  <!-- ══ 6. Stage-Level Errors & Gaps ════════════════════════════════════════ -->
+  
+  {# Get stage-specific errors from pipeline results #}
+  {% set recv_errors = errs %}
+  {% set nats_errors = sc_result.get('_nats_parse', {}).get('error_entries', []) %}
+  {% set nats_warns = sc_result.get('_nats_parse', {}).get('warning_entries', []) %}
+  {% set ndp_errors = sc_result.get('_dp_parse', {}).get('error_entries', []) %}
+  {% set ndp_warns = sc_result.get('_dp_parse', {}).get('warning_entries', []) %}
+  {% set diis_errors = sc_result.get('_diis_parse', {}).get('error_entries', []) %}
+  {% set diis_warns = sc_result.get('_diis_parse', {}).get('warning_entries', []) %}
+  
+  <!-- Stage-Level Error Boxes -->
+  <div style="margin-bottom:1.5rem;">
+    <div style="font-size:1.1rem;font-weight:700;color:#1e293b;margin-bottom:1rem;">⚠️ Pipeline Stage Errors</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
       
-      <!-- Error type distribution -->
-      {% set err_msgs = {} %}
-      {% for e in errs %}
-        {% set msg = e.get('msg','?') %}
-        {% if msg in err_msgs %}{% set _ = err_msgs.update({msg: err_msgs[msg]+1}) %}{% else %}{% set _ = err_msgs.update({msg: 1}) %}{% endif %}
-      {% endfor %}
-      {% set err_max = err_msgs.values()|max if err_msgs else 1 %}
-      {% for msg, cnt in err_msgs.items() %}
-      <div class="scn-hbar-row">
-        <div class="scn-hbar-lbl" title="{{ msg }}" style="font-size:.75rem;">{{ msg[:22] }}{% if msg|length>22 %}…{% endif %}</div>
-        <div class="scn-hbar-track"><div class="scn-hbar-fill" style="width:{{ (cnt/err_max*100)|int }}%;background:#dc2626;"></div></div>
-        <div class="scn-hbar-val">{{ cnt }}</div>
-      </div>
-      {% endfor %}
-      
-      <!-- Interactive error table with pagination -->
-      <div style="margin-top:.75rem;">
-        <div class="scn-error-filter">
-          <label for="scn-err-filter">Filter:</label>
-          <select id="scn-err-filter">
-            <option value="">All error types</option>
-            {% for msg in err_msgs.keys() %}
-            <option value="{{ msg }}">{{ msg[:40] }}{% if msg|length>40 %}…{% endif %} ({{ err_msgs[msg] }})</option>
-            {% endfor %}
-          </select>
-          <label for="scn-err-pagesize">Show:</label>
-          <select id="scn-err-pagesize">
-            <option value="10">10 per page</option>
-            <option value="25" selected>25 per page</option>
-            <option value="50">50 per page</option>
-            <option value="0">All</option>
-          </select>
-        </div>
-        
-        <div style="max-height:400px;overflow-y:auto;margin-top:.5rem;" id="scn-err-table-wrap">
-          <table data-sortable style="width:100%;border-collapse:collapse;font-size:.78rem;" id="scn-err-table">
-            <thead style="position:sticky;top:0;z-index:2;box-shadow:0 1px 0 #fca5a5;"><tr>
-              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;white-space:nowrap;">Time</th>
-              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;">Message</th>
-              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:left;">NATS Error / Detail</th>
-              <th style="padding:.35rem .45rem;border:1px solid #fca5a5;background:#fff5f5;text-align:right;white-space:nowrap;"
-                  data-tooltip="numFlows of the FlowBatch that triggered this error — the batch received immediately before this log line.">Flows</th>
-            </tr></thead>
-            <tbody id="scn-err-tbody">
-            {% for e in errs %}
-            {% set fields = e.get('fields') or {} %}
-            {% set err_detail = fields.get('error', e.get('error','')) %}
-            {% set full_msg = e.get('msg','—') %}
-            {% set num_flows = e.get('num_flows') %}
-            <tr data-msg="{{ e.get('msg','') }}" data-idx="{{ loop.index0 }}">
-              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp') or '')[:19] }}</td>
-              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                  data-tooltip="{{ full_msg }}">{{ full_msg }}</td>
-              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;font-size:.72rem;color:#7f1d1d;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                  data-tooltip="{{ err_detail }}">{{ err_detail }}</td>
-              <td style="padding:.32rem .45rem;border:1px solid #fca5a5;text-align:right;">
-                {% if num_flows is not none %}
-                <span class="scn-flow-badge"
-                      data-tooltip="{{ '{:,}'.format(num_flows) }} flows in the FlowBatch received just before this error">{{ '{:,}'.format(num_flows) }}</span>
-                {% else %}<span style="color:#9ca3af;font-size:.72rem;">—</span>{% endif %}
-              </td>
-            </tr>
-            {% endfor %}
+      <!-- Receiver Errors -->
+      {% if recv_errors %}
+      <div class="scn-sec scn-warn" style="margin-bottom:0;border-left:4px solid #1e40af;">
+        <div class="scn-sec-title" style="color:#1e40af;">📥 Network Log Receiver ({{ recv_errors|length }})</div>
+        <div style="max-height:300px;overflow-y:auto;">
+          <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+            <thead style="position:sticky;top:0;background:#fff5f5;">
+              <tr>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;white-space:nowrap;">Timestamp (UTC)</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Message</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in recv_errors[:25] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('msg','—')[:60] }}{% if e.get('msg','') |length > 60 %}…{% endif %}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;">{{ (e.get('fields',{}).get('error',''))[:50] }}</td>
+              </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
-        
-        <div class="scn-error-pagination" id="scn-err-pagination">
-          <button id="scn-err-prev" disabled>← Previous</button>
-          <span id="scn-err-page-info">Page 1</span>
-          <button id="scn-err-next">Next →</button>
+      </div>
+      {% else %}
+      <div class="scn-sec" style="margin-bottom:0;border-left:4px solid #10b981;">
+        <div class="scn-sec-title" style="color:#059669;">📥 Network Log Receiver ✅</div>
+        <div style="color:#6b7280;font-size:.85rem;">No errors</div>
+      </div>
+      {% endif %}
+      
+      <!-- NATS Errors -->
+      {% if nats_errors or nats_warns %}
+      <div class="scn-sec scn-warn" style="margin-bottom:0;border-left:4px solid #7c3aed;">
+        <div class="scn-sec-title" style="color:#7c3aed;">📡 NATS JetStream ({{ (nats_errors|length + nats_warns|length) }})</div>
+        <div style="max-height:300px;overflow-y:auto;">
+          <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+            <thead style="position:sticky;top:0;background:#fff5f5;">
+              <tr>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;white-space:nowrap;">Timestamp (UTC)</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Level</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Category</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in nats_errors[:15] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#dc2626;font-weight:600;">ERROR</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('msg','—')[:60] }}{% if e.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+              {% for w in nats_warns[:10] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (w.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#f59e0b;">WARN</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('msg','—')[:60] }}{% if w.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
+      {% else %}
+      <div class="scn-sec" style="margin-bottom:0;border-left:4px solid #10b981;">
+        <div class="scn-sec-title" style="color:#059669;">📡 NATS JetStream ✅</div>
+        <div style="color:#6b7280;font-size:.85rem;">No errors</div>
+      </div>
+      {% endif %}
+      
+      <!-- Network Log Data Processor Errors -->
+      {% if ndp_errors or ndp_warns %}
+      <div class="scn-sec scn-warn" style="margin-bottom:0;border-left:4px solid #f59e0b;">
+        <div class="scn-sec-title" style="color:#f59e0b;">⚙️ Network Log Data Processor ({{ (ndp_errors|length + ndp_warns|length) }})</div>
+        <div style="max-height:300px;overflow-y:auto;">
+          <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+            <thead style="position:sticky;top:0;background:#fff5f5;">
+              <tr>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;white-space:nowrap;">Timestamp (UTC)</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Level</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Category</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in ndp_errors[:15] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#dc2626;font-weight:600;">ERROR</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('msg','—')[:60] }}{% if e.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+              {% for w in ndp_warns[:10] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (w.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#f59e0b;">WARN</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('msg','—')[:60] }}{% if w.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="scn-sec" style="margin-bottom:0;border-left:4px solid #10b981;">
+        <div class="scn-sec-title" style="color:#059669;">⚙️ Network Log Data Processor ✅</div>
+        <div style="color:#6b7280;font-size:.85rem;">No errors</div>
+      </div>
+      {% endif %}
+      
+      <!-- DIIS Errors -->
+      {% if diis_errors or diis_warns %}
+      <div class="scn-sec scn-warn" style="margin-bottom:0;border-left:4px solid #ef4444;">
+        <div class="scn-sec-title" style="color:#ef4444;">🗄 DIIS → ClickHouse ({{ (diis_errors|length + diis_warns|length) }})</div>
+        <div style="max-height:300px;overflow-y:auto;">
+          <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+            <thead style="position:sticky;top:0;background:#fff5f5;">
+              <tr>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;white-space:nowrap;">Timestamp (UTC)</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Level</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Category</th>
+                <th style="padding:.3rem;border:1px solid #fca5a5;text-align:left;">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in diis_errors[:15] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (e.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#dc2626;font-weight:600;">ERROR</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ e.get('msg','—')[:60] }}{% if e.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+              {% for w in diis_warns[:10] %}
+              <tr>
+                <td style="padding:.3rem;border:1px solid #fee2e2;font-family:monospace;font-size:.7rem;white-space:nowrap;">{{ (w.get('timestamp','') or '')[:19] }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;color:#f59e0b;">WARN</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('category','—') }}</td>
+                <td style="padding:.3rem;border:1px solid #fee2e2;">{{ w.get('msg','—')[:60] }}{% if w.get('msg','') |length > 60 %}…{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="scn-sec" style="margin-bottom:0;border-left:4px solid #10b981;">
+        <div class="scn-sec-title" style="color:#059669;">🗄 DIIS → ClickHouse ✅</div>
+        <div style="color:#6b7280;font-size:.85rem;">No errors</div>
+      </div>
+      {% endif %}
+      
     </div>
-    {% else %}
-    <div class="scn-sec" style="margin-bottom:0;border-color:#a7f3d0;">
-      <div class="scn-sec-title" style="color:#059669;">✅ No Error Entries</div>
-      <div style="color:#6b7280;font-size:.88rem;">All log lines are at INFO level — no errors or warnings found.</div>
-    </div>
-    {% endif %}
-
-    <!-- Gaps -->
+  </div>
+  
+  <!-- ══ Gaps Section (keep existing) ══════════════════════════════════════ -->
+  <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1rem;"
+>
     <div class="scn-sec" style="margin-bottom:0;{% if gaps %}border-color:#fed7aa;{% endif %}">
       <div class="scn-sec-title">
         🕳️ Receive Gaps{% if gaps %} <span class="scn-badge" style="background:#fff7ed;color:#c2410c;">{{ gaps|length }}</span>{% endif %}
@@ -3583,7 +3689,10 @@
         if (!isNaN(lag)) b.lags.push(lag);
         if (r.ack === 'True') b.acks++;
       });
-      return Object.values(buckets).filter(b => b.batches > 0);
+      // Sort chronologically by label (timestamp) before returning
+      return Object.values(buckets)
+        .filter(b => b.batches > 0)
+        .sort((a, b) => a.label.localeCompare(b.label));
     }
 
     function medianOf(arr) {
@@ -3601,19 +3710,29 @@
 
     function renderSubTable(buckets) {
       if (!buckets.length) return '<p class="scn-hr-loading">No batch data for this hour.</p>';
-      const rows = buckets.map(b => `
+      const rows = buckets.map((b, idx, arr) => {
+        // Calculate time delta from previous bucket (for diagnostics)
+        let deltaStr = '';
+        if (idx > 0) {
+          const prevTime = new Date(arr[idx - 1].label);
+          const currTime = new Date(b.label);
+          const deltaSec = (currTime - prevTime) / 1000;
+          deltaStr = ` title="Δ ${deltaSec}s from previous"`;
+        }
+        return `
         <tr>
-          <td>${b.label.slice(11, 16)}</td>
+          <td${deltaStr}>${b.label.slice(11, 16)}</td>
           <td>${b.batches}</td>
           <td>${b.flows.toLocaleString()}</td>
           <td>${(b.bytes / 1048576).toFixed(1)}</td>
           <td>${medianOf(b.lags)}</td>
           <td>${p95Of(b.lags)}</td>
           <td>${b.acks}</td>
-        </tr>`).join('');
+        </tr>`;
+      }).join('');
       return `<table class="scn-hr-subtable">
         <thead><tr>
-          <th>:MM (UTC)</th><th>Batches</th><th>Flows</th><th>Bytes MB</th>
+          <th>Time (UTC)</th><th>Batches</th><th>Flows</th><th>MB</th>
           <th>Lag med</th><th>Lag p95</th><th>Acks</th>
         </tr></thead><tbody>${rows}</tbody></table>`;
     }

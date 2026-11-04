@@ -1020,6 +1020,8 @@ def error_log_entries(records: list[tuple[int, dict]]) -> list[dict]:
     For each error entry, also captures numFlows from the most recent
     preceding 'Received FlowBatch' line so callers can correlate NATS
     payload-size failures with the batch size that triggered them.
+    
+    Filters out IPv6-related warnings as these are expected operational noise.
     """
     out = []
     last_batch_num_flows: int | None = None
@@ -1031,6 +1033,9 @@ def error_log_entries(records: list[tuple[int, dict]]) -> list[dict]:
             continue
         # Split-batch warnings are normal operational behaviour, not errors.
         if msg == _MSG_SPLIT:
+            continue
+        # Filter out IPv6 skipping warnings (expected operational noise)
+        if "ipv6" in msg.lower() and "skip" in msg.lower():
             continue
         lvl = record.get("level", "").lower()
         if lvl in ("error", "warn", "warning", "fatal"):
@@ -1078,7 +1083,25 @@ def rate_analysis(batches: list[dict]) -> dict:
 
 # ─── Pipeline service parsers ──────────────────────────────────────────────────
 
-def parse_nats_log(path: "Path | list[Path]") -> dict:
+def _categorize_nats_error(msg: str) -> str:
+    """Categorize NATS errors into groups for better reporting."""
+    msg_lower = msg.lower()
+    if "route" in msg_lower or "connection" in msg_lower:
+        return "Routing/Connection"
+    if "dns" in msg_lower or "lookup" in msg_lower or "no such host" in msg_lower:
+        return "DNS Resolution"
+    if "consumer" in msg_lower and "offline" in msg_lower:
+        return "Consumer Offline"
+    if "timeout" in msg_lower or "i/o timeout" in msg_lower:
+        return "Timeout"
+    if "cluster" in msg_lower:
+        return "Cluster"
+    if "stream" in msg_lower:
+        return "Stream"
+    return "Other"
+
+
+def parse_nats_log(path: "Path | list[Path]", run_window: "tuple[str, str] | None" = None) -> dict:
     """
     Parse a NATS server log and extract stream states, errors, cluster events.
 
@@ -1086,15 +1109,54 @@ def parse_nats_log(path: "Path | list[Path]") -> dict:
 
     *path* may be a single ``Path`` or a list of ``Path`` objects (one per replica).
     All replica files are scanned in sequence; their statistics are aggregated.
+    
+    *run_window* is an optional ``(start_ts, end_ts)`` tuple of ISO-8601 UTC strings
+    taken from the Network Log Receiver's log window. When supplied, errors and warnings
+    are filtered to only include events within this time window.
     """
     import re as _re
     LINE = _re.compile(r'^\[(\d+)\] (\S+ \S+) \[(\w+)\] (.*)')
     FS_STATE = _re.compile(
         r'Filestore \[([^\]]+)\].*?state.*?Msgs:(\d+) Bytes:(\d+)'
     )
+    
+    # ── Run-window helper ────────────────────────────────────────────────────
+    _win_start, _win_end = (run_window or ("", ""))
+    
+    def _normalize_nats_ts(nats_ts: str) -> str:
+        """Convert NATS timestamp (YYYY/MM/DD HH:MM:SS) to ISO format for comparison."""
+        if not nats_ts or "/" not in nats_ts:
+            return nats_ts
+        # Convert "2026/11/04 07:15:31.123" to "2026-11-04T07:15:31.123+00:00"
+        try:
+            parts = nats_ts.split()
+            if len(parts) >= 2:
+                date_part = parts[0].replace("/", "-")
+                time_part = parts[1]
+                return f"{date_part}T{time_part}+00:00"
+        except:
+            pass
+        return nats_ts
+    
+    def _in_window(nats_ts: str) -> bool:
+        """Return True if NATS timestamp falls within [_win_start, _win_end]."""
+        if not run_window or not nats_ts:
+            return True
+        # Normalize NATS timestamp to ISO format
+        ts_norm = _normalize_nats_ts(nats_ts)
+        # Normalize window timestamps (handle Z vs +00:00)
+        win_start_norm = _win_start.replace("Z", "+00:00") if _win_start and _win_start.endswith("Z") else _win_start
+        win_end_norm = _win_end.replace("Z", "+00:00") if _win_end and _win_end.endswith("Z") else _win_end
+        if win_start_norm and ts_norm < win_start_norm:
+            return False
+        if win_end_norm and ts_norm > win_end_norm:
+            return False
+        return True
 
     errors: list[str] = []
     warnings: list[str] = []
+    errors_in_window = 0
+    warnings_in_window = 0
     streams: dict[str, dict] = {}          # stream_name → latest state
     consumer_leaders: list[str] = []
     cluster_started = False
@@ -1118,10 +1180,15 @@ def parse_nats_log(path: "Path | list[Path]") -> dict:
             last_ts = ts
             line_counts[lvl] = line_counts.get(lvl, 0) + 1
 
+            # Collect ALL errors/warnings for full history, but track which are in window
             if lvl == "ERR":
                 errors.append(msg[:120])
+                if _in_window(ts):
+                    errors_in_window += 1
             elif lvl == "WRN":
                 warnings.append(msg[:120])
+                if _in_window(ts):
+                    warnings_in_window += 1
 
             if "JetStream cluster bootstrapping" in msg:
                 cluster_started = True
@@ -1144,14 +1211,28 @@ def parse_nats_log(path: "Path | list[Path]") -> dict:
         key=lambda x: x.get("msgs", 0), reverse=True,
     )
 
-    # Compute new NATS health fields
+    # Compute new NATS health fields (using ALL errors for historical context)
     route_errors = sum(1 for e in errors if "route" in e.lower())
     dns_failures = sum(1 for e in errors if "no such host" in e.lower() or "lookup" in e.lower())
+    i_o_timeout_errors = sum(1 for e in errors if "i/o timeout" in e.lower())
     consumer_offline = (
         any("consumer is offline" in e.lower() for e in errors + warnings) or
         any("consumer" in e.lower() for e in errors)
     )
     ipfix_consumer_leader_changes = sum(1 for cl in consumer_leaders if "IPFIX-COLLECTOR-1" in cl)
+    
+    # Filter errors/warnings for display (only show those in window if window is specified)
+    if run_window:
+        # For display, only show recent errors (but keep counts from all time)
+        display_errors = errors[-50:] if errors_in_window == 0 else errors[-min(errors_in_window, 50):]
+        display_warnings = warnings[-50:] if warnings_in_window == 0 else warnings[-min(warnings_in_window, 50):]
+    else:
+        display_errors = errors
+        display_warnings = warnings
+    
+    # Extract total messages across all streams for better visibility
+    total_stream_msgs = sum(s.get("msgs", 0) for s in streams.values())
+    total_stream_bytes = sum(s.get("bytes", 0) for s in streams.values())
 
     nats_issues: list[str] = []
     if dns_failures > 0:
@@ -1160,29 +1241,84 @@ def parse_nats_log(path: "Path | list[Path]") -> dict:
         )
     elif route_errors > 0:
         nats_issues.append(f"NATS routing errors (transient): {route_errors}")
+    if i_o_timeout_errors > 0:
+        nats_issues.append(f"NATS I/O timeout errors: {i_o_timeout_errors} — network partition or slowness detected")
 
+    # Create structured error entries for detailed reporting (use display_errors)
+    error_entries = []
+    for i, err in enumerate(display_errors[:50], 1):  # limit to 50 most recent
+        error_entries.append({
+            "line": i,
+            "level": "ERROR",
+            "timestamp": last_ts or "",
+            "msg": err,
+            "category": _categorize_nats_error(err),
+        })
+    
+    warning_entries = []
+    for i, warn in enumerate([w for w in display_warnings if "Plaintext" not in w][:50], 1):
+        warning_entries.append({
+            "line": i,
+            "level": "WARN",
+            "timestamp": last_ts or "",
+            "msg": warn,
+            "category": _categorize_nats_error(warn),
+        })
+    
     return {
         "available": True,
         "first_ts": first_ts,
         "last_ts": last_ts,
         "line_counts": line_counts,
         "total_lines": sum(line_counts.values()),
-        "errors": errors,
-        "warnings": [w for w in warnings if "Plaintext" not in w],
+        "errors": display_errors,  # Only errors in window (or recent if window not specified)
+        "warnings": [w for w in display_warnings if "Plaintext" not in w],
+        "errors_in_window": errors_in_window if run_window else len(errors),
+        "warnings_in_window": warnings_in_window if run_window else len([w for w in warnings if "Plaintext" not in w]),
+        "total_errors": len(errors),  # All time count
+        "total_warnings": len(warnings),  # All time count
+        "run_window_start": _win_start or None,
+        "run_window_end": _win_end or None,
+        "error_entries": error_entries,
+        "warning_entries": warning_entries,
         "cluster_started": cluster_started,
         "cluster_leader": cluster_leader,
         "streams": streams,
         "active_streams": active_streams[:15],
         "total_streams": len(streams),
+        "total_stream_msgs": total_stream_msgs,
+        "total_stream_bytes": total_stream_bytes,
         "ipfix_stream": ipfix_stream,
         "ipfix_stream_msgs": ipfix_stream.get("msgs", 0),
+        "ipfix_stream_bytes": ipfix_stream.get("bytes", 0),
         "consumer_leaders": consumer_leaders[:20],
         "route_errors": route_errors,
         "dns_failures": dns_failures,
+        "i_o_timeout_errors": i_o_timeout_errors,
         "consumer_offline": consumer_offline,
         "ipfix_consumer_leader_changes": ipfix_consumer_leader_changes,
         "issues": nats_issues,
     }
+
+
+def _categorize_ndp_error(msg: str) -> str:
+    """Categorize NDP errors into groups for better reporting."""
+    msg_lower = msg.lower()
+    if "message terminated" in msg_lower:
+        return "Message Termination"
+    if "subscription" in msg_lower and "fail" in msg_lower:
+        return "Subscription Failure"
+    if "consumer" in msg_lower and "offline" in msg_lower:
+        return "Consumer Offline"
+    if "no responders" in msg_lower:
+        return "No Responders"
+    if "enrichment" in msg_lower or "agent" in msg_lower:
+        return "Enrichment/Agent"
+    if "watch" in msg_lower:
+        return "Watch Events"
+    if "worker" in msg_lower:
+        return "Worker"
+    return "Other"
 
 
 def parse_data_processor_log(
@@ -1243,7 +1379,13 @@ def parse_data_processor_log(
     subscription_failures = 0
     consumer_offline_retries = 0
     no_responders_errors = 0
-
+    nats_pull_errors = 0  # "Unexpected error pulling from NATS"
+    nats_dispatch_errors = 0  # "Error getting and dispatching messages"
+    
+    # Message processing tracking
+    watch_callbacks_processed = 0  # Actual processing events
+    entity_updates = 0
+    
     # Detailed termination error tracking
     error_codes: dict[str, int] = {}
     agent_ids: dict[str, int] = {}
@@ -1281,6 +1423,11 @@ def parse_data_processor_log(
             # Per-message event counters — only counted within the run window
             # so that stale events from earlier runs don't pollute the report.
             if _in_window(ts):
+                # NATS connection/fetch failures
+                if "Unexpected error pulling from NATS" in msg:
+                    nats_pull_errors += 1
+                if "Error getting and dispatching messages" in msg:
+                    nats_dispatch_errors += 1
                 if "consumer is offline" in str(d.get("error", "")).lower():
                     consumer_offline_retries += 1
                 if ("no responders available" in str(d.get("error", "")).lower()
@@ -1288,6 +1435,12 @@ def parse_data_processor_log(
                     no_responders_errors += 1
                 if "Failed to create subscription" in msg:
                     subscription_failures += 1
+                
+                # Successful processing events
+                if "Watch callback processed" in msg:
+                    watch_callbacks_processed += 1
+                if "Entity watch fired kEntityUpdate" in msg:
+                    entity_updates += 1
 
                 if "Message Terminated" in msg:
                     msg_terminated += 1
@@ -1382,20 +1535,52 @@ def parse_data_processor_log(
         if had_subscription:
             subscribed_replicas += 1
 
+    # Create structured error entries for detailed reporting
+    error_entries = []
+    for i, err in enumerate(errors[:100], 1):  # limit to 100 most recent
+        error_entries.append({
+            "line": i,
+            "level": "ERROR",
+            "timestamp": last_ts or "",
+            "msg": err,
+            "category": _categorize_ndp_error(err),
+        })
+    
+    warning_entries = []
+    for i, warn in enumerate(warnings[:100], 1):
+        warning_entries.append({
+            "line": i,
+            "level": "WARN",
+            "timestamp": last_ts or "",
+            "msg": warn,
+            "category": _categorize_ndp_error(warn),
+        })
+    
+    # Calculate effective consumption
+    # If there are NATS pull errors, it means no messages were consumed
+    effective_consumed = 0 if nats_pull_errors > 0 else watch_callbacks_processed
+    
     issues = []
     if not pipeline_started:
         issues.append("Pipeline did not start successfully")
     if not subscription_added:
         issues.append("No NATS subscription was created")
+    if nats_pull_errors > 0:
+        issues.append(
+            f"NATS connection failure: {nats_pull_errors} pull errors "
+            f"({no_responders_errors} 'no responders' errors) — 0 messages consumed"
+        )
     if error_codes:
         top_code = dominant_error or "Unknown"
         issues.append(f"ALL {msg_terminated} messages failed: {top_code} — messages are being dropped")
     if subscription_failures > 0:
         issues.append(f"{subscription_failures} subscription attempt(s) failed (consumer offline)")
-    if no_responders_errors > 0:
+    if no_responders_errors > 0 and nats_pull_errors == 0:
         issues.append(f"One or more NDP replicas cannot reach NATS: {no_responders_errors} 'no responders' errors")
     if total_replicas > 0 and subscribed_replicas < total_replicas:
         issues.append(f"Only {subscribed_replicas}/{total_replicas} replicas subscribed to NATS")
+    if watch_callbacks_processed > 0:
+        issues.append(f"Successfully processed {watch_callbacks_processed} watch callbacks")
     if warnings:
         issues.extend([f"Warning: {w}" for w in warnings[:3]])
 
@@ -1417,6 +1602,12 @@ def parse_data_processor_log(
         "run_window_start": _win_start or None,
         "run_window_end": _win_end or None,
         "watch_events": watch_events,
+        # Message processing metrics
+        "nats_pull_errors": nats_pull_errors,
+        "nats_dispatch_errors": nats_dispatch_errors,
+        "watch_callbacks_processed": watch_callbacks_processed,
+        "entity_updates": entity_updates,
+        "effective_consumed": effective_consumed,
         # Detailed error breakdown
         "error_codes": error_codes,
         "dominant_error_code": dominant_error,
@@ -1432,23 +1623,69 @@ def parse_data_processor_log(
         "total_replicas": total_replicas,
         "errors": errors,
         "warnings": warnings,
+        "error_entries": error_entries,
+        "warning_entries": warning_entries,
         "issues": issues,
     }
 
 
-def parse_diis_log(path: "Path | list[Path]") -> dict:
+def _categorize_diis_error(msg: str) -> str:
+    """Categorize DIIS errors into groups for better reporting."""
+    msg_lower = msg.lower()
+    if "clickhouse" in msg_lower or "ch" in msg_lower:
+        return "ClickHouse"
+    if "insert" in msg_lower:
+        return "Insert"
+    if "grpc" in msg_lower or "rpc" in msg_lower:
+        return "gRPC"
+    if "nats" in msg_lower or "consume" in msg_lower:
+        return "NATS/Consumer"
+    if "batch" in msg_lower:
+        return "Batch Processing"
+    if "connection" in msg_lower or "alive" in msg_lower:
+        return "Connection"
+    return "Other"
+
+
+def parse_diis_log(path: "Path | list[Path]", run_window: "tuple[str, str] | None" = None) -> dict:
     """
     Parse the DIIS log (mixed glog + zap/logrus format).
     Extracts ClickHouse config, insert events, gRPC server info, errors,
     and CH connection gauge time series.
 
     *path* may be a single ``Path`` or a list of ``Path`` objects (one per replica).
+    
+    *run_window* is an optional ``(start_ts, end_ts)`` tuple of ISO-8601 UTC strings
+    taken from the Network Log Receiver's log window. When supplied, errors and warnings
+    are filtered to only include events within this time window.
     """
     import re as _re
     ANSI = _re.compile(r'\x1b\[[0-9;]*m')
     GLOG = _re.compile(r'^([IWEF])(\d{4}) (\d{2}:\d{2}:\d{2}\.\d+)\s+\d+\s+\S+:\d+\]\s*(.*)')
     TAB_ZAP = _re.compile(r'^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\t(\w+)\t(\S+)\t([^\t]+)(.*)')
     LOGRUS = _re.compile(r'time="([^"]+)" level=(\w+) msg="([^"]+)"')
+    
+    # ── Run-window helper ────────────────────────────────────────────────────
+    _win_start, _win_end = (run_window or ("", ""))
+    
+    def _normalize_ts(ts: str) -> str:
+        """Normalize timestamp for comparison (handle Z vs +00:00 suffix)."""
+        if not ts:
+            return ts
+        return ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+    
+    def _in_window(ts: str) -> bool:
+        """Return True if ts falls within [_win_start, _win_end] (inclusive)."""
+        if not run_window or not ts:
+            return True
+        ts_norm = _normalize_ts(ts)
+        win_start_norm = _normalize_ts(_win_start)
+        win_end_norm = _normalize_ts(_win_end)
+        if win_start_norm and ts_norm < win_start_norm:
+            return False
+        if win_end_norm and ts_norm > win_end_norm:
+            return False
+        return True
 
     paths = path if isinstance(path, list) else [path]
     if not any(p and p.is_file() for p in paths):
@@ -1456,6 +1693,8 @@ def parse_diis_log(path: "Path | list[Path]") -> dict:
 
     errors: list[str] = []
     warnings: list[str] = []
+    errors_in_window = 0
+    warnings_in_window = 0
     ch_table: str | None = None
     ch_inserts = 0
     ch_errors = 0
@@ -1568,10 +1807,14 @@ def parse_diis_log(path: "Path | list[Path]") -> dict:
 
             if lvl in ("error", "err"):
                 errors.append(msg[:120])
+                if _in_window(ts):
+                    errors_in_window += 1
                 if "clickhouse" in msg.lower() or "insert" in msg.lower():
                     ch_errors += 1
             elif lvl in ("warn", "warning"):
                 warnings.append(msg[:120])
+                if _in_window(ts):
+                    warnings_in_window += 1
 
             lmsg = msg.lower()
             if "gauge" in lmsg:
@@ -1602,7 +1845,36 @@ def parse_diis_log(path: "Path | list[Path]") -> dict:
     # Compute max CH connections from series
     ch_max_open = max((p["v"] for p in ch_open_series), default=0)
     ch_max_idle = max((p["v"] for p in ch_idle_series), default=0)
+    
+    # Filter errors/warnings for display (only show those in window if window is specified)
+    if run_window:
+        display_errors = errors[-50:] if errors_in_window == 0 else errors[-min(errors_in_window, 50):]
+        display_warnings = warnings[-50:] if warnings_in_window == 0 else warnings[-min(warnings_in_window, 50):]
+    else:
+        display_errors = errors
+        display_warnings = warnings
 
+    # Create structured error entries for detailed reporting (use display_errors)
+    error_entries = []
+    for i, err in enumerate(display_errors[:50], 1):  # limit to 50 most recent
+        error_entries.append({
+            "line": i,
+            "level": "ERROR",
+            "timestamp": last_ts or "",
+            "msg": err,
+            "category": _categorize_diis_error(err),
+        })
+    
+    warning_entries = []
+    for i, warn in enumerate(display_warnings[:50], 1):
+        warning_entries.append({
+            "line": i,
+            "level": "WARN",
+            "timestamp": last_ts or "",
+            "msg": warn,
+            "category": _categorize_diis_error(warn),
+        })
+    
     issues: list[str] = []
     if ch_errors:
         issues.append(f"ClickHouse insert errors: {ch_errors}")
@@ -1635,8 +1907,16 @@ def parse_diis_log(path: "Path | list[Path]") -> dict:
         "metrics_completed": metrics_completed,
         "per_flow_byte_missing": per_flow_byte_missing,
         "ch_not_alive_count": ch_not_alive_count,
-        "errors": errors[:20],
-        "warnings": warnings[:20],
+        "errors": display_errors[:20],  # Only errors in window
+        "warnings": display_warnings[:20],
+        "errors_in_window": errors_in_window if run_window else len(errors),
+        "warnings_in_window": warnings_in_window if run_window else len(warnings),
+        "total_errors": len(errors),  # All time count
+        "total_warnings": len(warnings),  # All time count
+        "run_window_start": _win_start or None,
+        "run_window_end": _win_end or None,
+        "error_entries": error_entries,
+        "warning_entries": warning_entries,
         "issues": issues,
     }
 
@@ -1852,10 +2132,12 @@ def build_pipeline_report(
     recv_flows    = totals.get("flows", 0)
     recv_batches  = totals.get("batches_received", 0)
     recv_pub      = totals.get("batches_published", 0)
+    recv_bytes_total = totals.get("bytes", 0)  # Total bytes published
     recv_errors   = receiver_result.get("error_log_entries", [])
 
     nats_msgs     = (nats_result or {}).get("ipfix_stream_msgs", 0)
     nats_errors   = (nats_result or {}).get("errors", [])
+    nats_stream_bytes = (nats_result or {}).get("ipfix_stream_bytes", 0)
 
     dp_msg_term   = (dp_result or {}).get("msg_terminated", 0)
     dp_msg_outside = (dp_result or {}).get("msg_terminated_outside_window", 0)
@@ -1871,7 +2153,28 @@ def build_pipeline_report(
     dp_msgs_consumed = (recv_pub - nats_remaining) if (nats_remaining is not None and recv_pub > 0) else None
     dp_msgs_ok = (dp_msgs_consumed - dp_msg_term) if dp_msgs_consumed is not None else None
     # Display helpers used in both stages[] and throughput_comparison[]
-    _ndp_consumed_display = dp_msgs_consumed if dp_msgs_consumed is not None else dp_msg_term
+    dp_effective = (dp_result or {}).get("effective_consumed", 0)
+    dp_nats_errors = (dp_result or {}).get("nats_pull_errors", 0)
+    dp_watch_callbacks = (dp_result or {}).get("watch_callbacks_processed", 0)
+
+    # Determine what to display for "consumed":
+    # Priority: calculated consumption > inferred from NATS > effective_consumed (watch callbacks) > terminations
+    if dp_msgs_consumed is not None:
+        # Best: calculated from (published - pending)
+        _ndp_consumed_display = dp_msgs_consumed
+        _ndp_consumed_note = f"{dp_watch_callbacks} entity updates" if dp_watch_callbacks > 0 else None
+    elif recv_pub > 0 and nats_remaining is not None:
+        # Fallback: inferred from NATS
+        _ndp_consumed_display = recv_pub - nats_remaining
+        _ndp_consumed_note = f"~{recv_pub - nats_remaining} inferred; {dp_watch_callbacks} entity updates" if dp_watch_callbacks > 0 else None
+    elif dp_effective > 0:
+        # Last resort: use watch callbacks but mark as such
+        _ndp_consumed_display = dp_effective
+        _ndp_consumed_note = f"⚠ {dp_effective} entity updates (not throughput)" if dp_watch_callbacks > 0 else None
+    else:
+        _ndp_consumed_display = dp_msg_term
+        _ndp_consumed_note = None
+    
     _ndp_dropped_display  = dp_msg_term  # only terminations within run window
 
     ch_inserts    = (diis_result or {}).get("ch_inserts", 0)
@@ -1988,25 +2291,41 @@ def build_pipeline_report(
             "label": "NATS JetStream (IPFIX-COLLECTOR-1)",
             "icon": "📡",
             "status": "ok" if nats_msgs >= 0 and recv_pub > 0 else "idle",
-            "metric": f"{nats_msgs:,} msgs in stream",
-            "note": "Stream empty — consumer acks quickly" if nats_msgs == 0 and recv_pub > 0 else None,
+            "metric": (
+                f"{recv_pub:,} batches published ({recv_bytes_total / 1048576:.1f} MB)"
+                if recv_pub > 0
+                else f"{nats_msgs:,} msgs pending"
+            ),
+            "note": (
+                f"Current stream state: {nats_msgs} msgs pending ({nats_stream_bytes / 1048576:.1f} MB)"
+                if recv_pub > 0 and nats_msgs > 0
+                else ("Stream empty — consumer acks quickly" if nats_msgs == 0 and recv_pub > 0 else None)
+            ),
         },
         {
             "name": "Data Processor",
             "label": "NDP (nx-network-log-pipeline)",
             "icon": "⚙️",
-            "status": "error" if dp_all_drop else ("ok" if dp_subs and not dp_errors else ("warn" if dp_subs else "error")),
+            "status": "error" if (dp_all_drop or dp_nats_errors > 0) else ("ok" if dp_subs and not dp_errors else ("warn" if dp_subs else "error")),
             "metric": (
-                f"Consumed: {_ndp_consumed_display}, Dropped: {_ndp_dropped_display}"
+                f"Consumed: {_ndp_consumed_display:,}, Dropped: {_ndp_dropped_display}"
                 + (f" ({dp_msgs_ok} ok)" if dp_msgs_ok is not None and dp_msgs_ok > 0 else "")
+                + (f" ({dp_nats_errors} NATS errors)" if dp_nats_errors > 0 else "")
             ),
             "note": (
-                f"100% drop — {max(dp_err_codes, key=lambda k: dp_err_codes[k], default='?')}"
-                if dp_all_drop
+                f"NATS connection failure: {dp_nats_errors} pull errors (no responders) — 0 consumed"
+                if dp_nats_errors > 0
                 else (
-                    f"+{dp_msg_outside} terminated in earlier runs (excluded)"
-                    if dp_msg_outside > 0 and not dp_all_drop
-                    else ("No NATS subscription" if not dp_subs else None)
+                    _ndp_consumed_note if _ndp_consumed_note
+                    else (
+                        f"100% drop — {max(dp_err_codes, key=lambda k: dp_err_codes[k], default='?')}"
+                        if dp_all_drop
+                        else (
+                            f"+{dp_msg_outside} terminated in earlier runs (excluded)"
+                            if dp_msg_outside > 0 and not dp_all_drop
+                            else ("No NATS subscription" if not dp_subs else None)
+                        )
+                    )
                 )
             ),
         },
@@ -2069,12 +2388,16 @@ def build_pipeline_report(
 
     # ── Cross-pipeline throughput comparison ──────────────────────────────
     throughput_comparison = [
-        {"stage": "Received from PE",   "value": recv_flows,            "unit": "flows"},
-        {"stage": "Published to NATS",  "value": recv_pub,              "unit": "batches"},
-        {"stage": "NATS Stream Peak",   "value": nats_msgs,             "unit": "msgs"},
-        {"stage": "NDP Consumed",       "value": _ndp_consumed_display, "unit": "msgs"},
-        {"stage": "NDP Dropped",        "value": _ndp_dropped_display,  "unit": "msgs"},
-        {"stage": "CH Inserts",         "value": ch_inserts,            "unit": "rows"},
+        {"stage": "Received from PE",   "value": recv_flows,            "unit": "flows", "bytes": 0},
+        {"stage": "Published to NATS",  "value": recv_pub,              "unit": "batches", 
+         "bytes": recv_bytes_total,
+         "note": f"{recv_bytes_total / 1048576:.1f} MB published"},
+        {"stage": "NATS Stream Peak",   "value": nats_msgs,             "unit": "msgs",
+         "bytes": nats_stream_bytes,
+         "note": f"{nats_stream_bytes / 1048576:.1f} MB in stream" if nats_stream_bytes > 0 else None},
+        {"stage": "NDP Consumed",       "value": _ndp_consumed_display, "unit": "msgs", "bytes": 0},
+        {"stage": "NDP Dropped",        "value": _ndp_dropped_display,  "unit": "msgs", "bytes": 0},
+        {"stage": "CH Inserts",         "value": ch_inserts,            "unit": "rows", "bytes": 0},
     ]
 
     return {
@@ -2323,16 +2646,22 @@ def build(receiver_path: Path, processor_path: Path | None,
 
     has_extra = any(_has_files(x) for x in [nats_log, data_processor_log, diis_log])
     if has_extra:
-        _nats_r = parse_nats_log(nats_log) if _has_files(nats_log) else None
-        # Pass the receiver log's time window so stale NDP events from earlier
-        # runs are excluded from per-message counters (msg_terminated etc.).
+        # Pass the receiver log's time window to all parsers so stale events
+        # from earlier runs are excluded from counters and error lists
         _recv_start = result["source"].get("log_start") or ""
         _recv_end   = result["source"].get("log_end")   or ""
-        _dp_run_window = (_recv_start, _recv_end) if _recv_start else None
-        _dp_r   = parse_data_processor_log(data_processor_log, run_window=_dp_run_window) \
+        _run_window = (_recv_start, _recv_end) if _recv_start else None
+        
+        _nats_r = parse_nats_log(nats_log, run_window=_run_window) if _has_files(nats_log) else None
+        _dp_r   = parse_data_processor_log(data_processor_log, run_window=_run_window) \
                   if _has_files(data_processor_log) else None
-        _diis_r = parse_diis_log(diis_log) if _has_files(diis_log) else None
+        _diis_r = parse_diis_log(diis_log, run_window=_run_window) if _has_files(diis_log) else None
         result["pipeline"] = build_pipeline_report(result, _nats_r, _dp_r, _diis_r)
+        
+        # Store stage-specific parsing results for template error boxes
+        result["_nats_parse"] = _nats_r or {}
+        result["_dp_parse"] = _dp_r or {}
+        result["_diis_parse"] = _diis_r or {}
 
     return result
 

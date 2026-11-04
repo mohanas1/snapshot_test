@@ -11598,7 +11598,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
     host = os.environ.get("BULK_SNAP_HOST", "0.0.0.0")
-    port = int(os.environ.get("BULK_SNAP_PORT", "8765"))
+    port = int(os.environ.get("BULK_SNAP_PORT", "8766"))
     # threaded=False serializes HTTP handlers so Werkzeug access lines don't interleave on the terminal.
     threaded = os.environ.get("BULK_SNAP_THREADED", "1").strip().lower() not in ("0", "false", "no")
     socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

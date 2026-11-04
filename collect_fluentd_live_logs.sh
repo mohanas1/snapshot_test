@@ -6,7 +6,7 @@ set -euo pipefail
 
 KUBECONFIG_PATH="${HOME}/kube/ss_kube"
 KUBECONFIG_EXPLICIT=0
-NAMESPACES="cpaas-system,default,domain-manager,kube-system,ncm-cg,nc-system,ntnx-ikat,ntnx-ncm-aiops,ntnx-ncm-common,ntnx-ncm-datastore,ntnx-ncm-self-service,ntnx-system"
+NAMESPACES="cpaas-system,default,domain-manager,kube-node-lease,kube-public,kube-system,mutator,nc-categories,nc-common,nc-prism,nc-project,nc-system,ncm-cg,ncm-lg-health,ncm-sc,ntnx-ikat,ntnx-ncm-aiops,ntnx-ncm-common,ntnx-ncm-datastore,ntnx-ncm-self-service,ntnx-system"
 DURATION_SEC=$((30 * 60))
 OUT_BASE="fluentd-live-logs"
 KUBECTL_REQUEST_TIMEOUT="20s"

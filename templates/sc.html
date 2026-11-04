@@ -137,95 +137,7 @@
         </div>
       </div>
 
-      <!-- ── Section 2: SC Security Reports Analyzer ─────────────────────── -->
-      <div class="card">
-        <h2 class="section-title">SC Security Reports Analyzer</h2>
-        <p class="sub" style="margin-bottom:0.75rem;">
-          Analyse the Security Central JSON reports — category & VM assignments,
-          audit rules, and query coverage — and produce an interactive visual report.
-        </p>
-
-        <div class="grid" style="margin-bottom:0.9rem;">
-          <div style="grid-column: 1 / -1;">
-            <label for="sc-data-dir">Data Directory</label>
-            <input id="sc-data-dir" type="text" value="/home/mohan.as1/mohan_helpers/security_central"
-                   placeholder="/path/to/security_central/" />
-            <div style="margin-top:0.3rem; color:#6B7280; font-size:0.82rem;">
-              Should contain: <code>sc_categories_and_vms.json</code>, <code>audits_list.json</code>,
-              <code>query_results.json</code>
-            </div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="run-sc-security-btn" class="btn btn-primary" type="button">Analyse SC Reports</button>
-          <span id="sc-security-msg" class="msg"></span>
-        </div>
-      </div>
-
-      <!-- ── Section 2.5: SC Pipeline Pod Log Analyzer ─────────────────────── -->
-      <div class="card">
-        <h2 class="section-title">SC Pipeline Pod Log Analyzer</h2>
-        <p class="sub" style="margin-bottom:0.75rem;">
-          Analyse <code>ncm-sc</code> namespace pod logs — Flink CDC events, BQL query stats,
-          ML worker status, cron job outcomes, and errors.
-        </p>
-
-        <!-- Fetch Fresh toggle -->
-        <div class="toggle-box" style="margin-bottom:0.9rem;">
-          <label>
-            <input id="sc-pl-fetch-fresh" type="checkbox" checked />
-            Fetch fresh pod logs from PC before analysing
-          </label>
-          <div class="toggle-hint">
-            When enabled, the kubeconfig is pulled from Prism Central via SSH,
-            then <code>kubectl logs</code> is run for every <code>ncm-sc</code> pod.
-            Disable to analyse a pod-logs directory already on disk.
-          </div>
-        </div>
-
-        <!-- Local dir row (shown only when fetch-fresh is OFF) -->
-        <div id="sc-pl-local-row" class="grid hidden" style="margin-bottom:0.9rem;">
-          <div style="grid-column: 1 / -1;">
-            <label for="sc-pl-logs-dir">Pod Logs Directory</label>
-            <input id="sc-pl-logs-dir" type="text" placeholder="/path/to/pod-logs_20261031_142434" />
-            <div style="font-size:0.82rem;color:#6B7280;margin-top:0.3rem;">
-              Directory containing <code>*.log</code> files collected from ncm-sc namespace.
-            </div>
-          </div>
-        </div>
-
-        <!-- Time Range (shown when fetch-fresh is ON) -->
-        <div id="sc-pl-fresh-opts" style="margin-bottom:0.9rem;">
-          <label style="margin-bottom:0.45rem;">Analyse Time Range</label>
-          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset active" data-preset="all">All</button>
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="1h">Last 1h</button>
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="6h">Last 6h</button>
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="24h">Last 24h</button>
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="7d">Last 7d</button>
-            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="custom">Custom…</button>
-          </div>
-          <div id="sc-pl-custom-range-row" class="grid hidden" style="margin-bottom:0.5rem;">
-            <div>
-              <label for="sc-pl-range-from">From (UTC)</label>
-              <input type="datetime-local" id="sc-pl-range-from" />
-            </div>
-            <div>
-              <label for="sc-pl-range-to">To (UTC)</label>
-              <input type="datetime-local" id="sc-pl-range-to" />
-            </div>
-          </div>
-          <div id="sc-pl-range-preview" style="font-size:0.83rem; color:#6b7280;"></div>
-        </div>
-
-        <div class="actions">
-          <button id="run-sc-pipeline-btn" class="btn btn-primary" type="button">Collect &amp; Analyse SC Pipeline</button>
-          <span id="sc-pl-msg" class="msg"></span>
-        </div>
-      </div>
-
-      <!-- ── Section 3: Network Log Analyzer ─────────────────────────────── -->
+      <!-- ── Section 2: Network Log Analyzer  ─────────────────────── -->
       <div class="card">
         <h2 class="section-title">Network Log Analyzer</h2>
         <p class="sub" style="margin-bottom:0.75rem;">
@@ -292,6 +204,95 @@
         <div class="actions" style="margin-top:1rem;">
           <button id="run-analyzer-btn" class="btn btn-primary" type="button">Run Analysis</button>
           <span id="run-msg" class="msg"></span>
+        </div>
+      </div>
+      
+
+      <!-- ── Section 2.5: SC Pipeline Pod Log Analyzer ─────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">SC Pipeline Pod Log Analyzer</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Analyse <code>ncm-sc</code> namespace pod logs — Flink CDC events, BQL query stats,
+          ML worker status, cron job outcomes, and errors.
+        </p>
+
+        <!-- Fetch Fresh toggle -->
+        <div class="toggle-box" style="margin-bottom:0.9rem;">
+          <label>
+            <input id="sc-pl-fetch-fresh" type="checkbox" checked />
+            Fetch fresh pod logs from PC before analysing
+          </label>
+          <div class="toggle-hint">
+            When enabled, the kubeconfig is pulled from Prism Central via SSH,
+            then <code>kubectl logs</code> is run for every <code>ncm-sc</code> pod.
+            Disable to analyse a pod-logs directory already on disk.
+          </div>
+        </div>
+
+        <!-- Local dir row (shown only when fetch-fresh is OFF) -->
+        <div id="sc-pl-local-row" class="grid hidden" style="margin-bottom:0.9rem;">
+          <div style="grid-column: 1 / -1;">
+            <label for="sc-pl-logs-dir">Pod Logs Directory</label>
+            <input id="sc-pl-logs-dir" type="text" placeholder="/path/to/pod-logs_20261031_142434" />
+            <div style="font-size:0.82rem;color:#6B7280;margin-top:0.3rem;">
+              Directory containing <code>*.log</code> files collected from ncm-sc namespace.
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Range (shown when fetch-fresh is ON) -->
+        <div id="sc-pl-fresh-opts" style="margin-bottom:0.9rem;">
+          <label style="margin-bottom:0.45rem;">Analyse Time Range</label>
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset active" data-preset="all">All</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="1h">Last 1h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="6h">Last 6h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="24h">Last 24h</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="7d">Last 7d</button>
+            <button type="button" class="btn btn-secondary time-preset sc-pl-time-preset" data-preset="custom">Custom…</button>
+          </div>
+          <div id="sc-pl-custom-range-row" class="grid hidden" style="margin-bottom:0.5rem;">
+            <div>
+              <label for="sc-pl-range-from">From (UTC)</label>
+              <input type="datetime-local" id="sc-pl-range-from" />
+            </div>
+            <div>
+              <label for="sc-pl-range-to">To (UTC)</label>
+              <input type="datetime-local" id="sc-pl-range-to" />
+            </div>
+          </div>
+          <div id="sc-pl-range-preview" style="font-size:0.83rem; color:#6b7280;"></div>
+        </div>
+
+        <div class="actions">
+          <button id="run-sc-pipeline-btn" class="btn btn-primary" type="button">Collect &amp; Analyse SC Pipeline</button>
+          <span id="sc-pl-msg" class="msg"></span>
+        </div>
+      </div>
+
+      <!-- ── Section 3: SC Security Reports Analyzer ─────────────────────────────── -->
+      <div class="card">
+        <h2 class="section-title">SC Security Reports Analyzer</h2>
+        <p class="sub" style="margin-bottom:0.75rem;">
+          Analyse the Security Central JSON reports — category & VM assignments,
+          audit rules, and query coverage — and produce an interactive visual report.
+        </p>
+
+        <div class="grid" style="margin-bottom:0.9rem;">
+          <div style="grid-column: 1 / -1;">
+            <label for="sc-data-dir">Data Directory</label>
+            <input id="sc-data-dir" type="text" value="/home/mohan.as1/mohan_helpers/security_central"
+                   placeholder="/path/to/security_central/" />
+            <div style="margin-top:0.3rem; color:#6B7280; font-size:0.82rem;">
+              Should contain: <code>sc_categories_and_vms.json</code>, <code>audits_list.json</code>,
+              <code>query_results.json</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="run-sc-security-btn" class="btn btn-primary" type="button">Analyse SC Reports</button>
+          <span id="sc-security-msg" class="msg"></span>
         </div>
       </div>
 
